@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfessionalRouteImport } from './routes/professional'
 import { Route as PersonalRouteImport } from './routes/personal'
+import { Route as EducationRouteImport } from './routes/education'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ProfessionalRoute = ProfessionalRouteImport.update({
@@ -23,6 +24,11 @@ const PersonalRoute = PersonalRouteImport.update({
   path: '/personal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EducationRoute = EducationRouteImport.update({
+  id: '/education',
+  path: '/education',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,30 +37,34 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/personal' | '/professional'
+  fullPaths: '/' | '/education' | '/personal' | '/professional'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/personal' | '/professional'
-  id: '__root__' | '/' | '/personal' | '/professional'
+  to: '/' | '/education' | '/personal' | '/professional'
+  id: '__root__' | '/' | '/education' | '/personal' | '/professional'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EducationRoute: typeof EducationRoute
   PersonalRoute: typeof PersonalRoute
   ProfessionalRoute: typeof ProfessionalRoute
 }
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PersonalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/education': {
+      id: '/education'
+      path: '/education'
+      fullPath: '/education'
+      preLoaderRoute: typeof EducationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EducationRoute: EducationRoute,
   PersonalRoute: PersonalRoute,
   ProfessionalRoute: ProfessionalRoute,
 }
