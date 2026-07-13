@@ -4,68 +4,45 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Home, Sprout, Briefcase, GraduationCap, User } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useApp } from "../lib/store";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+        <h1 className="text-7xl font-serif text-foreground">404</h1>
+        <p className="mt-4 text-lg text-ink-soft">This page took a quiet detour.</p>
+        <Link to="/" className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground">
+          Back to overview
+        </Link>
       </div>
     </div>
   );
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
+        <h1 className="text-2xl">Something felt off</h1>
+        <p className="mt-2 text-sm text-ink-soft">Take a breath. You can try again.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
+          <button onClick={() => { router.invalidate(); reset(); }} className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground">Try again</button>
+          <a href="/" className="rounded-full border px-5 py-2 text-sm">Go home</a>
         </div>
       </div>
     </div>
@@ -77,21 +54,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Grounded — a calm space for habits & goals" },
+      { name: "description", content: "A gentle, ADHD-friendly personal care platform for building habits across Personal, Professional, and Education." },
+      { name: "author", content: "Grounded" },
+      { property: "og:title", content: "Grounded — calm habits, gently held" },
+      { property: "og:description", content: "One clear thing at a time. Track habits, goals, and focus with warmth." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,
@@ -114,13 +93,96 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+const NAV = [
+  { to: "/", label: "Overview", icon: Home },
+  { to: "/personal", label: "Personal", icon: Sprout },
+  { to: "/professional", label: "Professional", icon: Briefcase },
+  { to: "/education", label: "Education", icon: GraduationCap },
+  { to: "/profile", label: "Profile", icon: User },
+] as const;
+
+function AppShell({ children }: { children: ReactNode }) {
+  const settings = useApp((s) => s.settings);
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
 
   return (
+    <div data-accent={settings.accent} data-density={settings.density} className="min-h-screen bg-background text-foreground">
+      {/* Mobile top bar */}
+      <header className="md:hidden sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
+              <Sprout className="h-4 w-4" />
+            </div>
+            <span className="font-serif text-lg">Grounded</span>
+          </div>
+        </div>
+        <nav className="flex items-center gap-1 overflow-x-auto px-2 pb-2">
+          {NAV.map((n) => {
+            const active = pathname === n.to;
+            return (
+              <Link key={n.to} to={n.to} className={`chip whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"}`}>
+                <n.icon className="h-3.5 w-3.5" />
+                {n.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </header>
+
+      <div className="md:flex md:min-h-screen">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex md:flex-col md:w-60 md:shrink-0 border-r border-border bg-card">
+          <div className="flex items-center gap-2 px-6 py-6">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
+              <Sprout className="h-4.5 w-4.5" />
+            </div>
+            <div>
+              <div className="font-serif text-xl leading-none">Grounded</div>
+              <div className="text-xs text-ink-soft mt-1">gently held</div>
+            </div>
+          </div>
+          <nav className="flex-1 px-3 space-y-1">
+            {NAV.map((n) => {
+              const active = pathname === n.to;
+              return (
+                <Link
+                  key={n.to}
+                  to={n.to}
+                  className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors ${
+                    active ? "bg-primary/12 text-ink" : "text-ink-soft hover:bg-secondary"
+                  }`}
+                  style={active ? { backgroundColor: "color-mix(in oklab, var(--primary) 14%, transparent)" } : undefined}
+                >
+                  <n.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
+                  {n.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="px-6 py-6 text-xs text-ink-soft">
+            <p className="italic">One thing at a time.</p>
+          </div>
+        </aside>
+
+        <main className="flex-1 min-w-0">
+          <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
+            {children}
+          </div>
+        </main>
+      </div>
+      <Toaster position="top-center" toastOptions={{ style: { background: "var(--card)", color: "var(--ink)", border: "1px solid var(--border)" } }} />
+    </div>
+  );
+}
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+  return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AppShell>
+        <Outlet />
+      </AppShell>
     </QueryClientProvider>
   );
 }
