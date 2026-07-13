@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProfessionalRouteImport } from './routes/professional'
 import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as EducationRouteImport } from './routes/education'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfessionalRoute = ProfessionalRouteImport.update({
   id: '/professional',
   path: '/professional',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,20 @@ export interface FileRoutesById {
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/education' | '/personal' | '/professional'
+  fullPaths: '/' | '/education' | '/personal' | '/professional' | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/education' | '/personal' | '/professional'
-  id: '__root__' | '/' | '/education' | '/personal' | '/professional'
+  to: '/' | '/education' | '/personal' | '/professional' | '/profile'
+  id:
+    | '__root__'
+    | '/'
+    | '/education'
+    | '/personal'
+    | '/professional'
+    | '/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +82,18 @@ export interface RootRouteChildren {
   EducationRoute: typeof EducationRoute
   PersonalRoute: typeof PersonalRoute
   ProfessionalRoute: typeof ProfessionalRoute
+  ProfileRoute: typeof ProfileRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/professional': {
       id: '/professional'
       path: '/professional'
@@ -107,6 +130,7 @@ const rootRouteChildren: RootRouteChildren = {
   EducationRoute: EducationRoute,
   PersonalRoute: PersonalRoute,
   ProfessionalRoute: ProfessionalRoute,
+  ProfileRoute: ProfileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
