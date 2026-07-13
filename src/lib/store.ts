@@ -219,8 +219,7 @@ function subscribe(l: () => void) {
 
 export function useApp<T>(selector: (s: AppState) => T): T {
   const getSnap = useCallback(() => selector(state), [selector]);
-  const getServerSnap = useCallback(() => selector(load()), [selector]);
-  return useSyncExternalStore(subscribe, getSnap, getServerSnap);
+  return useSyncExternalStore(subscribe, getSnap, getSnap);
 }
 
 export function useAppState(): AppState {
