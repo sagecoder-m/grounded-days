@@ -404,6 +404,10 @@ export const actions = {
     state = { ...state, events: [...state.events, { ...input, id: uid() }] };
     persist();
   },
+  updateEvent(id: string, patch: Partial<CalEvent>) {
+    state = { ...state, events: state.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) };
+    persist();
+  },
   deleteEvent(id: string) {
     state = { ...state, events: state.events.filter((e) => e.id !== id) };
     persist();
