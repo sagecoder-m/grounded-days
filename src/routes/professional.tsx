@@ -59,24 +59,33 @@ function ProjectCard({ project }: { project: ReturnType<typeof useAppState>["pro
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={cn("card-soft p-5 md:p-6", paused && "border-dashed")}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-3 text-left flex-1 min-w-0">
-            <ChevronDown className={`h-5 w-5 text-ink-soft transition-transform ${open ? "" : "-rotate-90"}`} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif text-2xl truncate">
-                  <InlineText value={project.name} onSave={(v) => v && actions.updateProject(project.id, { name: v })} showIcon />
-                </h3>
-                {paused && (
-                  <span className="chip border border-dashed" style={{ borderColor: "var(--tan)", color: "var(--ink-soft)" }}>
-                    <Pause className="h-3 w-3" /> On pause
-                  </span>
-                )}
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <CollapsibleTrigger asChild>
+            <button className="mt-1 shrink-0" aria-label={open ? "Collapse project" : "Expand project"}>
+              <ChevronDown className={`h-5 w-5 text-ink-soft transition-transform ${open ? "" : "-rotate-90"}`} />
+            </button>
+          </CollapsibleTrigger>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="font-serif text-2xl min-w-0 flex-1">
+                <InlineText value={project.name} onSave={(v) => v && actions.updateProject(project.id, { name: v })} showIcon />
               </div>
-              {project.description && <p className="text-xs text-ink-soft mt-0.5">{project.description}</p>}
+              {paused && (
+                <span className="chip border border-dashed" style={{ borderColor: "var(--tan)", color: "var(--ink-soft)" }}>
+                  <Pause className="h-3 w-3" /> On pause
+                </span>
+              )}
             </div>
-          </button>
-        </CollapsibleTrigger>
+            <InlineText
+              value={project.description ?? ""}
+              placeholder="Add a description…"
+              multiline
+              onSave={(v) => actions.updateProject(project.id, { description: v || undefined })}
+              className="text-xs text-ink-soft mt-0.5"
+            />
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           <div className="w-40">
             <SoftProgress value={overall} tint={paused ? "tan" : "brown"} />
