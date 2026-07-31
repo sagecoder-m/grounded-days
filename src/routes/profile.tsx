@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
@@ -29,6 +30,8 @@ const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
 
 function ProfilePage() {
   const settings = useAppState().settings;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
 
   function move(index: number, dir: -1 | 1) {
     const next = [...settings.widgets];
@@ -103,11 +106,30 @@ function ProfilePage() {
 
       <section className="card-soft p-6 space-y-4">
         <h2 className="font-serif text-2xl">Overview widgets</h2>
-        <p className="text-sm text-ink-soft">Toggle what shows on your Overview, and re-order to match your rhythm.</p>
+        <p className="text-sm text-ink-soft">Drag by the handle to re-order — or use the arrows. Switches control what appears.</p>
         <div className="space-y-2">
           {settings.widgets.map((w, i) => (
-            <div key={w.key} className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">
+            <div
+              key={w.key}
+              draggable
+              onDragStart={(e) => {
+                setDragIndex(i);
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragIndex === null || dragIndex === i) return;
+                const next = [...settings.widgets];
+                const [moved] = next.splice(dragIndex, 1);
+                next.splice(i, 0, moved);
+                setDragIndex(i);
+                actions.reorderWidgets(next);
+              }}
+              onDragEnd={() => setDragIndex(null)}
+              className={`flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 transition-opacity ${dragIndex === i ? "opacity-50" : ""}`}
+            >
               <div className="flex items-center gap-3">
+                <GripVertical className="h-4 w-4 cursor-grab active:cursor-grabbing text-ink-soft" aria-hidden />
                 <div className="flex flex-col">
                   <button onClick={() => move(i, -1)} className="text-ink-soft hover:text-ink" aria-label="Move up"><ArrowUp className="h-3.5 w-3.5" /></button>
                   <button onClick={() => move(i, 1)} className="text-ink-soft hover:text-ink" aria-label="Move down"><ArrowDown className="h-3.5 w-3.5" /></button>
@@ -127,6 +149,7 @@ function ProfilePage() {
           ))}
         </div>
       </section>
+
 
       <section className="card-soft p-6 space-y-3">
         <h2 className="font-serif text-2xl">Data</h2>
