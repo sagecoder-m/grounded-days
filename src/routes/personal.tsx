@@ -9,7 +9,8 @@ import { AddGoalDialog } from "@/components/add-goal-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { InlineText } from "@/components/inline-text";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 
 export const Route = createFileRoute("/personal")({
@@ -25,6 +26,8 @@ function PersonalPage() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, -6 + i)), []);
 
   const [newHabit, setNewHabit] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const chartData = useMemo(() => {
     return Array.from({ length: 21 }, (_, i) => {
@@ -52,6 +55,10 @@ function PersonalPage() {
           <h2 className="font-serif text-2xl">Daily habits</h2>
         </div>
         <div className="card-soft p-4 md:p-6">
+          {!mounted ? (
+            <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
+          ) : (
+          <>
           <div className="hidden md:grid grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 mb-2 text-[10px] uppercase text-ink-soft tracking-widest">
             <div>Habit</div>
             {days.map((d) => (
@@ -62,7 +69,12 @@ function PersonalPage() {
           <div className="space-y-2">
             {state.habits.map((h) => (
               <div key={h.id} className="group grid grid-cols-[1fr_auto] md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2">
-                <div className="text-sm font-medium">{h.name}</div>
+                <InlineText
+                  value={h.name}
+                  onSave={(v) => v && actions.updateHabit(h.id, { name: v })}
+                  showIcon
+                  className="text-sm font-medium"
+                />
                 <div className="col-span-full md:col-span-7 grid grid-cols-7 gap-2 md:contents">
                   {days.map((d) => {
                     const iso = d.toISOString().slice(0, 10);
@@ -104,6 +116,8 @@ function PersonalPage() {
             <Input value={newHabit} onChange={(e) => setNewHabit(e.target.value)} placeholder="Add a new habit — e.g. drink water" />
             <Button type="submit" variant="outline" className="rounded-full border-tan"><Plus className="h-4 w-4" /> Add</Button>
           </form>
+          </>
+          )}
         </div>
       </section>
 

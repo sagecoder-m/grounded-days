@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { actions, useAppState } from "@/lib/store";
+import { InlineText } from "@/components/inline-text";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
 import { AddTaskDialog } from "@/components/add-task-dialog";
@@ -63,7 +64,9 @@ function ProjectCard({ project }: { project: ReturnType<typeof useAppState>["pro
             <ChevronDown className={`h-5 w-5 text-ink-soft transition-transform ${open ? "" : "-rotate-90"}`} />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-serif text-2xl truncate">{project.name}</h3>
+                <h3 className="font-serif text-2xl truncate">
+                  <InlineText value={project.name} onSave={(v) => v && actions.updateProject(project.id, { name: v })} showIcon />
+                </h3>
                 {paused && (
                   <span className="chip border border-dashed" style={{ borderColor: "var(--tan)", color: "var(--ink-soft)" }}>
                     <Pause className="h-3 w-3" /> On pause
@@ -102,7 +105,9 @@ function ProjectCard({ project }: { project: ReturnType<typeof useAppState>["pro
             <div key={sub.id} className="rounded-2xl border border-border bg-background p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="font-serif text-lg">{sub.name}</div>
+                  <div className="font-serif text-lg">
+                    <InlineText value={sub.name} onSave={(v) => v && actions.updateSubproject(project.id, sub.id, { name: v })} showIcon />
+                  </div>
                   <div className="w-32">
                     <SoftProgress value={subPct} tint={paused ? "tan" : "brown"} />
                   </div>
