@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,14 +60,6 @@ function AuthPage() {
     }
   };
 
-  const google = async () => {
-    try {
-      await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    } catch (err: any) {
-      toast.error(err?.message ?? "Google sign-in is unavailable right now.");
-    }
-  };
-
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center">
       <div className="mb-6 text-center">
@@ -82,12 +73,6 @@ function AuthPage() {
       </div>
 
       <div className="card-soft p-6 space-y-5">
-        <Button variant="outline" className="w-full rounded-full border-tan" onClick={google} type="button">
-          Continue with Google
-        </Button>
-        <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest text-ink-soft">
-          <span className="h-px flex-1 bg-border" /> or <span className="h-px flex-1 bg-border" />
-        </div>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Email</Label>
