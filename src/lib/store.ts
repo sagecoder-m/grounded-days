@@ -210,6 +210,7 @@ function persist() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
   listeners.forEach((l) => l());
+  schedulePush();
 }
 
 function subscribe(l: () => void) {
@@ -225,6 +226,91 @@ export function useApp<T>(selector: (s: AppState) => T): T {
 export function useAppState(): AppState {
   return useApp((s) => s);
 }
+
+// ---------- cloud sync ----------
+export type SyncStatus = "local" | "syncing" | "synced" | "error";
+
+let cloudUserId: string | null = null;
+let syncStatus: SyncStatus = "local";
+const syncListeners = new Set<() => void>();
+let pushTimer: ReturnType<typeof setTimeout> | undefined;
+
+function setSyncStatus(s: SyncStatus) {
+  syncStatus = s;
+  syncListeners.forEach((l) => l());
+}
+
+export function useSyncStatus(): SyncStatus {
+  return useSyncExternalStore(
+    (l) => {
+      syncListeners.add(l);
+      return () => syncListeners.delete(l);
+    },
+    () => syncStatus,
+    () => "local" as SyncStatus,
+  );
+}
+
+function schedulePush() {
+  if (!cloudUserId || typeof window === "undefined") return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 600);
+}
+
+async function pushNow() {
+  if (!cloudUserId) return;
+  setSyncStatus("syncing");
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { error } = await supabase
+      .from("grounded_state")
+      .upsert({ user_id: cloudUserId, data: state as unknown as never }, { onConflict: "user_id" });
+    if (error) throw error;
+    setSyncStatus("synced");
+  } catch {
+    setSyncStatus("error");
+  }
+}
+
+function replaceState(next: AppState) {
+  state = { ...seed(), ...next, settings: { ...seed().settings, ...(next.settings ?? {}) } };
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+  listeners.forEach((l) => l());
+}
+
+/** Called when a user signs in: pulls their cloud data, or migrates local data up on first sign-in. */
+export async function connectCloud(userId: string) {
+  cloudUserId = userId;
+  setSyncStatus("syncing");
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase
+      .from("grounded_state")
+      .select("data")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.data && Object.keys(data.data as object).length > 0) {
+      replaceState(data.data as unknown as AppState);
+      setSyncStatus("synced");
+    } else {
+      // First sign-in — migrate whatever is stored locally into the cloud.
+      await pushNow();
+    }
+  } catch {
+    setSyncStatus("error");
+  }
+}
+
+export function disconnectCloud() {
+  cloudUserId = null;
+  if (pushTimer) clearTimeout(pushTimer);
+  setSyncStatus("local");
+}
+
+
 
 // ---------- actions ----------
 export const actions = {
@@ -247,6 +333,10 @@ export const actions = {
 
   addHabit(name: string) {
     state = { ...state, habits: [...state.habits, { id: uid(), name, createdAt: Date.now(), log: {} }] };
+    persist();
+  },
+  updateHabit(id: string, patch: Partial<Habit>) {
+    state = { ...state, habits: state.habits.map((h) => (h.id === id ? { ...h, ...patch } : h)) };
     persist();
   },
   deleteHabit(id: string) {
@@ -302,6 +392,17 @@ export const actions = {
     };
     persist();
   },
+  updateSubproject(projectId: string, subId: string, patch: Partial<Subproject>) {
+    state = {
+      ...state,
+      projects: state.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, subprojects: p.subprojects.map((s) => (s.id === subId ? { ...s, ...patch } : s)) }
+          : p,
+      ),
+    };
+    persist();
+  },
   deleteSubproject(projectId: string, subId: string) {
     state = {
       ...state,
@@ -316,6 +417,10 @@ export const actions = {
 
   addEvent(input: Omit<CalEvent, "id">) {
     state = { ...state, events: [...state.events, { ...input, id: uid() }] };
+    persist();
+  },
+  updateEvent(id: string, patch: Partial<CalEvent>) {
+    state = { ...state, events: state.events.map((e) => (e.id === id ? { ...e, ...patch } : e)) };
     persist();
   },
   deleteEvent(id: string) {

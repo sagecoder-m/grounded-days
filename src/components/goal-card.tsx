@@ -2,14 +2,26 @@ import { actions, type Goal } from "@/lib/store";
 import { SoftProgress } from "./soft-progress";
 import { Slider } from "@/components/ui/slider";
 import { Trash2 } from "lucide-react";
+import { InlineText } from "./inline-text";
 
 export function GoalCard({ goal, tint = "sage" }: { goal: Goal; tint?: "sage" | "clay" | "brown" | "tan" }) {
   return (
     <div className="group card-soft density-p p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-serif text-lg leading-tight">{goal.name}</div>
-          {goal.description && <p className="text-xs text-ink-soft mt-1">{goal.description}</p>}
+          <InlineText
+            value={goal.name}
+            onSave={(v) => v && actions.updateGoal(goal.id, { name: v })}
+            showIcon
+            className="font-serif text-lg leading-tight"
+          />
+          <InlineText
+            value={goal.description ?? ""}
+            placeholder="Add a description…"
+            multiline
+            onSave={(v) => actions.updateGoal(goal.id, { description: v || undefined })}
+            className="text-xs text-ink-soft mt-1"
+          />
         </div>
         <button
           onClick={() => actions.deleteGoal(goal.id)}
