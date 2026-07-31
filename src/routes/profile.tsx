@@ -30,6 +30,8 @@ const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
 
 function ProfilePage() {
   const settings = useAppState().settings;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
 
   function move(index: number, dir: -1 | 1) {
     const next = [...settings.widgets];
