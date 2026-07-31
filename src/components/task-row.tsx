@@ -4,6 +4,7 @@ import { actions, type Task } from "@/lib/store";
 import { format, isBefore, isToday, parseISO } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InlineText } from "./inline-text";
 
 function niceDate(d?: string) {
   if (!d) return null;
@@ -41,16 +42,50 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
         className="mt-0.5 h-5 w-5 rounded-md border-tan data-[state=checked]:bg-primary data-[state=checked]:border-primary"
       />
       <div className="min-w-0 flex-1">
-        <div className={cn("text-sm font-medium leading-snug", task.done && "line-through decoration-1")}>
-          {task.title}
-        </div>
-        {task.description && <div className="text-xs text-ink-soft mt-0.5">{task.description}</div>}
+        {readOnly ? (
+          <>
+            <div className={cn("text-sm font-medium leading-snug", task.done && "line-through decoration-1")}>
+              {task.title}
+            </div>
+            {task.description && <div className="text-xs text-ink-soft mt-0.5">{task.description}</div>}
+          </>
+        ) : (
+          <>
+            <InlineText
+              value={task.title}
+              onSave={(v) => v && actions.updateTask(task.id, { title: v })}
+              showIcon
+              className={cn("text-sm font-medium leading-snug", task.done && "line-through decoration-1")}
+            />
+            <InlineText
+              value={task.description ?? ""}
+              placeholder="Add a description…"
+              multiline
+              onSave={(v) => actions.updateTask(task.id, { description: v || undefined })}
+              className="text-xs text-ink-soft"
+            />
+          </>
+        )}
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           {showArea && <AreaChip area={task.area} />}
-          {task.date && (
+          {task.date && readOnly && (
             <span suppressHydrationWarning className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
               {niceDate(task.date)}
             </span>
+          )}
+          {!readOnly && (
+            <label className="relative inline-flex items-center">
+              <span suppressHydrationWarning className={cn("cursor-pointer text-[11px] underline decoration-dotted underline-offset-4", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
+                {task.date ? niceDate(task.date) : "add a date"}
+              </span>
+              <input
+                type="date"
+                value={task.date ?? ""}
+                onChange={(e) => actions.updateTask(task.id, { date: e.target.value || undefined })}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                aria-label="Task date"
+              />
+            </label>
           )}
         </div>
       </div>
