@@ -289,27 +289,43 @@ function dotColor(area?: string) {
   return area === "personal" ? "var(--sage)" : area === "professional" ? "var(--brown)" : area === "education" ? "var(--clay)" : "var(--tan)";
 }
 
+const iso = (d: Date) => format(d, "yyyy-MM-dd");
+
+function ItemPill({ it }: any) {
+  return (
+    <div
+      className="flex items-start gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 text-[11px] leading-snug"
+      title={it.title}
+    >
+      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
+      <span className={`flex-1 ${it.kind === "task" && it.done ? "line-through text-ink-soft" : ""}`}>{it.title}</span>
+    </div>
+  );
+}
+
 function WeekView({ cursor, events, tasks }: any) {
   const start = startOfWeek(cursor);
   const days = eachDayOfInterval({ start, end: endOfWeek(cursor) });
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 lg:gap-3">
       {days.map((d) => {
-        const iso = d.toISOString().slice(0, 10);
-        const items = itemsFor(iso, events, tasks);
+        const key = iso(d);
+        const items = itemsFor(key, events, tasks);
         const isTodayC = isToday(d);
         return (
-          <div key={iso} className={`min-h-24 rounded-2xl border p-2 ${isTodayC ? "bg-accent border-primary" : "bg-background border-border"}`}>
-            <div className="text-[10px] uppercase tracking-wide text-ink-soft">{format(d, "EEE")}</div>
-            <div className="font-serif text-lg">{format(d, "d")}</div>
-            <div className="mt-1 space-y-1">
-              {items.slice(0, 3).map((it: any) => (
-                <div key={`${it.kind}-${it.id}`} className="flex items-center gap-1 text-[11px] truncate">
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
-                  <span className="truncate">{it.title}</span>
-                </div>
+          <div
+            key={key}
+            className={`flex min-h-40 lg:min-h-64 flex-col rounded-2xl border p-3 ${isTodayC ? "bg-accent border-primary" : "bg-background border-border"}`}
+          >
+            <div className="flex items-baseline justify-between lg:block">
+              <div className="text-[10px] uppercase tracking-widest text-ink-soft">{format(d, "EEE")}</div>
+              <div className="font-serif text-2xl leading-tight">{format(d, "d")}</div>
+            </div>
+            <div className="mt-2 flex-1 space-y-1.5 overflow-y-auto">
+              {items.length === 0 && <div className="text-[11px] italic text-ink-soft">Open space</div>}
+              {items.map((it: any) => (
+                <ItemPill key={`${it.kind}-${it.id}`} it={it} />
               ))}
-              {items.length > 3 && <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>}
             </div>
           </div>
         );
@@ -325,22 +341,29 @@ function MonthView({ cursor, events, tasks }: any) {
   return (
     <div>
       <div className="grid grid-cols-7 mb-2">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-          <div key={i} className="text-center text-[10px] uppercase text-ink-soft tracking-widest">{d}</div>
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <div key={d} className="text-center text-[10px] uppercase text-ink-soft tracking-widest">{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
-          const iso = d.toISOString().slice(0, 10);
-          const items = itemsFor(iso, events, tasks);
+          const key = iso(d);
+          const items = itemsFor(key, events, tasks);
           const outside = !isSameMonth(d, cursor);
           return (
-            <div key={iso} className={`min-h-16 rounded-xl border p-1.5 text-xs ${isToday(d) ? "bg-accent border-primary" : "bg-background border-border"} ${outside ? "opacity-40" : ""}`}>
+            <div
+              key={key}
+              className={`min-h-24 md:min-h-28 rounded-xl border p-1.5 text-xs ${isToday(d) ? "bg-accent border-primary" : "bg-background border-border"} ${outside ? "opacity-40" : ""}`}
+            >
               <div className="font-medium">{format(d, "d")}</div>
-              <div className="flex flex-wrap gap-0.5 mt-1">
-                {items.slice(0, 4).map((it: any) => (
-                  <span key={`${it.kind}-${it.id}`} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
+              <div className="mt-1 space-y-1">
+                {items.slice(0, 3).map((it: any) => (
+                  <div key={`${it.kind}-${it.id}`} className="flex items-center gap-1 truncate text-[10px]" title={it.title}>
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
+                    <span className="truncate">{it.title}</span>
+                  </div>
                 ))}
+                {items.length > 3 && <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>}
               </div>
             </div>
           );
@@ -353,15 +376,31 @@ function MonthView({ cursor, events, tasks }: any) {
 function YearView({ cursor, events, tasks }: any) {
   const year = cursor.getFullYear();
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {Array.from({ length: 12 }, (_, i) => {
         const monthDate = new Date(year, i, 1);
-        const monthTasks = tasks.filter((t: any) => t.date?.startsWith(`${year}-${String(i + 1).padStart(2, "0")}`)).length;
-        const monthEvents = events.filter((e: any) => e.date.startsWith(`${year}-${String(i + 1).padStart(2, "0")}`)).length;
+        const prefix = `${year}-${String(i + 1).padStart(2, "0")}`;
+        const items = [
+          ...events.filter((e: any) => e.date?.startsWith(prefix)).map((e: any) => ({ ...e, kind: "event" as const })),
+          ...tasks.filter((t: any) => t.date?.startsWith(prefix)).map((t: any) => ({ ...t, kind: "task" as const })),
+        ].sort((a: any, b: any) => a.date.localeCompare(b.date));
         return (
           <div key={i} className="rounded-2xl border border-border bg-background p-3">
-            <div className="font-serif text-base">{format(monthDate, "MMMM")}</div>
-            <div className="text-xs text-ink-soft mt-1">{monthTasks} tasks · {monthEvents} events</div>
+            <div className="flex items-baseline justify-between">
+              <div className="font-serif text-base">{format(monthDate, "MMMM")}</div>
+              <div className="text-[10px] text-ink-soft">{items.length} scheduled</div>
+            </div>
+            <div className="mt-2 space-y-1">
+              {items.length === 0 && <div className="text-[11px] italic text-ink-soft">Nothing scheduled</div>}
+              {items.slice(0, 5).map((it: any) => (
+                <div key={`${it.kind}-${it.id}`} className="flex items-center gap-1.5 text-[11px] truncate" title={it.title}>
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
+                  <span className="tabular-nums text-ink-soft">{format(parseISO(it.date), "d")}</span>
+                  <span className="truncate">{it.title}</span>
+                </div>
+              ))}
+              {items.length > 5 && <div className="text-[10px] text-ink-soft">+{items.length - 5} more</div>}
+            </div>
           </div>
         );
       })}
