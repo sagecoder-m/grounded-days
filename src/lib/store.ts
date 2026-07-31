@@ -388,6 +388,17 @@ export const actions = {
     };
     persist();
   },
+  updateSubproject(projectId: string, subId: string, patch: Partial<Subproject>) {
+    state = {
+      ...state,
+      projects: state.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, subprojects: p.subprojects.map((s) => (s.id === subId ? { ...s, ...patch } : s)) }
+          : p,
+      ),
+    };
+    persist();
+  },
   deleteSubproject(projectId: string, subId: string) {
     state = {
       ...state,
