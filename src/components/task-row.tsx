@@ -48,7 +48,7 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           {showArea && <AreaChip area={task.area} />}
           {task.date && (
-            <span className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
+            <span suppressHydrationWarning className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
               {niceDate(task.date)}
             </span>
           )}
