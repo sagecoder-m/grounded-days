@@ -76,8 +76,8 @@ function Overview() {
         if (key === "greeting")
           return (
             <section key={key}>
-              <p className="text-sm text-ink-soft">{format(today, "EEEE, MMMM d, yyyy")}</p>
-              <h1 className="mt-1 font-serif text-4xl md:text-5xl">{greeting(settings.displayName || "friend")}</h1>
+              <p suppressHydrationWarning className="text-sm text-ink-soft">{format(today, "EEEE, MMMM d, yyyy")}</p>
+              <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">{greeting(settings.displayName || "friend")}</h1>
               <p className="mt-2 text-ink-soft max-w-lg">Take a breath. Here's your gentle rundown for today — one small thing at a time.</p>
             </section>
           );
