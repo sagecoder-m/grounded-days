@@ -335,6 +335,10 @@ export const actions = {
     state = { ...state, habits: [...state.habits, { id: uid(), name, createdAt: Date.now(), log: {} }] };
     persist();
   },
+  updateHabit(id: string, patch: Partial<Habit>) {
+    state = { ...state, habits: state.habits.map((h) => (h.id === id ? { ...h, ...patch } : h)) };
+    persist();
+  },
   deleteHabit(id: string) {
     state = { ...state, habits: state.habits.filter((h) => h.id !== id) };
     persist();
