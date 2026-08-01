@@ -16,6 +16,14 @@ dist-ssr
 .nitro
 *.local
 
+# Environment — never commit. Supabase values come from Lovable Cloud env bindings in production.
+.env
+.env.*
+!.env.example
+
+# npm lockfile — this project uses bun.lock
+package-lock.json
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
