@@ -25,7 +25,13 @@ export function InlineText({
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
-  useEffect(() => setDraft(value), [value]);
+  // Only adopt an incoming value while NOT editing. Writes are async now, so a
+  // background refetch can land mid-edit, and without this guard it would wipe
+  // whatever the user was typing.
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
   useEffect(() => {
     if (editing) ref.current?.focus();
   }, [editing]);

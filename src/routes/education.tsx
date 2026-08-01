@@ -111,6 +111,19 @@ function FocusTimer() {
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
   const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loggedRef = useRef<string | null>(null);
+
+  /**
+   * Writes one focus session, guarded against a repeat for the same completion.
+   * The guard key includes the minute so back-to-back identical sessions still
+   * each get logged.
+   */
+  const logSession = (sessionLabel: string, minutes: number) => {
+    const key = `${sessionLabel}|${minutes}|${Math.floor(Date.now() / 1000)}`;
+    if (loggedRef.current === key) return;
+    loggedRef.current = key;
+    actions.logFocus(sessionLabel, minutes);
+  };
 
   useEffect(() => {
     if (!running) return;
@@ -120,7 +133,9 @@ function FocusTimer() {
           clearInterval(intRef.current!);
           setRunning(false);
           if (phase === "focus") {
-            actions.logFocus(label || "Focus session", focusMin);
+            // Logged outside this updater: React may invoke a state updater
+            // twice (StrictMode), which would double-write the session.
+            queueMicrotask(() => logSession(label || "Focus session", focusMin));
             try {
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
               const o = ctx.createOscillator();

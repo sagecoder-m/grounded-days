@@ -300,7 +300,12 @@ function EditItemDialog({ item, onClose }: { item: any; onClose: () => void }) {
 
 export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: boolean; heading?: string }) {
   const state = useAppState();
-  const [view, setView] = useState<"week" | "month" | "year">(state.settings.defaultCalView);
+  const defaultView = state.settings.defaultCalView;
+  // null means "follow the saved default"; picking a view here overrides it for
+  // this board only. Settings now arrive asynchronously, so initialising state
+  // from them once would strand the board on whatever loaded first.
+  const [override, setOverride] = useState<"week" | "month" | "year" | null>(null);
+  const view = override ?? defaultView;
   const [cursor, setCursor] = useState(new Date());
   const [editing, setEditing] = useState<any>(null);
 
@@ -319,7 +324,7 @@ export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: b
             {(["week", "month", "year"] as const).map((v) => (
               <button
                 key={v}
-                onClick={() => setView(v)}
+                onClick={() => setOverride(v)}
                 className={`chip capitalize ${view === v ? "bg-primary text-primary-foreground" : "text-ink-soft"}`}
               >
                 {v}

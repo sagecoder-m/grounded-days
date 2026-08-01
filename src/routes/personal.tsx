@@ -9,7 +9,8 @@ import { AddGoalDialog } from "@/components/add-goal-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useMounted } from "@/lib/use-mounted";
 import { InlineText } from "@/components/inline-text";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 
@@ -26,8 +27,8 @@ function PersonalPage() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, -6 + i)), []);
 
   const [newHabit, setNewHabit] = useState("");
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // The habit grid keys off today's date, so it stays a skeleton until mount.
+  const mounted = useMounted();
 
   const chartData = useMemo(() => {
     return Array.from({ length: 21 }, (_, i) => {

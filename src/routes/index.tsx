@@ -37,7 +37,7 @@ function Overview() {
     .sort((a, b) => Number(a.done) - Number(b.done));
 
   const upcoming = useMemo(() => {
-    const items: { id: string; title: string; date: string; area?: string; kind: "task" | "event"; taskId?: string }[] = [];
+    const items: { id: string; title: string; date: string; area?: string; kind: "task" | "event"; taskId?: string; eventId?: string }[] = [];
     state.tasks.forEach((t) => {
       if (!t.date || t.done) return;
       const d = parseISO(t.date);
@@ -45,7 +45,7 @@ function Overview() {
     });
     state.events.forEach((e) => {
       const d = parseISO(e.date);
-      if (d >= today || isToday(d)) items.push({ id: `e-${e.id}`, title: e.title, date: e.date, area: e.area, kind: "event" });
+      if (d >= today || isToday(d)) items.push({ id: `e-${e.id}`, eventId: e.id, title: e.title, date: e.date, area: e.area, kind: "event" });
     });
     return items.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
   }, [state.tasks, state.events]);
@@ -203,7 +203,13 @@ function Overview() {
                 )}
                 {upcoming.map((u) =>
                   u.kind === "task" ? (
-                    <TaskRow key={u.id} task={state.tasks.find((t) => t.id === u.taskId)!} readOnly />
+                    // Look the task up rather than asserting it exists: a delete
+                    // elsewhere can land between the memo and this render, and
+                    // the old non-null assertion crashed TaskRow when it did.
+                    (() => {
+                      const task = state.tasks.find((t) => t.id === u.taskId);
+                      return task ? <TaskRow key={u.id} task={task} readOnly /> : null;
+                    })()
                   ) : (
                     <div key={u.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
                       <div className="h-2 w-2 rounded-full" style={{ backgroundColor: u.area ? (u.area === "personal" ? "var(--sage)" : u.area === "professional" ? "var(--brown)" : "var(--clay)") : "var(--tan)" }} />

@@ -14,24 +14,376 @@ export type Database = {
   }
   public: {
     Tables: {
+      events: {
+        Row: {
+          area: string | null
+          created_at: string
+          date: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      focus_sessions: {
+        Row: {
+          completed_at: string
+          id: string
+          label: string
+          minutes: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          label: string
+          minutes: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          label?: string
+          minutes?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          area: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          progress: number
+          project_id: string | null
+          subproject_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          progress?: number
+          project_id?: string | null
+          subproject_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          progress?: number
+          project_id?: string | null
+          subproject_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_subproject_id_fkey"
+            columns: ["subproject_id"]
+            isOneToOne: false
+            referencedRelation: "subprojects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grounded_state: {
         Row: {
           created_at: string
           data: Json
+          migrated_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           data?: Json
+          migrated_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           data?: Json
+          migrated_at?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      habit_logs: {
+        Row: {
+          created_at: string
+          date: string
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subprojects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subprojects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          area: string
+          created_at: string
+          date: string | null
+          description: string | null
+          done: boolean
+          id: string
+          project_id: string | null
+          subproject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          done?: boolean
+          id?: string
+          project_id?: string | null
+          subproject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          date?: string | null
+          description?: string | null
+          done?: boolean
+          id?: string
+          project_id?: string | null
+          subproject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_subproject_id_fkey"
+            columns: ["subproject_id"]
+            isOneToOne: false
+            referencedRelation: "subprojects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_security: {
+        Row: {
+          created_at: string
+          failed_attempts: number
+          locked_until: string | null
+          passcode_hash: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          passcode_hash?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          failed_attempts?: number
+          locked_until?: string | null
+          passcode_hash?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          accent: string
+          created_at: string
+          default_cal_view: string
+          density: string
+          display_name: string
+          updated_at: string
+          user_id: string
+          widgets: Json
+        }
+        Insert: {
+          accent?: string
+          created_at?: string
+          default_cal_view?: string
+          density?: string
+          display_name?: string
+          updated_at?: string
+          user_id: string
+          widgets?: Json
+        }
+        Update: {
+          accent?: string
+          created_at?: string
+          default_cal_view?: string
+          density?: string
+          display_name?: string
+          updated_at?: string
+          user_id?: string
+          widgets?: Json
         }
         Relationships: []
       }
@@ -40,7 +392,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      change_passcode: {
+        Args: { old_passcode: string; new_passcode: string }
+        Returns: boolean
+      }
+      has_passcode: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      set_passcode: {
+        Args: { new_passcode: string }
+        Returns: undefined
+      }
+      verify_passcode: {
+        Args: { candidate: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
