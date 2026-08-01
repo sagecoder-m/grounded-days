@@ -70,6 +70,9 @@ function AuthPage() {
         <p className="mt-2 text-sm text-ink-soft">
           Sign in to keep your habits, goals, and plans safe and synced across devices.
         </p>
+        <p className="mt-1 text-xs text-ink-soft">
+          You'll set a passcode next, so your space stays private on this device.
+        </p>
       </div>
 
       <div className="card-soft p-6 space-y-5">
@@ -105,7 +108,7 @@ function AuthPage() {
         </p>
       </div>
       <p className="mt-4 text-center text-xs italic text-ink-soft">
-        Not ready? Everything keeps working offline on this device.
+        Your data lives in your account, so it's waiting for you on any device.
       </p>
     </div>
   );

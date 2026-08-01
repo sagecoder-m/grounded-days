@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PasscodeSettings } from "@/components/passcode-settings";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -113,6 +114,7 @@ function ProfilePage() {
 
       <WidgetSection widgets={settings.widgets} />
 
+      <PasscodeSettings />
 
       <DataSection />
     </div>
