@@ -40,7 +40,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-ink-soft">Take a breath. You can try again.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button onClick={() => { router.invalidate(); reset(); }} className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground">Try again</button>
-          <a href="/" className="rounded-full border px-5 py-2 text-sm">Go home</a>
+          <Link to="/" className="rounded-full border px-5 py-2 text-sm">Go home</Link>
         </div>
       </div>
     </div>
@@ -62,7 +62,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: `${import.meta.env.BASE_URL}favicon.ico`, type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

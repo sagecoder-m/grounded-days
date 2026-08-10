@@ -20,6 +20,9 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // "/" for every existing deploy target; "/grounded-days/" when built
+    // for GitHub Pages (see GH_PAGES_BASE in vite.config.ts).
+    basepath: import.meta.env.BASE_URL,
   });
 
   return router;

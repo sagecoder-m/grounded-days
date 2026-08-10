@@ -6,10 +6,15 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
+// Set only by scripts/build-github-pages.mjs — every other build target
+// (Lovable, Cloudflare) serves from the domain root and leaves this unset.
+const ghPagesBase = process.env.GH_PAGES_BASE;
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  ...(ghPagesBase ? { vite: { base: ghPagesBase } } : {}),
 });
