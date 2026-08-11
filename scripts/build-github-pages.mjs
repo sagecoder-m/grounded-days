@@ -28,12 +28,27 @@ const OUT_DIR = `${ROOT}dist-pages`;
 
 // Every static route in src/routes (excluding the sitemap.xml server route,
 // which public/sitemap.xml replaces for this build).
-const ROUTES = ["/", "/auth", "/calendar", "/personal", "/professional", "/education", "/profile"];
+//
+// /share is included so share links resolve as a real static file rather than
+// relying on the 404 fallback. Its token travels in the query string, which the
+// client reads after hydration, so one prerendered page serves every link.
+const ROUTES = [
+  "/",
+  "/auth",
+  "/calendar",
+  "/personal",
+  "/professional",
+  "/education",
+  "/profile",
+  "/share",
+];
 
 function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts });
-    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} ${args.join(" ")} exited with ${code}`))));
+    child.on("exit", (code) =>
+      code === 0 ? resolve() : reject(new Error(`${cmd} ${args.join(" ")} exited with ${code}`)),
+    );
     child.on("error", reject);
   });
 }

@@ -59,6 +59,48 @@ export type Database = {
         }
         Relationships: []
       }
+      share_links: {
+        Row: {
+          areas: string[]
+          created_at: string
+          expires_at: string | null
+          id: string
+          label: string | null
+          last_viewed_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          updated_at: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          areas: string[]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          updated_at?: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          areas?: string[]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           all_day: boolean

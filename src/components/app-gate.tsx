@@ -11,8 +11,29 @@ import { useHasPasscode, useUnlocked } from "@/lib/use-passcode";
 import { AppShell } from "@/components/app-shell";
 import { GateSkeleton, PasscodeLock, PasscodeSetup } from "@/components/passcode-screen";
 
-/** The one route reachable without a session, so it must never be gated. */
-const PUBLIC_PATH = "/auth";
+/**
+ * Routes reachable without a session, so they must never be gated.
+ *
+ * /share is public on purpose: a share link is opened by someone who has no
+ * account here, and its own token is what authorises what they see. It renders
+ * with no app chrome so none of the owner's navigation is exposed.
+ */
+const PUBLIC_PATHS = ["/auth", "/share"] as const;
+const SHARE_PATH = "/share";
+
+function matches(pathname: string, route: string): boolean {
+  // Trailing-slash tolerant: the static host serves /share/ and the router may
+  // see either form depending on how the link was opened.
+  return pathname === route || pathname.startsWith(`${route}/`);
+}
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.some((p) => matches(pathname, p));
+}
+
+function isSharePath(pathname: string): boolean {
+  return matches(pathname, SHARE_PATH);
+}
 
 /**
  * Minimal chrome for the sign-in page: same background, no navigation. The app
@@ -55,8 +76,8 @@ export function AppGate({ children }: { children: ReactNode }) {
   // during render so the router isn't navigated mid-commit.
   useEffect(() => {
     if (!mounted || loading) return;
-    if (!user && pathname !== PUBLIC_PATH) {
-      navigate({ to: PUBLIC_PATH, replace: true });
+    if (!user && !isPublicPath(pathname)) {
+      navigate({ to: "/auth", replace: true });
     }
   }, [mounted, loading, user, pathname, navigate]);
 
@@ -83,15 +104,22 @@ export function AppGate({ children }: { children: ReactNode }) {
   }, [user, unlocked, queryClient]);
 
   // 1. SSR and first client paint.
-  if (!mounted || loading) return <GateSkeleton />;
+  if (!mounted) return <GateSkeleton />;
 
-  // 2. Signed out: only the sign-in page renders, without app chrome.
+  // 2. A share link authorises itself with its token, so it neither waits for a
+  // session nor borrows any of this app's chrome — it renders its own page even
+  // when the owner happens to be signed in on the same device.
+  if (isSharePath(pathname)) return <>{children}</>;
+
+  if (loading) return <GateSkeleton />;
+
+  // 3. Signed out: only the sign-in page renders, without app chrome.
   if (!user) {
-    return pathname === PUBLIC_PATH ? <BareShell>{children}</BareShell> : <GateSkeleton />;
+    return isPublicPath(pathname) ? <BareShell>{children}</BareShell> : <GateSkeleton />;
   }
 
-  // 3. Signed in but sitting on /auth — auth.tsx redirects to "/" itself.
-  if (pathname === PUBLIC_PATH) return <BareShell>{children}</BareShell>;
+  // 4. Signed in but sitting on /auth — auth.tsx redirects to "/" itself.
+  if (isPublicPath(pathname)) return <BareShell>{children}</BareShell>;
 
   // 4. Still learning whether a passcode exists.
   if (hasPasscode.isPending) return <GateSkeleton />;

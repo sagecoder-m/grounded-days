@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PasscodeSettings } from "@/components/passcode-settings";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
+import { ShareLinksSection } from "@/components/share-links";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -65,6 +66,8 @@ function ProfilePage() {
       <DisplayNameSection value={settings.displayName} />
 
       <CalendarConnectionsSection />
+
+      <ShareLinksSection />
 
       <section className="card-soft p-6 space-y-5">
         <h2 className="font-serif text-2xl">Accent color</h2>
