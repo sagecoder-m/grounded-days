@@ -6,7 +6,18 @@ import { TaskRow } from "@/components/task-row";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
 import { CalendarBoard } from "@/components/calendar-board";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Area as RArea, AreaChart, XAxis, YAxis, CartesianGrid } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Area as RArea,
+  AreaChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 export const Route = createFileRoute("/")({
   component: Overview,
@@ -14,7 +25,16 @@ export const Route = createFileRoute("/")({
 
 function greeting(name: string) {
   const h = new Date().getHours();
-  const g = h < 5 ? "Rest well" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : h < 21 ? "Good evening" : "Winding down";
+  const g =
+    h < 5
+      ? "Rest well"
+      : h < 12
+        ? "Good morning"
+        : h < 17
+          ? "Good afternoon"
+          : h < 21
+            ? "Good evening"
+            : "Winding down";
   return `${g}, ${name}`;
 }
 
@@ -37,17 +57,53 @@ function Overview() {
     .sort((a, b) => Number(a.done) - Number(b.done));
 
   const upcoming = useMemo(() => {
-    const items: { id: string; title: string; date: string; area?: string; kind: "task" | "event"; taskId?: string; eventId?: string }[] = [];
+    const items: {
+      id: string;
+      title: string;
+      date: string;
+      area?: string;
+      kind: "task" | "event";
+      taskId?: string;
+      eventId?: string;
+      source?: string;
+      startsAt?: string;
+      allDay?: boolean;
+    }[] = [];
     state.tasks.forEach((t) => {
       if (!t.date || t.done) return;
       const d = parseISO(t.date);
-      if (d >= today || isToday(d)) items.push({ id: `t-${t.id}`, taskId: t.id, title: t.title, date: t.date, area: t.area, kind: "task" });
+      if (d >= today || isToday(d))
+        items.push({
+          id: `t-${t.id}`,
+          taskId: t.id,
+          title: t.title,
+          date: t.date,
+          area: t.area,
+          kind: "task",
+        });
     });
     state.events.forEach((e) => {
       const d = parseISO(e.date);
-      if (d >= today || isToday(d)) items.push({ id: `e-${e.id}`, eventId: e.id, title: e.title, date: e.date, area: e.area, kind: "event" });
+      if (d >= today || isToday(d))
+        items.push({
+          id: `e-${e.id}`,
+          eventId: e.id,
+          title: e.title,
+          date: e.date,
+          area: e.area,
+          kind: "event",
+          source: e.source,
+          startsAt: e.startsAt,
+          allDay: e.allDay,
+        });
     });
-    return items.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+    // Within a day, timed events sort ahead of all-day ones by their start.
+    return items
+      .sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) || (a.startsAt ?? "").localeCompare(b.startsAt ?? ""),
+      )
+      .slice(0, 8);
   }, [state.tasks, state.events]);
 
   // Weekly area chart: aggregate completed tasks per day per area over last 14d
@@ -58,10 +114,15 @@ function Overview() {
     });
     return days.map((d) => {
       const dObj = parseISO(d);
-      const personal = state.tasks.filter((t) => t.area === "personal" && t.done && t.date === d).length +
+      const personal =
+        state.tasks.filter((t) => t.area === "personal" && t.done && t.date === d).length +
         state.habits.reduce((s, h) => s + (h.log[d] ? 1 : 0), 0);
-      const professional = state.tasks.filter((t) => t.area === "professional" && t.done && t.date === d).length;
-      const education = state.tasks.filter((t) => t.area === "education" && t.done && t.date === d).length;
+      const professional = state.tasks.filter(
+        (t) => t.area === "professional" && t.done && t.date === d,
+      ).length;
+      const education = state.tasks.filter(
+        (t) => t.area === "education" && t.done && t.date === d,
+      ).length;
       return { day: format(dObj, "MMM d"), personal, professional, education };
     });
   }, [state.tasks, state.habits]);
@@ -76,9 +137,15 @@ function Overview() {
         if (key === "greeting")
           return (
             <section key={key}>
-              <p suppressHydrationWarning className="text-sm text-ink-soft">{format(today, "EEEE, MMMM d, yyyy")}</p>
-              <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">{greeting(settings.displayName || "friend")}</h1>
-              <p className="mt-2 text-ink-soft max-w-lg">Take a breath. Here's your gentle rundown for today — one small thing at a time.</p>
+              <p suppressHydrationWarning className="text-sm text-ink-soft">
+                {format(today, "EEEE, MMMM d, yyyy")}
+              </p>
+              <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">
+                {greeting(settings.displayName || "friend")}
+              </h1>
+              <p className="mt-2 text-ink-soft max-w-lg">
+                Take a breath. Here's your gentle rundown for today — one small thing at a time.
+              </p>
             </section>
           );
 
@@ -87,11 +154,15 @@ function Overview() {
             <section key={key}>
               <div className="flex items-baseline justify-between mb-3">
                 <h2 className="font-serif text-2xl">Today</h2>
-                <span className="text-xs text-ink-soft">{todaysTasks.filter((t) => !t.done).length} to gently tackle</span>
+                <span className="text-xs text-ink-soft">
+                  {todaysTasks.filter((t) => !t.done).length} to gently tackle
+                </span>
               </div>
               <div className="space-y-2">
                 {todaysTasks.length === 0 && (
-                  <div className="card-soft p-6 text-center text-ink-soft italic">Nothing pressing. Enjoy some space.</div>
+                  <div className="card-soft p-6 text-center text-ink-soft italic">
+                    Nothing pressing. Enjoy some space.
+                  </div>
                 )}
                 {todaysTasks.map((t) => (
                   <TaskRow key={t.id} task={t} />
@@ -115,7 +186,13 @@ function Overview() {
                     </div>
                     <SoftProgress
                       value={a.value}
-                      tint={a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"}
+                      tint={
+                        a.area === "personal"
+                          ? "sage"
+                          : a.area === "professional"
+                            ? "brown"
+                            : "clay"
+                      }
                     />
                   </div>
                 ))}
@@ -134,7 +211,10 @@ function Overview() {
                 <div className="grid md:grid-cols-[2fr_1fr] gap-6">
                   <div className="h-56">
                     <ResponsiveContainer>
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <AreaChart
+                        data={chartData}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      >
                         <defs>
                           <linearGradient id="gs" x1="0" x2="0" y1="0" y2="1">
                             <stop offset="0%" stopColor="var(--sage)" stopOpacity={0.5} />
@@ -149,15 +229,54 @@ function Overview() {
                             <stop offset="100%" stopColor="var(--clay)" stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="day" fontSize={10} stroke="var(--ink-soft)" tickLine={false} axisLine={false} />
-                        <YAxis fontSize={10} stroke="var(--ink-soft)" tickLine={false} axisLine={false} allowDecimals={false} />
-                        <Tooltip
-                          contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
+                        <CartesianGrid
+                          stroke="var(--border)"
+                          strokeDasharray="3 3"
+                          vertical={false}
                         />
-                        <RArea type="monotone" dataKey="personal" stroke="var(--sage)" fill="url(#gs)" strokeWidth={2} />
-                        <RArea type="monotone" dataKey="professional" stroke="var(--brown)" fill="url(#gb)" strokeWidth={2} />
-                        <RArea type="monotone" dataKey="education" stroke="var(--clay)" fill="url(#gc)" strokeWidth={2} />
+                        <XAxis
+                          dataKey="day"
+                          fontSize={10}
+                          stroke="var(--ink-soft)"
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          fontSize={10}
+                          stroke="var(--ink-soft)"
+                          tickLine={false}
+                          axisLine={false}
+                          allowDecimals={false}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
+                        />
+                        <RArea
+                          type="monotone"
+                          dataKey="personal"
+                          stroke="var(--sage)"
+                          fill="url(#gs)"
+                          strokeWidth={2}
+                        />
+                        <RArea
+                          type="monotone"
+                          dataKey="professional"
+                          stroke="var(--brown)"
+                          fill="url(#gb)"
+                          strokeWidth={2}
+                        />
+                        <RArea
+                          type="monotone"
+                          dataKey="education"
+                          stroke="var(--clay)"
+                          fill="url(#gc)"
+                          strokeWidth={2}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -165,7 +284,10 @@ function Overview() {
                     <ResponsiveContainer>
                       <PieChart>
                         <Pie
-                          data={areaProgress.map((a) => ({ name: a.area, value: Math.max(a.value, 5) }))}
+                          data={areaProgress.map((a) => ({
+                            name: a.area,
+                            value: Math.max(a.value, 5),
+                          }))}
                           dataKey="value"
                           innerRadius={45}
                           outerRadius={75}
@@ -178,7 +300,12 @@ function Overview() {
                           <Cell fill="var(--clay)" />
                         </Pie>
                         <Tooltip
-                          contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }}
+                          contentStyle={{
+                            background: "var(--card)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 12,
+                            fontSize: 12,
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -199,7 +326,9 @@ function Overview() {
               </div>
               <div className="space-y-2">
                 {upcoming.length === 0 && (
-                  <div className="card-soft p-6 text-center text-ink-soft italic">Nothing on the horizon.</div>
+                  <div className="card-soft p-6 text-center text-ink-soft italic">
+                    Nothing on the horizon.
+                  </div>
                 )}
                 {upcoming.map((u) =>
                   u.kind === "task" ? (
@@ -211,11 +340,39 @@ function Overview() {
                       return task ? <TaskRow key={u.id} task={task} readOnly /> : null;
                     })()
                   ) : (
-                    <div key={u.id} className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: u.area ? (u.area === "personal" ? "var(--sage)" : u.area === "professional" ? "var(--brown)" : "var(--clay)") : "var(--tan)" }} />
+                    // Events have no checkbox by design: an appointment isn't
+                    // something Grounded can complete, and a synced one isn't
+                    // even ours to change.
+                    <div
+                      key={u.id}
+                      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
+                        u.source && u.source !== "local"
+                          ? "border-dashed border-tan bg-secondary/60"
+                          : "border-border bg-card"
+                      }`}
+                    >
+                      <div
+                        className="h-2 w-2 rounded-full"
+                        style={{
+                          backgroundColor: u.area
+                            ? u.area === "personal"
+                              ? "var(--sage)"
+                              : u.area === "professional"
+                                ? "var(--brown)"
+                                : "var(--clay)"
+                            : "var(--tan)",
+                        }}
+                      />
                       <div className="flex-1">
                         <div className="text-sm font-medium">{u.title}</div>
-                        <div className="text-[11px] text-ink-soft">{format(parseISO(u.date), "EEE, MMM d")} · event</div>
+                        <div className="text-[11px] text-ink-soft">
+                          {format(parseISO(u.date), "EEE, MMM d")}
+                          {!u.allDay && u.startsAt
+                            ? ` · ${format(new Date(u.startsAt), "h:mm a")}`
+                            : " · event"}
+                          {u.source === "google" && " · Google"}
+                          {u.source === "microsoft" && " · Outlook"}
+                        </div>
                       </div>
                       {u.area && <AreaChip area={u.area as any} />}
                     </div>

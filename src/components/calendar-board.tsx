@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
   format,
   parseISO,
@@ -25,8 +27,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
+import { calendarConnectionsQuery } from "@/lib/db/queries";
+import { useSession } from "@/lib/use-session";
 
 export const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
@@ -47,18 +57,44 @@ function dotColor(area?: string) {
         : "var(--tan)";
 }
 
+/** Events mirrored from Google/Outlook. Not editable here — the database
+ *  rejects client writes to them, so offering an edit affordance would only
+ *  produce a failed save. */
+function isSynced(it: any) {
+  return it.kind === "event" && it.source && it.source !== "local";
+}
+
 function ItemPill({ it, onEdit }: any) {
-  const clickable = it.kind === "event" || it.kind === "task";
+  const synced = isSynced(it);
+  const clickable = !synced && (it.kind === "event" || it.kind === "task");
+  const time =
+    !it.allDay && it.startsAt ? format(new Date(it.startsAt), "h:mma").toLowerCase() : null;
+
   return (
     <div
       onClick={clickable ? () => onEdit?.(it) : undefined}
-      className={`flex items-start gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 text-[11px] leading-snug ${
-        clickable ? "cursor-text hover:border-primary" : ""
-      }`}
-      title={clickable ? "Click to edit" : it.title}
+      className={`flex items-start gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] leading-snug ${
+        // Synced events read as "from elsewhere": dashed edge, tinted surface.
+        synced ? "border-dashed border-tan bg-secondary/60" : "border-border bg-card"
+      } ${clickable ? "cursor-text hover:border-primary" : ""}`}
+      title={
+        synced
+          ? `${it.title} — from your calendar, read-only`
+          : clickable
+            ? "Click to edit"
+            : it.title
+      }
     >
-      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
-      <span className={`flex-1 ${it.kind === "task" && it.done ? "line-through text-ink-soft" : ""}`}>{it.title}</span>
+      <span
+        className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: dotColor(it.area) }}
+      />
+      <span
+        className={`flex-1 ${it.kind === "task" && it.done ? "line-through text-ink-soft" : ""}`}
+      >
+        {time && <span className="text-ink-soft">{time} </span>}
+        {it.title}
+      </span>
     </div>
   );
 }
@@ -79,11 +115,15 @@ function WeekView({ cursor, events, tasks, onEdit, tall }: any) {
             }`}
           >
             <div className="flex items-baseline justify-between lg:block">
-              <div className="text-[10px] uppercase tracking-widest text-ink-soft">{format(d, "EEE")}</div>
+              <div className="text-[10px] uppercase tracking-widest text-ink-soft">
+                {format(d, "EEE")}
+              </div>
               <div className="font-serif text-2xl leading-tight">{format(d, "d")}</div>
             </div>
             <div className="mt-2 flex-1 space-y-1.5 overflow-y-auto">
-              {items.length === 0 && <div className="text-[11px] italic text-ink-soft">Open space</div>}
+              {items.length === 0 && (
+                <div className="text-[11px] italic text-ink-soft">Open space</div>
+              )}
               {items.map((it: any) => (
                 <ItemPill key={`${it.kind}-${it.id}`} it={it} onEdit={onEdit} />
               ))}
@@ -129,11 +169,16 @@ function MonthView({ cursor, events, tasks, onEdit }: any) {
                     className="flex w-full items-center gap-1 truncate text-left text-[10px] hover:underline"
                     title="Click to edit"
                   >
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: dotColor(it.area) }}
+                    />
                     <span className="truncate">{it.title}</span>
                   </button>
                 ))}
-                {items.length > 3 && <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>}
+                {items.length > 3 && (
+                  <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>
+                )}
               </div>
             </div>
           );
@@ -151,8 +196,12 @@ function YearView({ cursor, events, tasks, onEdit }: any) {
         const monthDate = new Date(year, i, 1);
         const prefix = `${year}-${String(i + 1).padStart(2, "0")}`;
         const items = [
-          ...events.filter((e: any) => e.date?.startsWith(prefix)).map((e: any) => ({ ...e, kind: "event" as const })),
-          ...tasks.filter((t: any) => t.date?.startsWith(prefix)).map((t: any) => ({ ...t, kind: "task" as const })),
+          ...events
+            .filter((e: any) => e.date?.startsWith(prefix))
+            .map((e: any) => ({ ...e, kind: "event" as const })),
+          ...tasks
+            .filter((t: any) => t.date?.startsWith(prefix))
+            .map((t: any) => ({ ...t, kind: "task" as const })),
         ].sort((a: any, b: any) => a.date.localeCompare(b.date));
         return (
           <div key={i} className="rounded-2xl border border-border bg-background p-3">
@@ -161,7 +210,9 @@ function YearView({ cursor, events, tasks, onEdit }: any) {
               <div className="text-[10px] text-ink-soft">{items.length} scheduled</div>
             </div>
             <div className="mt-2 space-y-1">
-              {items.length === 0 && <div className="text-[11px] italic text-ink-soft">Nothing scheduled</div>}
+              {items.length === 0 && (
+                <div className="text-[11px] italic text-ink-soft">Nothing scheduled</div>
+              )}
               {items.slice(0, 6).map((it: any) => (
                 <button
                   key={`${it.kind}-${it.id}`}
@@ -169,12 +220,19 @@ function YearView({ cursor, events, tasks, onEdit }: any) {
                   className="flex w-full items-center gap-1.5 truncate text-left text-[11px] hover:underline"
                   title="Click to edit"
                 >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dotColor(it.area) }} />
-                  <span className="tabular-nums text-ink-soft">{format(parseISO(it.date), "d")}</span>
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: dotColor(it.area) }}
+                  />
+                  <span className="tabular-nums text-ink-soft">
+                    {format(parseISO(it.date), "d")}
+                  </span>
                   <span className="truncate">{it.title}</span>
                 </button>
               ))}
-              {items.length > 6 && <div className="text-[10px] text-ink-soft">+{items.length - 6} more</div>}
+              {items.length > 6 && (
+                <div className="text-[10px] text-ink-soft">+{items.length - 6} more</div>
+              )}
             </div>
           </div>
         );
@@ -250,7 +308,12 @@ function EditItemDialog({ item, onClose }: { item: any; onClose: () => void }) {
   const save = () => {
     if (!title.trim()) return;
     if (isEvent) actions.updateEvent(item.id, { title: title.trim(), date });
-    else actions.updateTask(item.id, { title: title.trim(), description: description.trim() || undefined, date });
+    else
+      actions.updateTask(item.id, {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        date,
+      });
     onClose();
   };
 
@@ -258,7 +321,9 @@ function EditItemDialog({ item, onClose }: { item: any; onClose: () => void }) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Edit {isEvent ? "event" : "task"}</DialogTitle>
+          <DialogTitle className="font-serif text-2xl">
+            Edit {isEvent ? "event" : "task"}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -298,7 +363,33 @@ function EditItemDialog({ item, onClose }: { item: any; onClose: () => void }) {
   );
 }
 
-export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: boolean; heading?: string }) {
+/**
+ * Points at Profile when nothing is connected, and otherwise gets out of the
+ * way — once events are flowing the dashed pills say it better than a label.
+ */
+function SyncedHint() {
+  const { user } = useSession();
+  const connections = useQuery({
+    ...calendarConnectionsQuery(user?.id ?? ""),
+    enabled: Boolean(user),
+  });
+
+  if ((connections.data?.length ?? 0) > 0) return null;
+
+  return (
+    <Link to="/profile" className="hidden text-[10px] italic text-ink-soft underline md:inline">
+      Connect Google or Outlook
+    </Link>
+  );
+}
+
+export function CalendarBoard({
+  tall = false,
+  heading = "Calendar",
+}: {
+  tall?: boolean;
+  heading?: string;
+}) {
   const state = useAppState();
   const defaultView = state.settings.defaultCalView;
   // null means "follow the saved default"; picking a view here overrides it for
@@ -310,16 +401,20 @@ export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: b
   const [editing, setEditing] = useState<any>(null);
 
   const step = (dir: number) =>
-    setCursor(view === "week" ? addWeeks(cursor, dir) : view === "month" ? addMonths(cursor, dir) : addYears(cursor, dir));
+    setCursor(
+      view === "week"
+        ? addWeeks(cursor, dir)
+        : view === "month"
+          ? addMonths(cursor, dir)
+          : addYears(cursor, dir),
+    );
 
   return (
     <section>
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
         <h2 className="font-serif text-2xl">{heading}</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-ink-soft italic hidden md:inline">
-            Sync with Google, Outlook, Canvas — coming soon
-          </span>
+          <SyncedHint />
           <div className="flex rounded-full bg-secondary p-1">
             {(["week", "month", "year"] as const).map((v) => (
               <button
@@ -340,7 +435,8 @@ export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: b
             ‹ prev
           </button>
           <div className="font-serif text-lg">
-            {view === "week" && `${format(startOfWeek(cursor), "MMM d")} – ${format(endOfWeek(cursor), "MMM d, yyyy")}`}
+            {view === "week" &&
+              `${format(startOfWeek(cursor), "MMM d")} – ${format(endOfWeek(cursor), "MMM d, yyyy")}`}
             {view === "month" && format(cursor, "MMMM yyyy")}
             {view === "year" && format(cursor, "yyyy")}
           </div>
@@ -349,11 +445,28 @@ export function CalendarBoard({ tall = false, heading = "Calendar" }: { tall?: b
           </button>
         </div>
         {view === "week" && (
-          <WeekView cursor={cursor} events={state.events} tasks={state.tasks} onEdit={setEditing} tall={tall} />
+          <WeekView
+            cursor={cursor}
+            events={state.events}
+            tasks={state.tasks}
+            onEdit={setEditing}
+            tall={tall}
+          />
         )}
-        {view === "month" && <MonthView cursor={cursor} events={state.events} tasks={state.tasks} onEdit={setEditing} />}
-        {view === "year" && <YearView cursor={cursor} events={state.events} tasks={state.tasks} onEdit={setEditing} />}
-        <p className="mt-4 text-center text-[11px] italic text-ink-soft">Tap anything on the calendar to edit it.</p>
+        {view === "month" && (
+          <MonthView
+            cursor={cursor}
+            events={state.events}
+            tasks={state.tasks}
+            onEdit={setEditing}
+          />
+        )}
+        {view === "year" && (
+          <YearView cursor={cursor} events={state.events} tasks={state.tasks} onEdit={setEditing} />
+        )}
+        <p className="mt-4 text-center text-[11px] italic text-ink-soft">
+          Tap anything on the calendar to edit it.
+        </p>
       </div>
       {editing && <EditItemDialog item={editing} onClose={() => setEditing(null)} />}
     </section>

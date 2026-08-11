@@ -10,10 +10,14 @@
 import type { Json, Tables, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   Area,
+  CalendarConnection,
+  CalendarProvider,
   CalEvent,
+  ConnectionStatus,
   Density,
   AccentVariant,
   CalView,
+  EventSource,
   FocusSession,
   Goal,
   Habit,
@@ -115,6 +119,33 @@ export function rowToEvent(row: Tables<"events">): CalEvent {
     title: row.title,
     date: row.date,
     area: toOptionalArea(row.area),
+    source: toEventSource(row.source),
+    startsAt: row.starts_at ?? undefined,
+    endsAt: row.ends_at ?? undefined,
+    allDay: row.all_day,
+    location: row.location ?? undefined,
+    htmlLink: row.html_link ?? undefined,
+  };
+}
+
+const EVENT_SOURCES = ["local", "google", "microsoft"] as const;
+
+/** Unknown values fall back to "local" only for reads; nothing writes them. */
+function toEventSource(value: string | null): EventSource {
+  return (EVENT_SOURCES as readonly string[]).includes(value ?? "")
+    ? (value as EventSource)
+    : "local";
+}
+
+export function rowToCalendarConnection(row: Tables<"calendar_connections">): CalendarConnection {
+  return {
+    id: row.id,
+    provider: row.provider as CalendarProvider,
+    accountEmail: row.account_email ?? undefined,
+    defaultArea: toOptionalArea(row.default_area),
+    status: row.status as ConnectionStatus,
+    statusDetail: row.status_detail ?? undefined,
+    lastSyncedAt: row.last_synced_at ?? undefined,
   };
 }
 

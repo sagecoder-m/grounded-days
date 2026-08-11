@@ -10,6 +10,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { qk } from "./keys";
 import {
+  rowToCalendarConnection,
   rowToEvent,
   rowToFocusSession,
   rowToGoal,
@@ -102,6 +103,19 @@ export function eventsQuery(userId: string) {
     queryFn: async () => {
       const res = await supabase.from("events").select("*").order("date", { ascending: true });
       return unwrap(res).map(rowToEvent);
+    },
+  });
+}
+
+export function calendarConnectionsQuery(userId: string) {
+  return queryOptions({
+    queryKey: qk.calendarConnections(userId),
+    queryFn: async () => {
+      const res = await supabase
+        .from("calendar_connections")
+        .select("*")
+        .order("created_at", { ascending: true });
+      return unwrap(res).map(rowToCalendarConnection);
     },
   });
 }

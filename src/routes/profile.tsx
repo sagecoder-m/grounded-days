@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PasscodeSettings } from "@/components/passcode-settings";
+import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -62,6 +63,8 @@ function ProfilePage() {
       </header>
 
       <DisplayNameSection value={settings.displayName} />
+
+      <CalendarConnectionsSection />
 
       <section className="card-soft p-6 space-y-5">
         <h2 className="font-serif text-2xl">Accent color</h2>

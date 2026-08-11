@@ -56,11 +56,39 @@ export interface Project {
   subprojects: Subproject[];
 }
 
+/** Where an event came from. Anything other than "local" is mirrored from a
+ *  provider and is read-only in Grounded — enforced by RLS, not just the UI. */
+export type EventSource = "local" | "google" | "microsoft";
+
 export interface CalEvent {
   id: string;
   title: string;
-  date: string; // ISO
+  date: string; // ISO yyyy-mm-dd
   area?: Area;
+  source: EventSource;
+  /** Null for all-day events, which have no meaningful instant. */
+  startsAt?: string;
+  endsAt?: string;
+  allDay: boolean;
+  location?: string;
+  /** Deep link back to the event in Google/Outlook. */
+  htmlLink?: string;
+}
+
+export type CalendarProvider = "google" | "microsoft";
+
+/** 'needs_reauth' is routine rather than exceptional: Google refresh tokens for
+ *  an unverified app expire weekly, so the UI must surface it plainly. */
+export type ConnectionStatus = "connected" | "needs_reauth" | "error";
+
+export interface CalendarConnection {
+  id: string;
+  provider: CalendarProvider;
+  accountEmail?: string;
+  defaultArea?: Area;
+  status: ConnectionStatus;
+  statusDetail?: string;
+  lastSyncedAt?: string;
 }
 
 export interface FocusSession {

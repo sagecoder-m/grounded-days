@@ -12,7 +12,17 @@
 import type { QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { CalEvent, Goal, Project, Settings, Subproject, Task } from "@/lib/store-types";
+import type {
+  Area,
+  CalendarConnection,
+  CalendarProvider,
+  CalEvent,
+  Goal,
+  Project,
+  Settings,
+  Subproject,
+  Task,
+} from "@/lib/store-types";
 import { requireStoreContext, peekStoreContext } from "./context";
 import { qk } from "./keys";
 import {
@@ -65,6 +75,12 @@ type WriteResult = PromiseLike<{ error: { message: string } | null }>;
 async function write(
   patches: { key: QueryKey; update: (prev: never) => unknown }[],
   run: () => WriteResult,
+  /**
+   * Extra keys to refetch on success, for writes whose side effects happen in
+   * the database rather than in the patched caches — a delete that cascades,
+   * for instance, leaves other collections stale with nothing to patch locally.
+   */
+  options?: { alsoInvalidate?: QueryKey[] },
 ) {
   const ctx = peekStoreContext();
   if (!ctx) return;
@@ -95,6 +111,9 @@ async function write(
   }
 
   for (const { key } of patches) {
+    void queryClient.invalidateQueries({ queryKey: key });
+  }
+  for (const key of options?.alsoInvalidate ?? []) {
     void queryClient.invalidateQueries({ queryKey: key });
   }
 }
@@ -375,16 +394,22 @@ export const actions = {
 
   // ------------------------------------------------------------------ events
 
-  addEvent(input: Omit<CalEvent, "id">) {
+  // Events mirrored from Google/Outlook are read-only. RLS rejects a client
+  // write to them outright, so these three only ever handle local events —
+  // callers must not offer edit affordances on a synced event.
+  addEvent(input: Omit<CalEvent, "id" | "source" | "allDay">) {
     const { userId } = requireStoreContext();
     const id = uuid();
-    void write([{ key: qk.events(userId), update: listAdd({ ...input, id }) }], () =>
+    const optimistic: CalEvent = { ...input, id, source: "local", allDay: true };
+    void write([{ key: qk.events(userId), update: listAdd(optimistic) }], () =>
       supabase.from("events").insert({
         id,
         user_id: userId,
         title: input.title,
         date: input.date,
         area: input.area ?? null,
+        source: "local",
+        all_day: true,
       }),
     );
   },
@@ -392,14 +417,69 @@ export const actions = {
   updateEvent(id: string, patch: Partial<CalEvent>) {
     const { userId } = requireStoreContext();
     void write([{ key: qk.events(userId), update: listPatch<CalEvent>(id, patch) }], () =>
-      supabase.from("events").update(eventPatchToRow(patch)).eq("id", id),
+      supabase.from("events").update(eventPatchToRow(patch)).eq("id", id).eq("source", "local"),
     );
   },
 
   deleteEvent(id: string) {
     const { userId } = requireStoreContext();
     void write([{ key: qk.events(userId), update: listRemove<CalEvent>(id) }], () =>
-      supabase.from("events").delete().eq("id", id),
+      supabase.from("events").delete().eq("id", id).eq("source", "local"),
+    );
+  },
+
+  // -------------------------------------------------------- calendar sync
+
+  /** Kick off the OAuth handshake; resolves to the URL to send the browser to. */
+  async startCalendarConnect(provider: CalendarProvider, redirectTo = "/profile") {
+    const { data, error } = await supabase.functions.invoke("calendar-oauth-start", {
+      body: { provider, redirectTo },
+    });
+    if (error) throw new Error(error.message);
+    if (!data?.authorizeUrl) throw new Error("No authorize URL returned");
+    return data.authorizeUrl as string;
+  },
+
+  /** Pull now. Events land via the sync job, so refetch both collections. */
+  async syncCalendarsNow() {
+    const { userId, queryClient } = requireStoreContext();
+    const { error } = await supabase.functions.invoke("calendar-sync", { body: {} });
+    if (error) throw new Error(error.message);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: qk.events(userId) }),
+      queryClient.invalidateQueries({ queryKey: qk.calendarConnections(userId) }),
+    ]);
+  },
+
+  /** Removing the connection cascades its mirrored events away in the database. */
+  disconnectCalendar(connectionId: string) {
+    const { userId } = requireStoreContext();
+    void write(
+      [
+        {
+          key: qk.calendarConnections(userId),
+          update: listRemove<CalendarConnection>(connectionId),
+        },
+      ],
+      () => supabase.from("calendar_connections").delete().eq("id", connectionId),
+      // The cascade happens server-side, so the cached events list is stale
+      // until refetched.
+      { alsoInvalidate: [qk.events(userId)] },
+    );
+  },
+
+  setConnectionArea(connectionId: string, area: Area) {
+    const { userId } = requireStoreContext();
+    void write(
+      [
+        {
+          key: qk.calendarConnections(userId),
+          update: listPatch<CalendarConnection>(connectionId, { defaultArea: area }),
+        },
+      ],
+      () =>
+        supabase.from("calendar_connections").update({ default_area: area }).eq("id", connectionId),
+      { alsoInvalidate: [qk.events(userId)] },
     );
   },
 

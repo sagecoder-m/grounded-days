@@ -14,35 +14,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_connections: {
+        Row: {
+          account_email: string | null
+          account_id: string
+          created_at: string
+          default_area: string | null
+          id: string
+          last_synced_at: string | null
+          provider: string
+          status: string
+          status_detail: string | null
+          sync_cursor: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_email?: string | null
+          account_id: string
+          created_at?: string
+          default_area?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider: string
+          status?: string
+          status_detail?: string | null
+          sync_cursor?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_email?: string | null
+          account_id?: string
+          created_at?: string
+          default_area?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider?: string
+          status?: string
+          status_detail?: string | null
+          sync_cursor?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
+          all_day: boolean
           area: string | null
+          connection_id: string | null
           created_at: string
           date: string
+          ends_at: string | null
+          external_calendar_id: string | null
+          external_id: string | null
+          html_link: string | null
           id: string
+          location: string | null
+          source: string
+          starts_at: string | null
           title: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          all_day?: boolean
           area?: string | null
+          connection_id?: string | null
           created_at?: string
           date: string
+          ends_at?: string | null
+          external_calendar_id?: string | null
+          external_id?: string | null
+          html_link?: string | null
           id?: string
+          location?: string | null
+          source?: string
+          starts_at?: string | null
           title: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          all_day?: boolean
           area?: string | null
+          connection_id?: string | null
           created_at?: string
           date?: string
+          ends_at?: string | null
+          external_calendar_id?: string | null
+          external_id?: string | null
+          html_link?: string | null
           id?: string
+          location?: string | null
+          source?: string
+          starts_at?: string | null
           title?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_connections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       focus_sessions: {
         Row: {
