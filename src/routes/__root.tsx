@@ -61,14 +61,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      // Fraunces and Karla are declared in styles.css and served from this
+      // origin. There is deliberately no fonts.googleapis.com stylesheet here:
+      // it blocked first paint on any network where Google is unreachable,
+      // which showed as a blank page rather than fallback type.
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: `${import.meta.env.BASE_URL}favicon.ico`, type: "image/x-icon" },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
