@@ -80,7 +80,7 @@ supabase secrets set \
   GOOGLE_CLIENT_SECRET=... \
   MICROSOFT_CLIENT_ID=... \
   MICROSOFT_CLIENT_SECRET=... \
-  APP_BASE_URL=https://sagecoder-m.github.io/grounded-days
+  APP_BASE_URL=https://grounded-days.vercel.app
 ```
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.

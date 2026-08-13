@@ -56,12 +56,12 @@ supabase db push
 
 ## Route notes
 
-`/share` is in the prerender list in `scripts/build-github-pages.mjs`, so it is
-served as a real static file rather than depending on the 404 fallback. The
-token travels as `?t=…` and is read client-side after hydration, so one
-prerendered page serves every link.
+The token travels as `?t=…` rather than in the path, so a single route serves
+every link. That was originally to keep the page statically hostable; it stays
+because it means no route-parameter plumbing and no reason for the token to
+appear in a path segment.
 
-`/share` is also listed in `PUBLIC_PATHS` in `src/components/app-gate.tsx` and
+`/share` is listed in `PUBLIC_PATHS` in `src/components/app-gate.tsx` and
 short-circuits the gate before the session check — it must render with no
 session and no app chrome, even when the owner is signed in on the same device.
 

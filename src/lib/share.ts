@@ -47,10 +47,9 @@ async function sha256Hex(value: string): Promise<string> {
     .join("");
 }
 
-/** Absolute URL for a token, correct under the GitHub Pages subpath. */
+/** Absolute URL for a token, built from wherever the app is actually served. */
 export function shareUrl(token: string): string {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-  return `${window.location.origin}${base}/share/?t=${token}`;
+  return `${window.location.origin}/share?t=${token}`;
 }
 
 export const DEFAULT_SHARE_DAYS = 7;
