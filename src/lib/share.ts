@@ -7,6 +7,7 @@
  * way to recover it later, by design.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { PUBLIC_SUPABASE_URL } from "@/integrations/supabase/public-config";
 import type { Area } from "@/lib/store-types";
 
 export interface SharedView {
@@ -91,7 +92,10 @@ export async function createShareLink(options: {
  * header that this endpoint neither needs nor checks.
  */
 export async function fetchSharedView(token: string): Promise<SharedView> {
-  const base = import.meta.env.VITE_SUPABASE_URL;
+  // Same fallback as the Supabase client: without it a build with no env vars
+  // produced a request to "undefined/functions/v1/...", which fails as an
+  // unhelpful "link isn't active" rather than anything diagnosable.
+  const base = import.meta.env.VITE_SUPABASE_URL || PUBLIC_SUPABASE_URL;
   const res = await fetch(`${base}/functions/v1/share-view?t=${encodeURIComponent(token)}`);
   if (!res.ok) throw new Error("not_found");
   return (await res.json()) as SharedView;
