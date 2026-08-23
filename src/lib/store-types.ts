@@ -32,12 +32,24 @@ export interface Habit {
   log: Record<string, boolean>; // date -> completed
 }
 
+/** One concrete, tickable piece of a goal. */
+export interface GoalStep {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Goal {
   id: string;
   area: Area;
   name: string;
   description?: string;
-  progress: number; // 0..100
+  /**
+   * 0..100. Derived from `steps` whenever the goal has any — the manual number
+   * is only a fallback for goals created before steps existed.
+   */
+  progress: number;
+  steps: GoalStep[];
   projectId?: string;
   subprojectId?: string;
 }
@@ -53,6 +65,8 @@ export interface Project {
   name: string;
   description?: string;
   status: "active" | "paused" | "done";
+  /** Projects predate areas; existing ones are all professional. */
+  area: Area;
   subprojects: Subproject[];
 }
 
@@ -102,11 +116,15 @@ export type AccentVariant = "sage" | "clay" | "brown" | "tan";
 export type Density = "compact" | "comfy";
 export type CalView = "week" | "month" | "year";
 
+/** Where the main navigation lives. */
+export type NavLayout = "sidebar" | "top";
+
 export interface Settings {
   displayName: string;
   density: Density;
   accent: AccentVariant;
   defaultCalView: CalView;
+  navLayout: NavLayout;
   widgets: { key: string; enabled: boolean }[];
 }
 

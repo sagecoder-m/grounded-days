@@ -101,6 +101,47 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_steps: {
+        Row: {
+          created_at: string
+          done: boolean
+          goal_id: string
+          id: string
+          position: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          goal_id: string
+          id?: string
+          position?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          goal_id?: string
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_steps_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           all_day: boolean
@@ -326,6 +367,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          area: string
           created_at: string
           description: string | null
           id: string
@@ -335,6 +377,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          area?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -344,6 +387,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          area?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -483,6 +527,7 @@ export type Database = {
           default_cal_view: string
           density: string
           display_name: string
+          nav_layout: string
           updated_at: string
           user_id: string
           widgets: Json
@@ -493,6 +538,7 @@ export type Database = {
           default_cal_view?: string
           density?: string
           display_name?: string
+          nav_layout?: string
           updated_at?: string
           user_id: string
           widgets?: Json
@@ -503,6 +549,7 @@ export type Database = {
           default_cal_view?: string
           density?: string
           display_name?: string
+          nav_layout?: string
           updated_at?: string
           user_id?: string
           widgets?: Json

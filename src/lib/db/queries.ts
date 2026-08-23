@@ -14,6 +14,7 @@ import {
   rowToEvent,
   rowToFocusSession,
   rowToGoal,
+  rowToGoalStep,
   rowToHabit,
   rowToHabitLog,
   rowToProject,
@@ -67,6 +68,19 @@ export function goalsQuery(userId: string) {
     queryFn: async () => {
       const res = await supabase.from("goals").select("*").order("created_at", { ascending: true });
       return unwrap(res).map(rowToGoal);
+    },
+  });
+}
+
+export function goalStepsQuery(userId: string) {
+  return queryOptions({
+    queryKey: qk.goalSteps(userId),
+    queryFn: async () => {
+      const res = await supabase
+        .from("goal_steps")
+        .select("*")
+        .order("position", { ascending: true });
+      return unwrap(res).map(rowToGoalStep);
     },
   });
 }

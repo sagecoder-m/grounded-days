@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Briefcase,
@@ -9,6 +9,7 @@ import {
   Home,
   Lock,
   LogOut,
+  Menu,
   RefreshCw,
   Sprout,
   User,
@@ -29,12 +30,52 @@ const NAV = [
 ] as const;
 
 /**
+ * The mark doubles as the way home from anywhere, which is the convention
+ * everywhere else on the web and one less thing to hunt for in the nav.
+ */
+function Brand({
+  variant = "full",
+  subtitle = false,
+}: {
+  /** "icon" drops the wordmark, for the collapsed rail where it cannot fit. */
+  variant?: "full" | "icon";
+  subtitle?: boolean;
+}) {
+  return (
+    <Link
+      to="/"
+      aria-label="Back to overview"
+      title="Back to overview"
+      className="flex items-center gap-2 rounded-2xl transition-opacity hover:opacity-80"
+    >
+      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+        <Sprout className="h-4.5 w-4.5" />
+      </div>
+      {variant === "full" && (
+        <div>
+          <div className="font-serif text-xl leading-none">Grounded</div>
+          {subtitle && <div className="mt-1 text-xs text-ink-soft">gently held</div>}
+        </div>
+      )}
+    </Link>
+  );
+}
+
+/**
  * The signed-in, unlocked chrome. Only mounted from behind AppGate, so it can
  * read user data freely — nothing here renders before the passcode is accepted.
+ *
+ * Two layouts, chosen in Profile. They differ only on wide screens: narrow ones
+ * always get the top bar, because a sidebar on a phone is just a drawer nobody
+ * opens.
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const settings = useApp((s) => s.settings);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  // Collapsing is a per-session preference, not worth a round trip to store.
+  const [railCollapsed, setRailCollapsed] = useState(false);
+
+  const topLayout = settings.navLayout === "top";
 
   return (
     <div
@@ -42,79 +83,139 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-density={settings.density}
       className="min-h-screen bg-background text-foreground"
     >
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur">
+      {/* Narrow screens: one bar, both layouts. */}
+      <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur md:hidden">
         <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
-              <Sprout className="h-4 w-4" />
-            </div>
-            <span className="font-serif text-lg">Grounded</span>
-          </div>
+          <Brand />
           <AccountBox compact />
         </div>
-        <nav className="flex items-center gap-1 overflow-x-auto px-2 pb-2">
-          {NAV.map((n) => {
-            const active = pathname === n.to;
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
-                className={`chip whitespace-nowrap ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"}`}
-              >
-                <n.icon className="h-3.5 w-3.5" />
-                {n.label}
-              </Link>
-            );
-          })}
-        </nav>
+        <NavChips pathname={pathname} />
       </header>
 
-      <div className="md:flex md:min-h-screen">
-        {/* Desktop sidebar */}
-        <aside className="hidden md:flex md:flex-col md:w-60 md:shrink-0 border-r border-border bg-card">
-          <div className="flex items-center gap-2 px-6 py-6">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-primary-foreground">
-              <Sprout className="h-4.5 w-4.5" />
+      {topLayout ? (
+        <>
+          <header className="sticky top-0 z-30 hidden border-b border-border bg-card/80 backdrop-blur md:block">
+            <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-8 py-3">
+              <Brand />
+              <nav className="flex flex-1 items-center gap-1">
+                {NAV.map((n) => {
+                  const active = pathname === n.to;
+                  return (
+                    <Link
+                      key={n.to}
+                      to={n.to}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                        active ? "text-ink" : "text-ink-soft hover:bg-secondary"
+                      }`}
+                      style={
+                        active
+                          ? {
+                              backgroundColor:
+                                "color-mix(in oklab, var(--primary) 14%, transparent)",
+                            }
+                          : undefined
+                      }
+                    >
+                      <n.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
+                      {n.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <AccountBox compact />
             </div>
-            <div>
-              <div className="font-serif text-xl leading-none">Grounded</div>
-              <div className="text-xs text-ink-soft mt-1">gently held</div>
+          </header>
+          <main className="min-w-0">
+            <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+          </main>
+        </>
+      ) : (
+        <div className="md:flex md:min-h-screen">
+          <aside
+            className={`hidden shrink-0 border-r border-border bg-card md:flex md:flex-col ${
+              railCollapsed ? "md:w-[4.5rem]" : "md:w-60"
+            }`}
+          >
+            <div
+              className={`flex items-center gap-2 py-6 ${railCollapsed ? "justify-center px-3" : "px-6"}`}
+            >
+              {railCollapsed ? <Brand variant="icon" /> : <Brand subtitle />}
             </div>
-          </div>
-          <nav className="flex-1 px-3 space-y-1">
-            {NAV.map((n) => {
-              const active = pathname === n.to;
-              return (
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors ${
-                    active ? "bg-primary/12 text-ink" : "text-ink-soft hover:bg-secondary"
-                  }`}
-                  style={
-                    active
-                      ? { backgroundColor: "color-mix(in oklab, var(--primary) 14%, transparent)" }
-                      : undefined
-                  }
-                >
-                  <n.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="px-4 py-6 text-xs text-ink-soft space-y-3">
-            <AccountBox />
-            <p className="italic px-2">One thing at a time.</p>
-          </div>
-        </aside>
 
-        <main className="flex-1 min-w-0">
-          <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">{children}</div>
-        </main>
-      </div>
+            <button
+              onClick={() => setRailCollapsed((v) => !v)}
+              aria-label={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+              aria-expanded={!railCollapsed}
+              className={`mb-2 flex items-center gap-3 rounded-2xl py-2 text-sm text-ink-soft transition-colors hover:bg-secondary ${
+                railCollapsed ? "mx-3 justify-center px-0" : "mx-3 px-3"
+              }`}
+            >
+              <Menu className="h-4 w-4 shrink-0" />
+              {!railCollapsed && <span>Collapse</span>}
+            </button>
+
+            <nav className="flex-1 space-y-1 px-3">
+              {NAV.map((n) => {
+                const active = pathname === n.to;
+                return (
+                  <Link
+                    key={n.to}
+                    to={n.to}
+                    title={railCollapsed ? n.label : undefined}
+                    className={`flex items-center gap-3 rounded-2xl py-2.5 text-sm transition-colors ${
+                      railCollapsed ? "justify-center px-0" : "px-3"
+                    } ${active ? "text-ink" : "text-ink-soft hover:bg-secondary"}`}
+                    style={
+                      active
+                        ? {
+                            backgroundColor: "color-mix(in oklab, var(--primary) 14%, transparent)",
+                          }
+                        : undefined
+                    }
+                  >
+                    <n.icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : ""}`} />
+                    {!railCollapsed && n.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {!railCollapsed && (
+              <div className="space-y-3 px-4 py-6 text-xs text-ink-soft">
+                <AccountBox />
+                <p className="px-2 italic">One thing at a time.</p>
+              </div>
+            )}
+          </aside>
+
+          <main className="min-w-0 flex-1">
+            <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+          </main>
+        </div>
+      )}
     </div>
+  );
+}
+
+function NavChips({ pathname }: { pathname: string }) {
+  return (
+    <nav className="flex items-center gap-1 overflow-x-auto px-2 pb-2">
+      {NAV.map((n) => {
+        const active = pathname === n.to;
+        return (
+          <Link
+            key={n.to}
+            to={n.to}
+            className={`chip whitespace-nowrap ${
+              active ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"
+            }`}
+          >
+            <n.icon className="h-3.5 w-3.5" />
+            {n.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -157,7 +258,7 @@ function AccountBox({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border border-border px-3 py-2.5 space-y-1.5">
+    <div className="space-y-1.5 rounded-2xl border border-border px-3 py-2.5">
       <div className="truncate text-[11px] text-ink-soft" title={user.email ?? ""}>
         {user.email}
       </div>
