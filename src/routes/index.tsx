@@ -7,7 +7,6 @@ import { TodayTiles } from "@/components/today-tiles";
 import { TodayGlance } from "@/components/today-glance";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
-import { CalendarBoard } from "@/components/calendar-board";
 import {
   PieChart,
   Pie,
@@ -344,8 +343,6 @@ function Overview() {
               </div>
             </section>
           );
-
-        if (key === "calendar" && w("calendar")) return <CalendarBoard key={key} />;
 
         if (key === "upcoming" && w("upcoming"))
           return (

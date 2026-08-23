@@ -41,7 +41,6 @@ const WIDGET_LABELS: Record<string, string> = {
   goals: "Area progress",
   chart: "Two-week rhythm chart",
   day: "A look at today",
-  calendar: "Full calendar board",
   upcoming: "Upcoming",
 };
 

@@ -191,9 +191,6 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "tasks", enabled: true },
   { key: "day", enabled: true },
   { key: "upcoming", enabled: true },
-  // The full calendar board is a page of its own; the mini calendar covers the
-  // at-a-glance case without pushing everything else below the fold.
-  { key: "calendar", enabled: false },
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
