@@ -39,8 +39,39 @@ const DEMO_PASSWORD = required("DEMO_PASSWORD");
 // which is also a fine thing to show off.
 const DEMO_PASSCODE = process.env.DEMO_PASSCODE ?? null;
 
+/**
+ * This project is on Supabase's newer API keys (sb_secret_… / sb_publishable_…),
+ * which are opaque strings rather than JWTs. supabase-js still sends them as
+ * "Authorization: Bearer <key>", which those endpoints reject — so drop that
+ * header and let the apikey header carry it, exactly as the app's own clients
+ * do. Old-style eyJ… service role keys are untouched and keep working.
+ */
+function isNewSupabaseApiKey(value) {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+
+function keyAwareFetch(supabaseKey) {
+  return (input, init) => {
+    const headers = new Headers(
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+    );
+    if (init?.headers) {
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    }
+    if (
+      isNewSupabaseApiKey(supabaseKey) &&
+      headers.get("Authorization") === `Bearer ${supabaseKey}`
+    ) {
+      headers.delete("Authorization");
+    }
+    headers.set("apikey", supabaseKey);
+    return fetch(input, { ...init, headers });
+  };
+}
+
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
+  global: { fetch: keyAwareFetch(SERVICE_ROLE_KEY) },
 });
 
 const day = (offset) => {
@@ -402,6 +433,7 @@ async function main() {
     // than as the service role — sign in once to get a session for the call.
     const asUser = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: keyAwareFetch(SERVICE_ROLE_KEY) },
     });
     const { data: session, error: signInError } = await asUser.auth.signInWithPassword({
       email: DEMO_EMAIL,
