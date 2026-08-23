@@ -4,7 +4,7 @@ import { format, isBefore, isToday, parseISO, addDays } from "date-fns";
 import { useAppState } from "@/lib/store";
 import { TaskRow } from "@/components/task-row";
 import { TodayTiles } from "@/components/today-tiles";
-import { MiniCalendar } from "@/components/mini-calendar";
+import { TodayGlance } from "@/components/today-glance";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
 import { CalendarBoard } from "@/components/calendar-board";
@@ -219,14 +219,14 @@ function Overview() {
             </section>
           );
 
-        if (key === "minical" && w("minical"))
+        if (key === "day" && w("day"))
           return (
             <section key={key}>
               <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="font-serif text-2xl">This month</h2>
-                <span className="text-xs text-ink-soft">Tap a day to peek</span>
+                <h2 className="font-serif text-2xl">A look at today</h2>
+                <span className="text-xs text-ink-soft">Just today\u2019s scope</span>
               </div>
-              <MiniCalendar />
+              <TodayGlance />
             </section>
           );
 

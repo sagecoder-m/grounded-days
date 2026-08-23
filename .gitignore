@@ -38,3 +38,6 @@ package-lock.json
 *.njsproj
 *.sln
 *.sw?
+
+# Generated convenience dump of unapplied migrations (see supabase/migrations).
+pending-migrations.sql

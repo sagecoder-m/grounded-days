@@ -65,13 +65,13 @@ ALTER TABLE public.user_settings
 
 -- New default order: progress and the chart come before the task list, so the
 -- first thing on screen is movement already made rather than work outstanding.
--- 'minical' is new.
+-- 'day' is new.
 ALTER TABLE public.user_settings ALTER COLUMN widgets SET DEFAULT '[
   {"key": "greeting", "enabled": true},
   {"key": "chart", "enabled": true},
   {"key": "goals", "enabled": true},
   {"key": "tasks", "enabled": true},
-  {"key": "minical", "enabled": true},
+  {"key": "day", "enabled": true},
   {"key": "upcoming", "enabled": true},
   {"key": "calendar", "enabled": false}
 ]'::jsonb;
@@ -88,7 +88,7 @@ SET widgets = (
                (SELECT (w.value ->> 'enabled')::boolean
                   FROM jsonb_array_elements(us.widgets) AS w
                  WHERE w.value ->> 'key' = k.key),
-               -- Unseen keys: 'minical' is new and welcome, the full calendar
+               -- Unseen keys: 'day' is new and welcome, the full calendar
                -- board steps aside now that a compact one sits on the Overview.
                k.key <> 'calendar'
              )
@@ -97,6 +97,6 @@ SET widgets = (
          )
     FROM (VALUES
       ('greeting', 1), ('chart', 2), ('goals', 3),
-      ('tasks', 4), ('minical', 5), ('upcoming', 6), ('calendar', 7)
+      ('tasks', 4), ('day', 5), ('upcoming', 6), ('calendar', 7)
     ) AS k(key, ord)
 );
