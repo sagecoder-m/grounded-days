@@ -21,7 +21,8 @@
  * from the same place. It never touches any other user.
  */
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { createInterface } from "node:readline";
 
 /**
  * Load .env.demo if it exists, so the credentials can live in a file the user
@@ -56,20 +57,75 @@ function loadEnvFile(path) {
 
 loadEnvFile(new URL("../.env.demo", import.meta.url).pathname);
 
-function required(name) {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`Missing ${name}.`);
-    console.error("Set it in .env.demo (copy .env.demo.example to start).");
-    process.exit(1);
-  }
-  return value;
+const PLACEHOLDER = "paste-your-secret-key-here";
+const ENV_FILE = new URL("../.env.demo", import.meta.url).pathname;
+
+/**
+ * Ask for the key with the typing hidden, then remember it.
+ *
+ * Editing a dotfile in a text editor turned out to be the hard part of this
+ * whole task — the window opens, the paste goes to whichever window had focus,
+ * and the script then runs against an unchanged placeholder and reports an
+ * invalid key. Asking here removes the editor from the loop entirely.
+ */
+function promptSecret(question) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    let muted = false;
+    // Echoing a secret leaves it in the scrollback of a window that may well be
+    // on a shared screen.
+    rl._writeToOutput = (chunk) => {
+      if (!muted) rl.output.write(chunk);
+    };
+    rl.question(question, (value) => {
+      rl.close();
+      process.stdout.write("\n");
+      resolve(value.trim());
+    });
+    muted = true;
+  });
 }
 
-const SUPABASE_URL = required("SUPABASE_URL");
-const SERVICE_ROLE_KEY = required("SUPABASE_SERVICE_ROLE_KEY");
+/** Write the key back into .env.demo so this is a one-time question. */
+function rememberKey(key) {
+  try {
+    const existing = readFileSync(ENV_FILE, "utf8");
+    const updated = existing.includes("SUPABASE_SERVICE_ROLE_KEY=")
+      ? existing.replace(/^SUPABASE_SERVICE_ROLE_KEY=.*$/m, `SUPABASE_SERVICE_ROLE_KEY=${key}`)
+      : `${existing.trimEnd()}\nSUPABASE_SERVICE_ROLE_KEY=${key}\n`;
+    writeFileSync(ENV_FILE, updated);
+    console.log("Saved the key to .env.demo — you will not be asked again.");
+  } catch {
+    console.log("(Could not save to .env.demo; you will be asked again next run.)");
+  }
+}
+
+const SUPABASE_URL = process.env.SUPABASE_URL ?? "https://pbjpypcdiwvxegewxleu.supabase.co";
+
+let SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SERVICE_ROLE_KEY || SERVICE_ROLE_KEY === PLACEHOLDER) {
+  if (!process.stdin.isTTY) {
+    console.error("Missing SUPABASE_SERVICE_ROLE_KEY and no terminal to ask on.");
+    console.error("Set it in .env.demo, or pass it in the environment.");
+    process.exit(1);
+  }
+  console.log("Supabase dashboard -> Settings -> API Keys -> Secret keys.");
+  console.log("Copy the key that starts with sb_secret_ (or eyJ), then paste it here.");
+  console.log("Nothing will appear as you paste — that is deliberate.\n");
+  SERVICE_ROLE_KEY = await promptSecret("Secret key: ");
+  if (!SERVICE_ROLE_KEY) {
+    console.error("No key entered — nothing was changed.");
+    process.exit(1);
+  }
+  if (SERVICE_ROLE_KEY.startsWith("sbp_")) {
+    console.error("\nThat looks like a personal access token (sbp_), not a secret key.");
+    console.error("The one you want is under Settings -> API Keys -> Secret keys.");
+    process.exit(1);
+  }
+  rememberKey(SERVICE_ROLE_KEY);
+}
 const DEMO_EMAIL = process.env.DEMO_EMAIL ?? "demo@groundeddays.app";
-const DEMO_PASSWORD = required("DEMO_PASSWORD");
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "GroundedDemo2026";
 // Optional: without it the demo account sets its own passcode on first run,
 // which is also a fine thing to show off.
 const DEMO_PASSCODE = process.env.DEMO_PASSCODE ?? null;
