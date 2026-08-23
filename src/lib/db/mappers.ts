@@ -17,9 +17,11 @@ import type {
   Density,
   AccentVariant,
   CalView,
+  NavLayout,
   EventSource,
   FocusSession,
   Goal,
+  GoalStep,
   Habit,
   Project,
   Settings,
@@ -31,6 +33,10 @@ import type {
 export type HabitBase = Omit<Habit, "log">;
 /** Projects as cached: subprojects are a separate query, nested in by the facade. */
 export type ProjectBase = Omit<Project, "subprojects">;
+/** Goals as cached: steps are a separate query, joined in by the facade. */
+export type GoalBase = Omit<Goal, "steps">;
+/** One goal step, carrying its parent so the facade can group them. */
+export type GoalStepWithParent = GoalStep & { goalId: string };
 /** Subprojects as cached: they carry their parent so the facade can group them. */
 export type SubprojectWithParent = Subproject & { projectId: string };
 /** One habit completion. Presence of the row IS the completion. */
@@ -44,6 +50,16 @@ const STATUSES = ["active", "paused", "done"] as const;
 
 function toArea(value: string | null): Area {
   return (AREAS as readonly string[]).includes(value ?? "") ? (value as Area) : "personal";
+}
+
+/**
+ * Projects predate the area column and every existing one is work. Defaulting
+ * to professional rather than the generic toArea() fallback of personal means a
+ * build that reaches a database without the column behaves exactly as before,
+ * instead of silently moving every work project into Personal.
+ */
+function toProjectArea(value: string | null | undefined): Area {
+  return (AREAS as readonly string[]).includes(value ?? "") ? (value as Area) : "professional";
 }
 
 function toOptionalArea(value: string | null): Area | undefined {
@@ -72,7 +88,7 @@ export function rowToTask(row: Tables<"tasks">): Task {
   };
 }
 
-export function rowToGoal(row: Tables<"goals">): Goal {
+export function rowToGoal(row: Tables<"goals">): GoalBase {
   return {
     id: row.id,
     area: toArea(row.area),
@@ -82,6 +98,10 @@ export function rowToGoal(row: Tables<"goals">): Goal {
     projectId: row.project_id ?? undefined,
     subprojectId: row.subproject_id ?? undefined,
   };
+}
+
+export function rowToGoalStep(row: Tables<"goal_steps">): GoalStepWithParent {
+  return { id: row.id, title: row.title, done: row.done, goalId: row.goal_id };
 }
 
 export function rowToHabit(row: Tables<"habits">): HabitBase {
@@ -101,6 +121,7 @@ export function rowToProject(row: Tables<"projects">): ProjectBase {
     name: row.name,
     description: row.description ?? undefined,
     status,
+    area: toProjectArea(row.area),
   };
 }
 
@@ -160,13 +181,19 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
 
 // ------------------------------------------------------------------- settings
 
+// Order matters: this is the Overview's top-to-bottom layout. Progress and the
+// chart sit above the task list so the first thing seen is movement already
+// made, not work outstanding. Keep in step with the migration's column default.
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "greeting", enabled: true },
-  { key: "tasks", enabled: true },
-  { key: "goals", enabled: true },
   { key: "chart", enabled: true },
-  { key: "calendar", enabled: true },
+  { key: "goals", enabled: true },
+  { key: "tasks", enabled: true },
+  { key: "minical", enabled: true },
   { key: "upcoming", enabled: true },
+  // The full calendar board is a page of its own; the mini calendar covers the
+  // at-a-glance case without pushing everything else below the fold.
+  { key: "calendar", enabled: false },
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -174,6 +201,7 @@ export const DEFAULT_SETTINGS: Settings = {
   density: "comfy",
   accent: "sage",
   defaultCalView: "week",
+  navLayout: "sidebar",
   widgets: DEFAULT_WIDGETS,
 };
 
@@ -200,6 +228,7 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     density: oneOf<Density>(["compact", "comfy"], row.density, "comfy"),
     accent: oneOf<AccentVariant>(["sage", "clay", "brown", "tan"], row.accent, "sage"),
     defaultCalView: oneOf<CalView>(["week", "month", "year"], row.default_cal_view, "week"),
+    navLayout: oneOf<NavLayout>(["sidebar", "top"], row.nav_layout, "sidebar"),
     widgets: toWidgets(row.widgets),
   };
 }
@@ -216,6 +245,7 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.density !== undefined) row.density = patch.density;
   if (patch.accent !== undefined) row.accent = patch.accent;
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
+  if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
   if (patch.widgets !== undefined) row.widgets = widgetsToJson(patch.widgets);
   return row;
 }
@@ -239,6 +269,8 @@ export function goalPatchToRow(patch: Partial<Goal>): TablesUpdate<"goals"> {
   if (patch.area !== undefined) row.area = patch.area;
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.description !== undefined) row.description = patch.description ?? null;
+  // progress stays writable for goals that have no steps yet; once a goal has
+  // steps its percentage is derived and nothing writes this column.
   if (patch.progress !== undefined) row.progress = patch.progress;
   if (patch.projectId !== undefined) row.project_id = patch.projectId ?? null;
   if (patch.subprojectId !== undefined) row.subproject_id = patch.subprojectId ?? null;
@@ -247,6 +279,7 @@ export function goalPatchToRow(patch: Partial<Goal>): TablesUpdate<"goals"> {
 
 export function projectPatchToRow(patch: Partial<Project>): TablesUpdate<"projects"> {
   const row: TablesUpdate<"projects"> = {};
+  if (patch.area !== undefined) row.area = patch.area;
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.description !== undefined) row.description = patch.description ?? null;
   if (patch.status !== undefined) row.status = patch.status;

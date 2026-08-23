@@ -6,6 +6,7 @@ import {
   type AccentVariant,
   type CalView,
   type Density,
+  type NavLayout,
   type Settings,
 } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -39,9 +40,15 @@ const WIDGET_LABELS: Record<string, string> = {
   tasks: "Today's tasks",
   goals: "Area progress",
   chart: "Two-week rhythm chart",
-  calendar: "Calendar",
+  minical: "Mini calendar",
+  calendar: "Full calendar board",
   upcoming: "Upcoming",
 };
+
+const NAV_LAYOUTS: { key: NavLayout; label: string; hint: string }[] = [
+  { key: "sidebar", label: "Side rail", hint: "Tabs down the left, collapsible to icons" },
+  { key: "top", label: "Top tabs", hint: "Tabs across the top, wider page" },
+];
 
 const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
   { key: "sage", label: "Sage", swatch: "var(--sage)" },
@@ -80,6 +87,27 @@ function ProfilePage() {
             >
               <span className="h-4 w-4 rounded-full" style={{ backgroundColor: a.swatch }} />
               <span className="text-sm">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card-soft p-6 space-y-4">
+        <h2 className="font-serif text-2xl">Navigation</h2>
+        <p className="text-sm text-ink-soft">
+          Where the tabs live on a wide screen. Phones always use the top bar.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {NAV_LAYOUTS.map((layout) => (
+            <button
+              key={layout.key}
+              onClick={() => actions.updateSettings({ navLayout: layout.key })}
+              className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
+                settings.navLayout === layout.key ? "border-primary bg-accent" : "border-border"
+              }`}
+            >
+              <div className="font-medium">{layout.label}</div>
+              <div className="mt-1 text-xs text-ink-soft">{layout.hint}</div>
             </button>
           ))}
         </div>

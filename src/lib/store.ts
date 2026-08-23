@@ -24,6 +24,7 @@ import {
   eventsQuery,
   focusSessionsQuery,
   goalsQuery,
+  goalStepsQuery,
   habitLogsQuery,
   habitsQuery,
   projectsQuery,
@@ -32,7 +33,7 @@ import {
   tasksQuery,
 } from "./db/queries";
 import { hasWriteFailure, subscribeToWriteFailures } from "./db/mutations";
-import type { AppState, Area, Habit, Project, SyncStatus } from "./store-types";
+import type { AppState, Area, Goal, Habit, Project, SyncStatus } from "./store-types";
 
 export type {
   AccentVariant,
@@ -43,7 +44,9 @@ export type {
   Density,
   FocusSession,
   Goal,
+  GoalStep,
   Habit,
+  NavLayout,
   Project,
   Settings,
   Subproject,
@@ -80,6 +83,7 @@ export function useAppState(): AppState {
   const habits = useQuery({ ...habitsQuery(userId), enabled });
   const habitLogs = useQuery({ ...habitLogsQuery(userId), enabled });
   const goals = useQuery({ ...goalsQuery(userId), enabled });
+  const goalSteps = useQuery({ ...goalStepsQuery(userId), enabled });
   const projects = useQuery({ ...projectsQuery(userId), enabled });
   const subprojects = useQuery({ ...subprojectsQuery(userId), enabled });
   const events = useQuery({ ...eventsQuery(userId), enabled });
@@ -101,6 +105,27 @@ export function useAppState(): AppState {
       log: logsByHabit.get(habit.id) ?? {},
     }));
 
+    const stepsByGoal = new Map<string, Goal["steps"]>();
+    for (const step of goalSteps.data ?? []) {
+      const entry = { id: step.id, title: step.title, done: step.done };
+      const existing = stepsByGoal.get(step.goalId);
+      if (existing) existing.push(entry);
+      else stepsByGoal.set(step.goalId, [entry]);
+    }
+
+    const composedGoals: Goal[] = (goals.data ?? []).map((goal) => {
+      const steps = stepsByGoal.get(goal.id) ?? [];
+      return {
+        ...goal,
+        steps,
+        // Steps are the source of truth once they exist. Goals created before
+        // steps keep the number they were given, so nothing resets to zero.
+        progress: steps.length
+          ? Math.round((steps.filter((s) => s.done).length / steps.length) * 100)
+          : goal.progress,
+      };
+    });
+
     const subsByProject = new Map<string, Project["subprojects"]>();
     for (const sub of subprojects.data ?? []) {
       const entry = { id: sub.id, name: sub.name, description: sub.description };
@@ -117,7 +142,7 @@ export function useAppState(): AppState {
     return {
       tasks: tasks.data ?? [],
       habits: composedHabits,
-      goals: goals.data ?? [],
+      goals: composedGoals,
       projects: composedProjects,
       events: events.data ?? [],
       focusSessions: focusSessions.data ?? [],
@@ -129,6 +154,7 @@ export function useAppState(): AppState {
     habits.data,
     habitLogs.data,
     goals.data,
+    goalSteps.data,
     projects.data,
     subprojects.data,
     events.data,

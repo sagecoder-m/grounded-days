@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { format, isBefore, isToday, parseISO, addDays } from "date-fns";
 import { useAppState } from "@/lib/store";
 import { TaskRow } from "@/components/task-row";
+import { TodayTiles } from "@/components/today-tiles";
+import { MiniCalendar } from "@/components/mini-calendar";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
 import { CalendarBoard } from "@/components/calendar-board";
@@ -127,6 +129,32 @@ function Overview() {
     });
   }, [state.tasks, state.habits]);
 
+  /**
+   * The chart's headline. It leads the Overview, so it reports what has been
+   * done rather than what is outstanding — the number is the same either way,
+   * but "23 things tended to" is a different message from "6 tasks left".
+   */
+  const encouragement = useMemo(() => {
+    const completed = chartData.reduce(
+      (sum, d) => sum + d.personal + d.professional + d.education,
+      0,
+    );
+    const activeDays = chartData.filter(
+      (d) => d.personal + d.professional + d.education > 0,
+    ).length;
+
+    if (completed === 0) {
+      return {
+        headline: "A fresh fortnight",
+        sub: "Nothing logged yet — the first small thing counts.",
+      };
+    }
+    return {
+      headline: `${completed} ${completed === 1 ? "thing" : "things"} tended to`,
+      sub: `across ${activeDays} ${activeDays === 1 ? "day" : "days"} in the last two weeks`,
+    };
+  }, [chartData]);
+
   const settings = state.settings;
   const w = (k: string) => settings.widgets.find((x) => x.key === k)?.enabled ?? true;
   const orderedWidgets = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
@@ -158,16 +186,7 @@ function Overview() {
                   {todaysTasks.filter((t) => !t.done).length} to gently tackle
                 </span>
               </div>
-              <div className="space-y-2">
-                {todaysTasks.length === 0 && (
-                  <div className="card-soft p-6 text-center text-ink-soft italic">
-                    Nothing pressing. Enjoy some space.
-                  </div>
-                )}
-                {todaysTasks.map((t) => (
-                  <TaskRow key={t.id} task={t} />
-                ))}
-              </div>
+              <TodayTiles tasks={todaysTasks} />
             </section>
           );
 
@@ -200,12 +219,23 @@ function Overview() {
             </section>
           );
 
+        if (key === "minical" && w("minical"))
+          return (
+            <section key={key}>
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="font-serif text-2xl">This month</h2>
+                <span className="text-xs text-ink-soft">Tap a day to peek</span>
+              </div>
+              <MiniCalendar />
+            </section>
+          );
+
         if (key === "chart" && w("chart"))
           return (
             <section key={key}>
-              <div className="flex items-baseline justify-between mb-3">
-                <h2 className="font-serif text-2xl">Two-week rhythm</h2>
-                <span className="text-xs text-ink-soft">Completed items per area</span>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-serif text-2xl">{encouragement.headline}</h2>
+                <span className="text-xs text-ink-soft">{encouragement.sub}</span>
               </div>
               <div className="card-soft p-4 md:p-6">
                 <div className="grid md:grid-cols-[2fr_1fr] gap-6">

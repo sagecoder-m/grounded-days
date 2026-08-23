@@ -34,6 +34,7 @@ import {
   subprojectPatchToRow,
   taskPatchToRow,
   widgetsToJson,
+  type GoalStepWithParent,
   type HabitBase,
   type HabitLogEntry,
   type ProjectBase,
@@ -257,11 +258,11 @@ export const actions = {
 
   // ------------------------------------------------------------------- goals
 
-  addGoal(input: Omit<Goal, "id" | "progress"> & { progress?: number }) {
+  addGoal(input: Omit<Goal, "id" | "progress" | "steps"> & { progress?: number }) {
     const { userId } = requireStoreContext();
     const id = uuid();
     const progress = input.progress ?? 0;
-    const optimistic: Goal = { ...input, id, progress };
+    const optimistic: Goal = { ...input, id, progress, steps: [] };
     void write([{ key: qk.goals(userId), update: listAdd(optimistic) }], () =>
       supabase.from("goals").insert({
         id,
@@ -292,10 +293,10 @@ export const actions = {
 
   // ---------------------------------------------------------------- projects
 
-  addProject(name: string, description?: string) {
+  addProject(name: string, description?: string, area: Area = "professional") {
     const { userId } = requireStoreContext();
     const id = uuid();
-    const optimistic: ProjectBase = { id, name, description, status: "active" };
+    const optimistic: ProjectBase = { id, name, description, status: "active", area };
     void write([{ key: qk.projects(userId), update: listAdd(optimistic) }], () =>
       supabase.from("projects").insert({
         id,
@@ -303,7 +304,75 @@ export const actions = {
         name,
         description: description ?? null,
         status: "active",
+        area,
       }),
+    );
+  },
+
+  // ------------------------------------------------------------- goal steps
+
+  /**
+   * Steps are what a goal's percentage is computed from, so every write here
+   * invalidates goals too — the number on screen is derived, not stored.
+   */
+  addGoalStep(goalId: string, title: string, position: number) {
+    const { userId } = requireStoreContext();
+    const id = uuid();
+    void write(
+      [
+        {
+          key: qk.goalSteps(userId),
+          update: listAdd({ id, goalId, title, done: false }),
+        },
+      ],
+      () =>
+        supabase.from("goal_steps").insert({
+          id,
+          user_id: userId,
+          goal_id: goalId,
+          title,
+          done: false,
+          position,
+        }),
+    );
+  },
+
+  toggleGoalStep(id: string, done: boolean) {
+    const { userId } = requireStoreContext();
+    void write(
+      [
+        {
+          key: qk.goalSteps(userId),
+          update: listPatch<GoalStepWithParent>(id, { done }),
+        },
+      ],
+      () => supabase.from("goal_steps").update({ done }).eq("id", id),
+    );
+  },
+
+  renameGoalStep(id: string, title: string) {
+    const { userId } = requireStoreContext();
+    void write(
+      [
+        {
+          key: qk.goalSteps(userId),
+          update: listPatch<GoalStepWithParent>(id, { title }),
+        },
+      ],
+      () => supabase.from("goal_steps").update({ title }).eq("id", id),
+    );
+  },
+
+  deleteGoalStep(id: string) {
+    const { userId } = requireStoreContext();
+    void write(
+      [
+        {
+          key: qk.goalSteps(userId),
+          update: listRemove<GoalStepWithParent>(id),
+        },
+      ],
+      () => supabase.from("goal_steps").delete().eq("id", id),
     );
   },
 
