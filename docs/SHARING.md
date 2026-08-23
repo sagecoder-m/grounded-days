@@ -65,8 +65,12 @@ appear in a path segment.
 short-circuits the gate before the session check — it must render with no
 session and no app chrome, even when the owner is signed in on the same device.
 
-## Not yet verified
+## Verified
 
-The valid-token path has never been exercised: the function is not deployed and
-no link has been created, so the only tested states are "no token" and
-"link not available". Expect the first real share to need a fix.
+Exercised end to end against the live project on 2026-08-23, as the demo user:
+
+- A Professional-only link returned only the Professional goal, no habits
+  (they belong to Personal), no Personal rows, and no description fields.
+- An all-areas link returned everything in scope.
+- Revoking a link made it answer 404 immediately.
+- An unknown token answers 404, identically to a revoked one.

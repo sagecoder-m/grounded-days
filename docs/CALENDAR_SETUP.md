@@ -87,6 +87,11 @@ supabase secrets set \
 
 ## 5. Apply the migration and deploy
 
+> Already done as of 2026-08-23: the migrations are applied, all four functions
+> are deployed, and APP_BASE_URL is set. What remains is steps 2-4 — the Google
+> and Azure registrations and their four secrets. Nothing will connect until
+> those exist.
+
 ```bash
 supabase db push
 supabase functions deploy calendar-oauth-start calendar-oauth-callback calendar-sync
