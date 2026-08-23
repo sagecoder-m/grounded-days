@@ -128,7 +128,18 @@ const DEMO_EMAIL = process.env.DEMO_EMAIL ?? "demo@groundeddays.app";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "GroundedDemo2026";
 // Optional: without it the demo account sets its own passcode on first run,
 // which is also a fine thing to show off.
-const DEMO_PASSCODE = process.env.DEMO_PASSCODE ?? null;
+/**
+ * Exactly six digits. The database function accepts four to eight, but the
+ * unlock screen renders a fixed six-slot input that submits on the sixth
+ * character — so a passcode of any other length can be stored and then never
+ * typed, locking the account out. Validated here rather than trusted.
+ */
+const DEMO_PASSCODE = process.env.DEMO_PASSCODE ?? "246810";
+if (DEMO_PASSCODE && !/^\d{6}$/.test(DEMO_PASSCODE)) {
+  console.error(`DEMO_PASSCODE must be exactly 6 digits (got "${DEMO_PASSCODE}").`);
+  console.error("The unlock screen has six slots; anything else cannot be entered.");
+  process.exit(1);
+}
 
 /**
  * This project is on Supabase's newer API keys (sb_secret_… / sb_publishable_…),
@@ -212,6 +223,9 @@ async function clearExisting(userId) {
     "events",
     "focus_sessions",
     "user_settings",
+    // Cleared so set_passcode can run again — it refuses to overwrite an
+    // existing passcode, and re-seeding is meant to restore a known state.
+    "user_security",
   ]) {
     const { error } = await db.from(table).delete().eq("user_id", userId);
     if (error) throw new Error(`clearing ${table} failed: ${error.message}`);
