@@ -44,3 +44,6 @@ pending-migrations.sql
 
 # Demo seeding credentials (see .env.demo.example).
 .env.demo
+
+# Calendar provider credentials (see .env.calendar.example).
+.env.calendar
