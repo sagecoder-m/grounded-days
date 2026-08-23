@@ -218,11 +218,17 @@ async function clearExisting(userId) {
   }
 }
 
-async function insert(table, rows) {
+/**
+ * Only ask for ids back when the caller actually needs them to wire up a child
+ * row. Requesting them unconditionally broke on user_settings, whose primary
+ * key is user_id — there is no id column to return.
+ */
+async function insert(table, rows, { returnIds = false } = {}) {
   if (rows.length === 0) return [];
-  const { data, error } = await db.from(table).insert(rows).select("id");
+  const query = db.from(table).insert(rows);
+  const { data, error } = returnIds ? await query.select("id") : await query;
   if (error) throw new Error(`insert into ${table} failed: ${error.message}`);
-  return data;
+  return data ?? [];
 }
 
 async function seed(userId) {
@@ -243,6 +249,7 @@ async function seed(userId) {
       user_id: userId,
       name,
     })),
+    { returnIds: true },
   );
 
   const logs = [];
@@ -302,15 +309,19 @@ async function seed(userId) {
   ];
 
   for (const spec of goalSpecs) {
-    const [goal] = await insert("goals", [
-      {
-        user_id: userId,
-        area: spec.area,
-        name: spec.name,
-        description: spec.description ?? null,
-        progress: 0,
-      },
-    ]);
+    const [goal] = await insert(
+      "goals",
+      [
+        {
+          user_id: userId,
+          area: spec.area,
+          name: spec.name,
+          description: spec.description ?? null,
+          progress: 0,
+        },
+      ],
+      { returnIds: true },
+    );
     await insert(
       "goal_steps",
       spec.steps.map(([title, done], position) => ({
@@ -324,24 +335,32 @@ async function seed(userId) {
   }
 
   // --- projects, personal and professional ---------------------------------
-  const [movePlace] = await insert("projects", [
-    {
-      user_id: userId,
-      name: "Move to the new flat",
-      description: "One box at a time.",
-      status: "active",
-      area: "personal",
-    },
-  ]);
-  const [progression] = await insert("projects", [
-    {
-      user_id: userId,
-      name: "Progression State",
-      description: "Client work.",
-      status: "active",
-      area: "professional",
-    },
-  ]);
+  const [movePlace] = await insert(
+    "projects",
+    [
+      {
+        user_id: userId,
+        name: "Move to the new flat",
+        description: "One box at a time.",
+        status: "active",
+        area: "personal",
+      },
+    ],
+    { returnIds: true },
+  );
+  const [progression] = await insert(
+    "projects",
+    [
+      {
+        user_id: userId,
+        name: "Progression State",
+        description: "Client work.",
+        status: "active",
+        area: "professional",
+      },
+    ],
+    { returnIds: true },
+  );
   await insert("projects", [
     {
       user_id: userId,
@@ -352,9 +371,11 @@ async function seed(userId) {
     },
   ]);
 
-  const [nce] = await insert("subprojects", [
-    { user_id: userId, project_id: progression.id, name: "NCE", description: null },
-  ]);
+  const [nce] = await insert(
+    "subprojects",
+    [{ user_id: userId, project_id: progression.id, name: "NCE", description: null }],
+    { returnIds: true },
+  );
 
   // --- tasks ---------------------------------------------------------------
   await insert("tasks", [
