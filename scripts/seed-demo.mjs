@@ -21,11 +21,46 @@
  * from the same place. It never touches any other user.
  */
 import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "node:fs";
+
+/**
+ * Load .env.demo if it exists, so the credentials can live in a file the user
+ * edits once rather than a very long shell line. A mistyped one-liner fails in
+ * ways that look like the script is broken, which sends people debugging the
+ * wrong thing entirely.
+ *
+ * Deliberately not dotenv: one dependency for fifteen lines is not a trade
+ * worth making in a script that runs by hand.
+ */
+function loadEnvFile(path) {
+  let text;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return; // No file is fine — the environment may already carry the values.
+  }
+  for (const rawLine of text.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    // Tolerate quotes, since a pasted value often arrives wrapped in them.
+    const value = line
+      .slice(eq + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
+    if (key && !process.env[key]) process.env[key] = value;
+  }
+}
+
+loadEnvFile(new URL("../.env.demo", import.meta.url).pathname);
 
 function required(name) {
   const value = process.env[name];
   if (!value) {
-    console.error(`Missing required environment variable: ${name}`);
+    console.error(`Missing ${name}.`);
+    console.error("Set it in .env.demo (copy .env.demo.example to start).");
     process.exit(1);
   }
   return value;

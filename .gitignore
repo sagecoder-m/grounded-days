@@ -41,3 +41,6 @@ package-lock.json
 
 # Generated convenience dump of unapplied migrations (see supabase/migrations).
 pending-migrations.sql
+
+# Demo seeding credentials (see .env.demo.example).
+.env.demo
