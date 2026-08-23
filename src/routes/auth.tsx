@@ -5,14 +5,17 @@ import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sprout } from "lucide-react";
+import { Eye, EyeOff, Sprout } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — Grounded" },
-      { name: "description", content: "Sign in to Grounded to sync your habits, goals, and plans across devices." },
+      {
+        name: "description",
+        content: "Sign in to Grounded to sync your habits, goals, and plans across devices.",
+      },
       { property: "og:title", content: "Sign in — Grounded" },
       { property: "og:description", content: "Keep your gentle systems safe and synced." },
     ],
@@ -25,6 +28,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { user, loading } = useSession();
   const navigate = useNavigate();
 
@@ -66,7 +70,9 @@ function AuthPage() {
         <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary text-primary-foreground">
           <Sprout className="h-5 w-5" />
         </div>
-        <h1 className="mt-4 font-serif text-4xl">{mode === "signin" ? "Welcome back" : "Make a space"}</h1>
+        <h1 className="mt-4 font-serif text-4xl">
+          {mode === "signin" ? "Welcome back" : "Make a space"}
+        </h1>
         <p className="mt-2 text-sm text-ink-soft">
           Sign in to keep your habits, goals, and plans safe and synced across devices.
         </p>
@@ -79,12 +85,35 @@ function AuthPage() {
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>Email</Label>
-            <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label>Password</Label>
+            <div className="flex items-baseline justify-between">
+              <Label>Password</Label>
+              {/* Typo-proofing on the way in, rather than a failed sign-in and
+                  no way to see which character went wrong. */}
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-pressed={showPassword}
+                className="flex items-center gap-1.5 text-xs text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
             <Input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               minLength={6}
               value={password}

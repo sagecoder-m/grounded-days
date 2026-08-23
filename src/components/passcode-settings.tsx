@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Eye, EyeOff } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { changePasscode, lockNow } from "@/lib/use-passcode";
 import { PASSCODE_LENGTH } from "@/components/passcode-screen";
@@ -17,6 +18,7 @@ export function PasscodeSettings() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const [shown, setShown] = useState(false);
 
   const digitsOnly = (value: string) => value.replace(/\D/g, "").slice(0, PASSCODE_LENGTH);
   const ready =
@@ -58,11 +60,22 @@ export function PasscodeSettings() {
         account unprotected.
       </p>
 
+      <button
+        type="button"
+        onClick={() => setShown((v) => !v)}
+        aria-pressed={shown}
+        className="flex items-center gap-1.5 text-xs text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline"
+      >
+        {shown ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+        {shown ? "Hide passcodes" : "Show passcodes"}
+      </button>
+
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3 max-w-2xl">
         <div className="space-y-1.5">
           <Label htmlFor="pc-current">Current</Label>
           <Input
             id="pc-current"
+            type={shown ? "text" : "password"}
             inputMode="numeric"
             autoComplete="current-password"
             value={current}
@@ -74,6 +87,7 @@ export function PasscodeSettings() {
           <Label htmlFor="pc-next">New</Label>
           <Input
             id="pc-next"
+            type={shown ? "text" : "password"}
             inputMode="numeric"
             autoComplete="new-password"
             value={next}
@@ -85,6 +99,7 @@ export function PasscodeSettings() {
           <Label htmlFor="pc-confirm">Confirm new</Label>
           <Input
             id="pc-confirm"
+            type={shown ? "text" : "password"}
             inputMode="numeric"
             autoComplete="new-password"
             value={confirm}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Sprout } from "lucide-react";
+import { Eye, EyeOff, Lock, Sprout } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -42,13 +42,36 @@ function PasscodeFrame({
 const slotClass =
   "h-12 w-12 rounded-xl border border-border bg-background text-lg first:rounded-l-xl last:rounded-r-xl";
 
-function Slots() {
+function Slots({ mask }: { mask: boolean }) {
   return (
     <InputOTPGroup className="justify-center gap-2">
       {Array.from({ length: PASSCODE_LENGTH }, (_, i) => (
-        <InputOTPSlot key={i} index={i} className={slotClass} />
+        <InputOTPSlot key={i} index={i} className={slotClass} mask={mask} />
       ))}
     </InputOTPGroup>
+  );
+}
+
+/**
+ * Show/hide for the passcode.
+ *
+ * Hidden is the default: the whole point of the passcode is privacy on a shared
+ * device, and digits large enough to be tapped comfortably are also large
+ * enough to be read across a room. The toggle is there because a masked entry
+ * you cannot check is its own kind of stressful — mistype once and there is no
+ * way to see what went wrong.
+ */
+function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shown}
+      className="mx-auto flex items-center gap-1.5 text-xs text-ink-soft underline-offset-4 transition-colors hover:text-ink hover:underline"
+    >
+      {shown ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+      {shown ? "Hide passcode" : "Show passcode"}
+    </button>
   );
 }
 
@@ -58,6 +81,7 @@ function Slots() {
  */
 export function PasscodeLock() {
   const [code, setCode] = useState("");
+  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
@@ -140,9 +164,10 @@ export function PasscodeLock() {
             disabled={busy || locked}
             autoFocus
           >
-            <Slots />
+            <Slots mask={!shown} />
           </InputOTP>
         </div>
+        <RevealToggle shown={shown} onToggle={() => setShown((v) => !v)} />
         {message && (
           <p
             className={cn(
@@ -161,6 +186,7 @@ export function PasscodeLock() {
 
 /** First-run setup: enter, then confirm. */
 export function PasscodeSetup() {
+  const [shown, setShown] = useState(false);
   const [step, setStep] = useState<"create" | "confirm">("create");
   const [first, setFirst] = useState("");
   const [second, setSecond] = useState("");
@@ -226,7 +252,7 @@ export function PasscodeSetup() {
               disabled={busy}
               autoFocus
             >
-              <Slots />
+              <Slots mask={!shown} />
             </InputOTP>
           ) : (
             <InputOTP
@@ -244,10 +270,13 @@ export function PasscodeSetup() {
               disabled={busy}
               autoFocus
             >
-              <Slots />
+              <Slots mask={!shown} />
             </InputOTP>
           )}
         </div>
+        {/* Especially worth having during setup: a code you cannot see is a code
+            you cannot check before committing to it. */}
+        <RevealToggle shown={shown} onToggle={() => setShown((v) => !v)} />
         {message && <p className="text-center text-xs text-ink-soft">{message}</p>}
         {busy && <p className="text-center text-xs italic text-ink-soft">Saving…</p>}
         {step === "confirm" && !busy && (
