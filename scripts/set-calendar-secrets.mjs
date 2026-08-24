@@ -104,7 +104,21 @@ if (!looksUnset(gId)) {
   }
 }
 
-if (looksUnset(msId) && looksUnset(gId)) {
+console.log("\n--- AI assistant (OpenRouter) ---");
+console.log("openrouter.ai -> Keys. Starts with sk-or-. Press Enter to skip.");
+const orKey = await ask("  OPENROUTER_API_KEY (hidden): ", { hidden: true });
+let orModel = "";
+if (!looksUnset(orKey)) {
+  if (!orKey.startsWith("sk-or-")) {
+    console.error("\nOpenRouter keys start with sk-or-. Nothing was saved.");
+    process.exit(1);
+  }
+  console.log("Model id, e.g. meta-llama/llama-3.3-70b-instruct:free");
+  console.log("Enter to accept that default. The free roster rotates, so this is config.");
+  orModel = await ask("  OPENROUTER_MODEL: ");
+}
+
+if (looksUnset(msId) && looksUnset(gId) && looksUnset(orKey)) {
   console.error("\nNothing entered — nothing was changed.");
   process.exit(1);
 }
@@ -119,6 +133,10 @@ if (!looksUnset(msId)) {
 if (!looksUnset(gId)) {
   lines.push(`GOOGLE_CLIENT_ID=${gId}`, `GOOGLE_CLIENT_SECRET=${gSecret}`);
 }
+if (!looksUnset(orKey)) {
+  lines.push(`OPENROUTER_API_KEY=${orKey}`);
+  if (orModel) lines.push(`OPENROUTER_MODEL=${orModel}`);
+}
 writeFileSync(ENV_FILE, lines.join("\n") + "\n", { mode: 0o600 });
 console.log(`\nWrote ${lines.length - 1} values to .env.calendar`);
 
@@ -129,4 +147,4 @@ if (code !== 0) {
   console.error("so nothing needs re-typing — the push can be retried.");
   process.exit(code);
 }
-console.log("\nDone. Connect a calendar from Profile.");
+console.log("\nDone. Connect a calendar from Profile; the Assistant tab works immediately.");

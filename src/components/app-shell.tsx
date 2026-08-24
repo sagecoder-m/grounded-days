@@ -12,6 +12,7 @@ import {
   Menu,
   NotebookPen,
   RefreshCw,
+  Sparkles,
   Sprout,
   User,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { lockNow } from "@/lib/use-passcode";
 const NAV = [
   { to: "/", label: "Overview", icon: Home },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/assistant", label: "Assistant", icon: Sparkles },
   { to: "/journal", label: "Journal", icon: NotebookPen },
   { to: "/personal", label: "Personal", icon: Sprout },
   { to: "/professional", label: "Professional", icon: Briefcase },
