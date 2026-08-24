@@ -587,6 +587,7 @@ export type Database = {
           nav_layout: string
           updated_at: string
           user_id: string
+          week_starts_on: number
           widgets: Json
         }
         Insert: {
@@ -598,6 +599,7 @@ export type Database = {
           nav_layout?: string
           updated_at?: string
           user_id: string
+          week_starts_on?: number
           widgets?: Json
         }
         Update: {
@@ -609,6 +611,7 @@ export type Database = {
           nav_layout?: string
           updated_at?: string
           user_id?: string
+          week_starts_on?: number
           widgets?: Json
         }
         Relationships: []

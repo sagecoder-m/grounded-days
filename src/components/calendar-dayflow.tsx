@@ -113,19 +113,17 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
    * Year goes because twelve month grids in a phone-width column is unreadable,
    * and because the switcher only has room for four before it wraps.
    */
-  const views = useMemo(
-    () =>
-      narrow
-        ? [createDayView({}), createWeekView({}), createMonthView({ showEventDots: true }), createAgendaView({})]
-        : [
-            createDayView({}),
-            createWeekView({}),
-            createMonthView({ showEventDots: true }),
-            createYearView({}),
-            createAgendaView({}),
-          ],
-    [narrow],
-  );
+  const views = useMemo(() => {
+    // The same preference that sets the habit grid's first column, so a week
+    // does not start on different days on two pages of one app.
+    const startOfWeek = state.settings.weekStartsOn;
+    const week = createWeekView({ startOfWeek });
+    const month = createMonthView({ showEventDots: true, startOfWeek });
+
+    return narrow
+      ? [createDayView({}), week, month, createAgendaView({})]
+      : [createDayView({}), week, month, createYearView({}), createAgendaView({})];
+  }, [narrow, state.settings.weekStartsOn]);
 
   const plugins = useMemo(
     () => [createDragPlugin({ onEventDrop: persistMove, onEventResize: persistMove })],
@@ -153,7 +151,7 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     // version, so a changed view set is otherwise ignored. Rebuilding on the
     // breakpoint is the point — it is the one case where losing the current
     // view is correct, since that view may no longer exist.
-    narrow ? "narrow" : "wide",
+    `${narrow ? "narrow" : "wide"}:${state.settings.weekStartsOn}`,
   );
 
   // The events passed above are only the first-render snapshot as far as

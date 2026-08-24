@@ -8,6 +8,7 @@ import {
   type Density,
   type NavLayout,
   type Settings,
+  type WeekStart,
 } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +51,14 @@ const WIDGET_LABELS: Record<string, string> = {
 const NAV_LAYOUTS: { key: NavLayout; label: string; hint: string }[] = [
   { key: "sidebar", label: "Side rail", hint: "Tabs down the left, collapsible to icons" },
   { key: "top", label: "Top tabs", hint: "Tabs across the top, wider page" },
+];
+
+/** Monday first is the ISO week and the default. Saturday is offered because it
+ *  is the convention across much of the Middle East, not as a novelty. */
+const WEEK_STARTS: { key: WeekStart; label: string }[] = [
+  { key: 1, label: "Monday" },
+  { key: 0, label: "Sunday" },
+  { key: 6, label: "Saturday" },
 ];
 
 const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
@@ -143,6 +152,28 @@ function ProfilePage() {
               className={`chip capitalize ${settings.defaultCalView === v ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"}`}
             >
               {v}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card-soft p-6 space-y-4">
+        <h2 className="font-serif text-2xl">Week starts on</h2>
+        <p className="text-sm text-ink-soft">
+          Sets the first column of the habit grid and the first day of the week on the calendar.
+        </p>
+        <div className="flex gap-2">
+          {WEEK_STARTS.map((w) => (
+            <button
+              key={w.key}
+              onClick={() => actions.updateSettings({ weekStartsOn: w.key })}
+              className={`chip ${
+                settings.weekStartsOn === w.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-ink-soft"
+              }`}
+            >
+              {w.label}
             </button>
           ))}
         </div>

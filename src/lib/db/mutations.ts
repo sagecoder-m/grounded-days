@@ -35,7 +35,6 @@ import {
   settingsPatchToRow,
   subprojectPatchToRow,
   taskPatchToRow,
-  widgetsToJson,
   type GoalStepWithParent,
   type HabitBase,
   type HabitLogEntry,
@@ -678,14 +677,12 @@ export const actions = {
     const next: Settings = { ...current, ...patch };
     void write([{ key: qk.settings(userId), update: () => next }], () =>
       supabase.from("user_settings").upsert(
-        {
-          user_id: userId,
-          display_name: next.displayName,
-          density: next.density,
-          accent: next.accent,
-          default_cal_view: next.defaultCalView,
-          widgets: widgetsToJson(next.widgets),
-        },
+        // Mapped from the whole settings object rather than listed by hand.
+        // The hand-written version had drifted: it omitted nav_layout, so
+        // choosing a navigation layout updated the cache, wrote a row without
+        // it, and silently reverted on the next refetch. Going through the
+        // mapper means a newly added setting cannot be forgotten here.
+        { user_id: userId, ...settingsPatchToRow(next) },
         { onConflict: "user_id" },
       ),
     );

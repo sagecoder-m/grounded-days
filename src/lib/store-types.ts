@@ -131,12 +131,24 @@ export type CalView = "week" | "month" | "year";
 /** Where the main navigation lives. */
 export type NavLayout = "sidebar" | "top";
 
+/**
+ * Which day a week starts on, as the day number date-fns and DayFlow both take
+ * (0 = Sunday, 1 = Monday, 6 = Saturday). Stored as the number rather than a
+ * label so it can be passed straight to startOfWeek() and to DayFlow's view
+ * config with no lookup in between.
+ *
+ * Only these three: they are the conventions that exist in practice. A week
+ * starting Wednesday is a typo, not a preference.
+ */
+export type WeekStart = 0 | 1 | 6;
+
 export interface Settings {
   displayName: string;
   density: Density;
   accent: AccentVariant;
   defaultCalView: CalView;
   navLayout: NavLayout;
+  weekStartsOn: WeekStart;
   widgets: { key: string; enabled: boolean }[];
 }
 

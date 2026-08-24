@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { actions, useAppState } from "@/lib/store";
+import { dateKey } from "@/components/task-grid";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
 import { SoftProgress } from "@/components/soft-progress";
@@ -41,7 +42,18 @@ function PersonalPage() {
   const looseTasks = personalTasks.filter((t) => !t.projectId);
 
   const today = new Date();
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, -6 + i)), []);
+  /**
+   * The current week, starting on whichever day the profile says.
+   *
+   * This used to be `addDays(today, -6 + i)` — the last seven days ending today,
+   * which is a rolling window and not a week. On a Monday it rendered T W T F S
+   * S M, and any given habit moved a column to the left every day, so nothing
+   * could be read as "this week".
+   */
+  const days = useMemo(() => {
+    const start = startOfWeek(today, { weekStartsOn: state.settings.weekStartsOn });
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  }, [state.settings.weekStartsOn, dateKey(today)]);
 
   const [newHabit, setNewHabit] = useState("");
   // The habit grid keys off today's date, so it stays a skeleton until mount.
@@ -50,7 +62,7 @@ function PersonalPage() {
   const chartData = useMemo(() => {
     return Array.from({ length: 21 }, (_, i) => {
       const d = addDays(today, -20 + i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = dateKey(d);
       const completed = state.habits.reduce((s, h) => s + (h.log[iso] ? 1 : 0), 0);
       const goalAvg = personalGoals.length
         ? personalGoals.reduce((s, g) => s + g.progress, 0) / personalGoals.length
@@ -119,7 +131,10 @@ function PersonalPage() {
                     />
                     <div className="col-span-full md:col-span-7 grid grid-cols-7 gap-2 md:contents">
                       {days.map((d) => {
-                        const iso = d.toISOString().slice(0, 10);
+                        // Local, not toISOString(): that converts to UTC
+                        // first, so west of Greenwich an evening tap was
+                        // logged against tomorrow.
+                        const iso = dateKey(d);
                         const done = !!h.log[iso];
                         return (
                           <button

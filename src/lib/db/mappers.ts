@@ -28,6 +28,7 @@ import type {
   Project,
   Settings,
   Subproject,
+  WeekStart,
   Task,
 } from "@/lib/store-types";
 
@@ -212,6 +213,7 @@ export const DEFAULT_SETTINGS: Settings = {
   accent: "sage",
   defaultCalView: "week",
   navLayout: "sidebar",
+  weekStartsOn: 1,
   widgets: DEFAULT_WIDGETS,
 };
 
@@ -239,6 +241,12 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     accent: oneOf<AccentVariant>(["sage", "clay", "brown", "tan"], row.accent, "sage"),
     defaultCalView: oneOf<CalView>(["week", "month", "year"], row.default_cal_view, "week"),
     navLayout: oneOf<NavLayout>(["sidebar", "top"], row.nav_layout, "sidebar"),
+    // Numeric rather than a string union, so oneOf() does not apply. A row
+    // written before this column existed reads as null through the client even
+    // though the column is NOT NULL, hence the fallback rather than a cast.
+    weekStartsOn: ([0, 1, 6] as const).includes(row.week_starts_on as WeekStart)
+      ? (row.week_starts_on as WeekStart)
+      : 1,
     widgets: toWidgets(row.widgets),
   };
 }
@@ -256,6 +264,7 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.accent !== undefined) row.accent = patch.accent;
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
   if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
+  if (patch.weekStartsOn !== undefined) row.week_starts_on = patch.weekStartsOn;
   if (patch.widgets !== undefined) row.widgets = widgetsToJson(patch.widgets);
   return row;
 }

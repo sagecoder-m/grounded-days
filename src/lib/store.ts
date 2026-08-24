@@ -55,6 +55,7 @@ export type {
   Subproject,
   SyncStatus,
   Task,
+  WeekStart,
 } from "./store-types";
 
 export { actions, deleteAllUserData } from "./db/mutations";
