@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { useAppState } from "@/lib/store";
+import { TaskGrid } from "@/components/task-grid";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
 import type { Area } from "@/lib/store-types";
@@ -107,25 +108,26 @@ export function TodayGlance() {
         </div>
       )}
 
-      {tasks.length > 0 && (
-        <div className="border-t border-border pt-3">
-          <div className="mb-1.5 text-[10px] uppercase tracking-widest text-ink-soft">
-            Also today
-          </div>
-          <ul className="space-y-1">
-            {tasks.map((task) => (
-              <li
-                key={task.id}
-                className={`flex items-center gap-2 text-sm ${task.done ? "text-ink-soft line-through" : ""}`}
-              >
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: AREA_VAR[task.area] }}
-                />
-                <span className="truncate">{task.title}</span>
-              </li>
-            ))}
-          </ul>
+      {/*
+        The day's tasks, as the same grid the "next three days" below uses.
+        These were bare one-liners while a separate "Today" section carried the
+        real checkboxes; with that section gone this is the only place today's
+        tasks are actionable, so they get the full row — check off, rename,
+        re-date, delete. The add button is suppressed because the grid below
+        already offers one and two on a screen is one too many.
+      */}
+      {/* Skipped entirely on a genuinely empty day: the "a clear day" line
+          above already says it, and the grid's own empty state would say it
+          again three lines lower. */}
+      {!nothing && (
+        <div className="border-t border-border pt-4">
+          <TaskGrid
+            tasks={state.tasks}
+            from={iso}
+            to={iso}
+            showAdd={false}
+            emptyText="Nothing to tick off today — just what's above."
+          />
         </div>
       )}
 

@@ -20,6 +20,7 @@ import { createDragPlugin } from "@dayflow/plugin-drag";
 import {
   DayFlowCalendar,
   createAgendaView,
+  createDayView,
   createMonthView,
   createWeekView,
   createYearView,
@@ -34,8 +35,9 @@ import { conflictingEventIds } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
 import { buildCalendarTypes, fromDayFlowEvent, toDayFlowEvent } from "@/lib/dayflow-adapter";
 import { useDayFlowEventSync } from "@/lib/use-dayflow-sync";
-import { CalendarTasksPanel, dateKey } from "@/components/calendar-tasks-panel";
+import { dateKey } from "@/components/task-grid";
 import { AddEventDialog, EditEventDialog, SyncedHint } from "@/components/calendar-dialogs";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 /** The saved preference is week/month/year; DayFlow names the same three. */
 const VIEW_FOR_SETTING: Record<CalView, ViewType> = {
@@ -54,6 +56,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
 
   const [editing, setEditing] = useState<CalEvent | null>(null);
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
+
+  // Matches Tailwind's md. False during SSR and the first paint, which lands on
+  // the desktop view set — the safer default, since every view it offers exists
+  // at every width.
+  const narrow = useMediaQuery("(max-width: 767px)");
 
   const calendars = useMemo(() => buildCalendarTypes(connections.data ?? []), [connections.data]);
   const events = useMemo(() => state.events.map(toDayFlowEvent), [state.events]);
@@ -95,14 +102,29 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     );
   }, []);
 
+  /**
+   * Phones get a day view and lose the year view.
+   *
+   * A week grid on a 375px screen is 634px of columns in a 341px viewport —
+   * DayFlow keeps a minimum column width, so half the week sits off-screen
+   * behind a sideways swipe. A single day fits, and DayFlow's compact header is
+   * already a day picker, so the two were built to go together.
+   *
+   * Year goes because twelve month grids in a phone-width column is unreadable,
+   * and because the switcher only has room for four before it wraps.
+   */
   const views = useMemo(
-    () => [
-      createWeekView({}),
-      createMonthView({ showEventDots: true }),
-      createYearView({}),
-      createAgendaView({}),
-    ],
-    [],
+    () =>
+      narrow
+        ? [createDayView({}), createWeekView({}), createMonthView({ showEventDots: true }), createAgendaView({})]
+        : [
+            createDayView({}),
+            createWeekView({}),
+            createMonthView({ showEventDots: true }),
+            createYearView({}),
+            createAgendaView({}),
+          ],
+    [narrow],
   );
 
   const plugins = useMemo(
@@ -110,18 +132,29 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     [persistMove],
   );
 
-  const calendar = useCalendarApp({
-    views,
-    events,
-    calendars,
-    plugins,
-    defaultCalendar: "personal",
-    defaultView: VIEW_FOR_SETTING[state.settings.defaultCalView] ?? ViewType.MONTH,
-    callbacks: { onVisibleRangeChange, onEventClick },
-    // The rest of the app writes times as "4:00am"; DayFlow defaults to 24h,
-    // which made one event read two different ways on two pages.
-    timeFormat: "12h",
-  });
+  const calendar = useCalendarApp(
+    {
+      views,
+      events,
+      calendars,
+      plugins,
+      defaultCalendar: "personal",
+      // On a phone the saved week/month/year preference is overridden to day,
+      // because the saved value was chosen on a screen where a week fits.
+      defaultView: narrow
+        ? ViewType.DAY
+        : (VIEW_FOR_SETTING[state.settings.defaultCalView] ?? ViewType.MONTH),
+      callbacks: { onVisibleRangeChange, onEventClick },
+      // The rest of the app writes times as "4:00am"; DayFlow defaults to 24h,
+      // which made one event read two different ways on two pages.
+      timeFormat: "12h",
+    },
+    // useCalendarApp builds its CalendarApp in a useMemo keyed only on this
+    // version, so a changed view set is otherwise ignored. Rebuilding on the
+    // breakpoint is the point — it is the one case where losing the current
+    // view is correct, since that view may no longer exist.
+    narrow ? "narrow" : "wide",
+  );
 
   // The events passed above are only the first-render snapshot as far as
   // DayFlow is concerned; this is what keeps it in step with the query.
@@ -157,18 +190,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
 
       {conflictCss && <style>{conflictCss}</style>}
 
-      {/* Calendar and tasks side by side on wide screens, stacked on narrow — a
-          task list squeezed beside a month grid on a phone would leave neither
-          enough room. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-        <div className="min-w-0 h-[32rem] md:h-[42rem]">
-          <DayFlowCalendar calendar={calendar} />
-        </div>
-        <CalendarTasksPanel
-          tasks={state.tasks}
-          rangeStart={range?.start ?? null}
-          rangeEnd={range?.end ?? null}
-        />
+      {/* Full width. Tasks used to sit in a panel beside the grid; they live on
+          the Overview now, so the calendar is not competing with a list for
+          horizontal room and the day columns get all of it. */}
+      <div className="h-[32rem] md:h-[42rem]">
+        <DayFlowCalendar calendar={calendar} />
       </div>
 
       {editing && <EditEventDialog event={editing} onClose={() => setEditing(null)} />}
