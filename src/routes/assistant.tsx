@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/use-session";
 
 export const Route = createFileRoute("/assistant")({
   component: AssistantPage,
@@ -23,15 +25,64 @@ const STARTERS = [
 ];
 
 function AssistantPage() {
+  const { user } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
+  // History is loaded once rather than kept in React Query: this is an
+  // append-only log the page itself owns, and a background refetch mid-reply
+  // would fight the optimistic append.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      const { data, error: loadError } = await supabase
+        .from("assistant_messages")
+        .select("role, content")
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (!loadError && data) {
+        setMessages(data.map((m) => ({ role: m.role as Message["role"], content: m.content })));
+      }
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+
+  /** Fire-and-forget: a failed history write must not lose the reply on screen. */
+  function persist(role: Message["role"], content: string) {
+    if (!user) return;
+    void supabase
+      .from("assistant_messages")
+      .insert({ user_id: user.id, role, content })
+      .then(({ error: writeError }) => {
+        if (writeError) console.error("could not save message", writeError.message);
+      });
+  }
+
+  async function clearHistory() {
+    if (!user) return;
+    const previous = messages;
+    setMessages([]);
+    const { error: delError } = await supabase
+      .from("assistant_messages")
+      .delete()
+      .eq("user_id", user.id);
+    if (delError) {
+      setMessages(previous);
+      toast.error("Could not clear that", { description: delError.message });
+    }
+  }
 
   async function send(text: string) {
     const content = text.trim();
@@ -39,6 +90,7 @@ function AssistantPage() {
 
     const next = [...messages, { role: "user" as const, content }];
     setMessages(next);
+    persist("user", content);
     setDraft("");
     setError(null);
     setBusy(true);
@@ -65,6 +117,7 @@ function AssistantPage() {
         return;
       }
       setMessages([...next, { role: "assistant", content: data.content }]);
+      persist("assistant", data.content);
     } catch {
       setError("Could not reach the assistant. Check your connection.");
     } finally {
@@ -82,7 +135,21 @@ function AssistantPage() {
         </p>
       </header>
 
-      {messages.length === 0 && (
+      {messages.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void clearHistory()}
+            className="gap-1.5 rounded-full text-xs text-ink-soft"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Clear conversation
+          </Button>
+        </div>
+      )}
+
+      {loaded && messages.length === 0 && (
         <div className="space-y-3">
           <div className="card-soft flex items-start gap-3 p-5">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -167,7 +234,7 @@ function AssistantPage() {
       </form>
 
       <p className="text-[11px] italic text-ink-soft">
-        Conversations are not saved — this clears when you leave the page.
+        Saved to your account, so it is here when you come back. Clear it any time.
       </p>
     </div>
   );
