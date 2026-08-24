@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
+import { conflictingEventIds, shiftToDate } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
 
 export const iso = (d: Date) => format(d, "yyyy-MM-dd");
@@ -64,25 +65,46 @@ function isSynced(it: any) {
   return it.kind === "event" && it.source && it.source !== "local";
 }
 
-function ItemPill({ it, onEdit }: any) {
+function ItemPill({ it, onEdit, conflicted = false }: any) {
   const synced = isSynced(it);
   const clickable = !synced && (it.kind === "event" || it.kind === "task");
+  // Only local items can move: the database rejects a client write to a synced
+  // row, so dragging one could only ever fail.
+  const draggable = clickable;
   const time =
     !it.allDay && it.startsAt ? format(new Date(it.startsAt), "h:mma").toLowerCase() : null;
 
   return (
     <div
       onClick={clickable ? () => onEdit?.(it) : undefined}
+      draggable={draggable}
+      onDragStart={
+        draggable
+          ? (e) => {
+              e.dataTransfer.setData(
+                "application/x-grounded-item",
+                JSON.stringify({ kind: it.kind, id: it.id }),
+              );
+              e.dataTransfer.effectAllowed = "move";
+            }
+          : undefined
+      }
       className={`flex items-start gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] leading-snug ${
         // Synced events read as "from elsewhere": dashed edge, tinted surface.
         synced ? "border-dashed border-tan bg-secondary/60" : "border-border bg-card"
-      } ${clickable ? "cursor-text hover:border-primary" : ""}`}
+      } ${clickable ? "cursor-text hover:border-primary" : ""} ${
+        // A clash is marked on the item itself rather than drawn between the
+        // pair — which-overlaps-which turns a glance into a puzzle.
+        conflicted ? "ring-1 ring-[color:var(--clay)]" : ""
+      }`}
       title={
         synced
           ? `${it.title} — from your calendar, read-only`
-          : clickable
-            ? "Click to edit"
-            : it.title
+          : conflicted
+            ? `${it.title} — overlaps another event`
+            : clickable
+              ? "Click to edit, or drag to another day"
+              : it.title
       }
     >
       <span
@@ -94,95 +116,208 @@ function ItemPill({ it, onEdit }: any) {
       >
         {time && <span className="text-ink-soft">{time} </span>}
         {it.title}
+        {conflicted && (
+          <span className="ml-1 text-[color:var(--clay)]" title="Overlaps another event">
+            ·overlap
+          </span>
+        )}
       </span>
     </div>
   );
 }
 
-function WeekView({ cursor, events, tasks, onEdit, tall }: any) {
+/**
+ * Shared drop behaviour for a day cell.
+ *
+ * Reschedules on drop, keeping the time of day and duration. Tasks only carry a
+ * date so they just move; events also need their timestamps shifted, or the row
+ * would disagree with itself.
+ */
+function useDayDrop(dateKey: string, events: any[], tasks: any[]) {
+  const [over, setOver] = useState(false);
+
+  return {
+    isOver: over,
+    handlers: {
+      onDragOver: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes("application/x-grounded-item")) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setOver(true);
+      },
+      onDragLeave: () => setOver(false),
+      onDrop: (e: React.DragEvent) => {
+        setOver(false);
+        const raw = e.dataTransfer.getData("application/x-grounded-item");
+        if (!raw) return;
+        e.preventDefault();
+        let payload: { kind: string; id: string };
+        try {
+          payload = JSON.parse(raw);
+        } catch {
+          return;
+        }
+        if (payload.kind === "task") {
+          const task = tasks.find((t: any) => t.id === payload.id);
+          if (!task || task.date === dateKey) return;
+          actions.updateTask(payload.id, { date: dateKey });
+        } else {
+          const event = events.find((ev: any) => ev.id === payload.id);
+          if (!event || event.date === dateKey) return;
+          actions.updateEvent(payload.id, shiftToDate(event, dateKey));
+        }
+      },
+    },
+  };
+}
+
+function WeekView({ cursor, events, tasks, onEdit, tall, conflicts }: any) {
   const start = startOfWeek(cursor);
   const days = eachDayOfInterval({ start, end: endOfWeek(cursor) });
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2 lg:gap-3">
-      {days.map((d) => {
-        const key = iso(d);
-        const items = itemsFor(key, events, tasks);
-        return (
-          <div
-            key={key}
-            className={`flex ${tall ? "min-h-48 lg:min-h-[26rem]" : "min-h-40 lg:min-h-64"} flex-col rounded-2xl border p-3 ${
-              isToday(d) ? "bg-accent border-primary" : "bg-background border-border"
-            }`}
-          >
-            <div className="flex items-baseline justify-between lg:block">
-              <div className="text-[10px] uppercase tracking-widest text-ink-soft">
-                {format(d, "EEE")}
-              </div>
-              <div className="font-serif text-2xl leading-tight">{format(d, "d")}</div>
-            </div>
-            <div className="mt-2 flex-1 space-y-1.5 overflow-y-auto">
-              {items.length === 0 && (
-                <div className="text-[11px] italic text-ink-soft">Open space</div>
-              )}
-              {items.map((it: any) => (
-                <ItemPill key={`${it.kind}-${it.id}`} it={it} onEdit={onEdit} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-7 lg:gap-3">
+      {days.map((d) => (
+        <WeekDayCell
+          key={iso(d)}
+          day={d}
+          events={events}
+          tasks={tasks}
+          onEdit={onEdit}
+          tall={tall}
+          conflicts={conflicts}
+        />
+      ))}
     </div>
   );
 }
 
-function MonthView({ cursor, events, tasks, onEdit }: any) {
+function WeekDayCell({ day, events, tasks, onEdit, tall, conflicts }: any) {
+  const key = iso(day);
+  const items = itemsFor(key, events, tasks);
+  const { isOver, handlers } = useDayDrop(key, events, tasks);
+
+  return (
+    <div
+      {...handlers}
+      className={`flex ${tall ? "min-h-48 lg:min-h-[26rem]" : "min-h-40 lg:min-h-64"} flex-col rounded-2xl border p-3 transition-colors ${
+        isOver
+          ? "border-primary bg-accent"
+          : isToday(day)
+            ? "border-primary bg-accent"
+            : "border-border bg-background"
+      }`}
+    >
+      <div className="flex items-baseline justify-between lg:block">
+        <div className="text-[10px] uppercase tracking-widest text-ink-soft">
+          {format(day, "EEE")}
+        </div>
+        <div className="font-serif text-2xl leading-tight">{format(day, "d")}</div>
+      </div>
+      <div className="mt-2 flex-1 space-y-1.5 overflow-y-auto">
+        {items.length === 0 && (
+          <div className="text-[11px] italic text-ink-soft">
+            {isOver ? "Drop here" : "Open space"}
+          </div>
+        )}
+        {items.map((it: any) => (
+          <ItemPill
+            key={`${it.kind}-${it.id}`}
+            it={it}
+            onEdit={onEdit}
+            conflicted={it.kind === "event" && conflicts?.has(it.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MonthView({ cursor, events, tasks, onEdit, conflicts }: any) {
   const start = startOfWeek(startOfMonth(cursor));
   const end = endOfWeek(endOfMonth(cursor));
   const days = eachDayOfInterval({ start, end });
   return (
     <div>
-      <div className="grid grid-cols-7 mb-2">
+      <div className="mb-2 grid grid-cols-7">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <div key={d} className="text-center text-[10px] uppercase text-ink-soft tracking-widest">
+          <div key={d} className="text-center text-[10px] uppercase tracking-widest text-ink-soft">
             {d}
           </div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
-        {days.map((d) => {
-          const key = iso(d);
-          const items = itemsFor(key, events, tasks);
-          const outside = !isSameMonth(d, cursor);
+        {days.map((d) => (
+          <MonthDayCell
+            key={iso(d)}
+            day={d}
+            cursor={cursor}
+            events={events}
+            tasks={tasks}
+            onEdit={onEdit}
+            conflicts={conflicts}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MonthDayCell({ day, cursor, events, tasks, onEdit, conflicts }: any) {
+  const key = iso(day);
+  const items = itemsFor(key, events, tasks);
+  const outside = !isSameMonth(day, cursor);
+  const { isOver, handlers } = useDayDrop(key, events, tasks);
+
+  return (
+    <div
+      {...handlers}
+      className={`min-h-24 rounded-xl border p-1.5 text-xs transition-colors md:min-h-28 ${
+        isOver
+          ? "border-primary bg-accent"
+          : isToday(day)
+            ? "border-primary bg-accent"
+            : "border-border bg-background"
+      } ${outside && !isOver ? "opacity-40" : ""}`}
+    >
+      <div className="font-medium">{format(day, "d")}</div>
+      <div className="mt-1 space-y-1">
+        {items.slice(0, 3).map((it: any) => {
+          const synced = isSynced(it);
           return (
-            <div
-              key={key}
-              className={`min-h-24 md:min-h-28 rounded-xl border p-1.5 text-xs ${
-                isToday(d) ? "bg-accent border-primary" : "bg-background border-border"
-              } ${outside ? "opacity-40" : ""}`}
+            <button
+              key={`${it.kind}-${it.id}`}
+              onClick={() => !synced && onEdit?.(it)}
+              draggable={!synced}
+              onDragStart={
+                !synced
+                  ? (e) => {
+                      e.dataTransfer.setData(
+                        "application/x-grounded-item",
+                        JSON.stringify({ kind: it.kind, id: it.id }),
+                      );
+                      e.dataTransfer.effectAllowed = "move";
+                    }
+                  : undefined
+              }
+              className="flex w-full items-center gap-1 truncate text-left text-[10px] hover:underline"
+              title={synced ? `${it.title} — read-only` : "Click to edit, or drag to another day"}
             >
-              <div className="font-medium">{format(d, "d")}</div>
-              <div className="mt-1 space-y-1">
-                {items.slice(0, 3).map((it: any) => (
-                  <button
-                    key={`${it.kind}-${it.id}`}
-                    onClick={() => onEdit?.(it)}
-                    className="flex w-full items-center gap-1 truncate text-left text-[10px] hover:underline"
-                    title="Click to edit"
-                  >
-                    <span
-                      className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: dotColor(it.area) }}
-                    />
-                    <span className="truncate">{it.title}</span>
-                  </button>
-                ))}
-                {items.length > 3 && (
-                  <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>
-                )}
-              </div>
-            </div>
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{
+                  backgroundColor:
+                    it.kind === "event" && conflicts?.has(it.id)
+                      ? "var(--clay)"
+                      : dotColor(it.area),
+                }}
+              />
+              <span className="truncate">{it.title}</span>
+            </button>
           );
         })}
+        {items.length > 3 && (
+          <div className="text-[10px] text-ink-soft">+{items.length - 3} more</div>
+        )}
       </div>
     </div>
   );
@@ -400,6 +535,9 @@ export function CalendarBoard({
   const [cursor, setCursor] = useState(new Date());
   const [editing, setEditing] = useState<any>(null);
 
+  // Computed once for the whole board rather than per cell.
+  const conflicts = useMemo(() => conflictingEventIds(state.events), [state.events]);
+
   const step = (dir: number) =>
     setCursor(
       view === "week"
@@ -451,6 +589,7 @@ export function CalendarBoard({
             tasks={state.tasks}
             onEdit={setEditing}
             tall={tall}
+            conflicts={conflicts}
           />
         )}
         {view === "month" && (
@@ -459,6 +598,7 @@ export function CalendarBoard({
             events={state.events}
             tasks={state.tasks}
             onEdit={setEditing}
+            conflicts={conflicts}
           />
         )}
         {view === "year" && (

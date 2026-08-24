@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import { useAppState } from "@/lib/store";
+import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
 import type { Area } from "@/lib/store-types";
 
@@ -39,6 +40,9 @@ export function TodayGlance() {
     .filter((e) => !e.allDay && e.startsAt)
     .sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""));
   const allDay = events.filter((e) => e.allDay || !e.startsAt);
+
+  // Same helper the calendar board uses, so a clash reads identically in both.
+  const conflicts = conflictingEventIds(events);
 
   const tasks = state.tasks.filter((t) => t.date === iso);
   const remaining = tasks.filter((t) => !t.done).length;
@@ -78,7 +82,12 @@ export function TodayGlance() {
                 className="h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full"
                 style={{ backgroundColor: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
               />
-              <span className="min-w-0 flex-1 truncate text-sm">{event.title}</span>
+              <span className="min-w-0 flex-1 truncate text-sm">
+                {event.title}
+                {conflicts.has(event.id) && (
+                  <span className="ml-1.5 text-[11px] text-[color:var(--clay)]">overlaps</span>
+                )}
+              </span>
             </li>
           ))}
         </ul>

@@ -309,5 +309,11 @@ export function eventPatchToRow(patch: Partial<CalEvent>): TablesUpdate<"events"
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.date !== undefined) row.date = patch.date;
   if (patch.area !== undefined) row.area = patch.area ?? null;
+  // Rescheduling moves the timestamps too. Without these a dragged event would
+  // save its new date while starts_at still pointed at the old day, and the
+  // board (which filters on date) would disagree with the day view (which
+  // sorts on starts_at).
+  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt ?? null;
+  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt ?? null;
   return row;
 }
