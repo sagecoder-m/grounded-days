@@ -11,12 +11,12 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Grounded" },
+      { title: "Sign in — grounded" },
       {
         name: "description",
-        content: "Sign in to Grounded to sync your habits, goals, and plans across devices.",
+        content: "Sign in to grounded to sync your habits, goals, and plans across devices.",
       },
-      { property: "og:title", content: "Sign in — Grounded" },
+      { property: "og:title", content: "Sign in — grounded" },
       { property: "og:description", content: "Keep your gentle systems safe and synced." },
     ],
   }),
@@ -51,7 +51,7 @@ function AuthPage() {
           toast.success("Check your email to confirm your account — take your time.");
           return;
         }
-        toast.success("Welcome to Grounded. Your data is syncing.");
+        toast.success("Welcome to grounded. Your data is syncing.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

@@ -106,7 +106,7 @@ function SharedDashboard({ data }: { data: SharedView }) {
       <header className="mb-8">
         <p className="chip bg-secondary text-ink-soft">Shared with you</p>
         <h1 className="mt-3 font-serif text-4xl">
-          {owner ? `${owner}'s Grounded` : "A Grounded space"}
+          {owner ? `${owner}'s grounded` : "A grounded space"}
         </h1>
         <p className="mt-2 text-ink-soft">
           A read-only look at {data.areas.length === 3 ? "everything" : data.areas.join(" and ")}.
@@ -173,7 +173,7 @@ function SharedDashboard({ data }: { data: SharedView }) {
       )}
 
       <footer className="mt-10 text-center text-xs text-ink-soft">
-        Shared from Grounded · read-only
+        Shared from grounded · read-only
       </footer>
     </Shell>
   );

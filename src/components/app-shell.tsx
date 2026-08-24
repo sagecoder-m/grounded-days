@@ -57,7 +57,7 @@ function Brand({
       </div>
       {variant === "full" && (
         <div>
-          <div className="font-serif text-xl leading-none">Grounded</div>
+          <div className="font-serif text-xl leading-none">grounded</div>
           {subtitle && <div className="mt-1 text-xs text-ink-soft">gently held</div>}
         </div>
       )}

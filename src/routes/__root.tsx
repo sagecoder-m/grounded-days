@@ -52,10 +52,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Grounded — a calm space for habits & goals" },
+      { title: "grounded — a calm space for habits & goals" },
       { name: "description", content: "A gentle, ADHD-friendly personal care platform for building habits across Personal, Professional, and Education." },
-      { name: "author", content: "Grounded" },
-      { property: "og:title", content: "Grounded — calm habits, gently held" },
+      { name: "author", content: "grounded" },
+      { property: "og:title", content: "grounded — calm habits, gently held" },
       { property: "og:description", content: "One clear thing at a time. Track habits, goals, and focus with warmth." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
