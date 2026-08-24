@@ -12,9 +12,6 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@dayflow/core": "3.7.0",
-    "@dayflow/plugin-drag": "1.6.0",
-    "@dayflow/react": "3.7.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
