@@ -22,6 +22,8 @@ import type {
   FocusSession,
   Goal,
   GoalStep,
+  JournalEntry,
+  Mood,
   Habit,
   Project,
   Settings,
@@ -167,6 +169,18 @@ export function rowToCalendarConnection(row: Tables<"calendar_connections">): Ca
     status: row.status as ConnectionStatus,
     statusDetail: row.status_detail ?? undefined,
     lastSyncedAt: row.last_synced_at ?? undefined,
+  };
+}
+
+const MOODS = ["low", "tender", "steady", "good", "wired"] as const;
+
+export function rowToJournalEntry(row: Tables<"journal_entries">): JournalEntry {
+  return {
+    id: row.id,
+    date: row.date,
+    body: row.body,
+    mood: (MOODS as readonly string[]).includes(row.mood ?? "") ? (row.mood as Mood) : undefined,
+    gratitude: row.gratitude ?? undefined,
   };
 }
 

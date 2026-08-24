@@ -10,6 +10,7 @@ import {
   Lock,
   LogOut,
   Menu,
+  NotebookPen,
   RefreshCw,
   Sprout,
   User,
@@ -23,6 +24,7 @@ import { lockNow } from "@/lib/use-passcode";
 const NAV = [
   { to: "/", label: "Overview", icon: Home },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/journal", label: "Journal", icon: NotebookPen },
   { to: "/personal", label: "Personal", icon: Sprout },
   { to: "/professional", label: "Professional", icon: Briefcase },
   { to: "/education", label: "Education", icon: GraduationCap },

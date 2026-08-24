@@ -14,6 +14,7 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProfessionalRouteImport } from './routes/professional'
 import { Route as PersonalRouteImport } from './routes/personal'
+import { Route as JournalRouteImport } from './routes/journal'
 import { Route as EducationRouteImport } from './routes/education'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -44,6 +45,11 @@ const PersonalRoute = PersonalRouteImport.update({
   path: '/personal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JournalRoute = JournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EducationRoute = EducationRouteImport.update({
   id: '/education',
   path: '/education',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
+  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
+  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
+  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
+    | '/journal'
     | '/personal'
     | '/professional'
     | '/profile'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
+    | '/journal'
     | '/personal'
     | '/professional'
     | '/profile'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
+    | '/journal'
     | '/personal'
     | '/professional'
     | '/profile'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   EducationRoute: typeof EducationRoute
+  JournalRoute: typeof JournalRoute
   PersonalRoute: typeof PersonalRoute
   ProfessionalRoute: typeof ProfessionalRoute
   ProfileRoute: typeof ProfileRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PersonalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/journal': {
+      id: '/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof JournalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/education': {
       id: '/education'
       path: '/education'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   EducationRoute: EducationRoute,
+  JournalRoute: JournalRoute,
   PersonalRoute: PersonalRoute,
   ProfessionalRoute: ProfessionalRoute,
   ProfileRoute: ProfileRoute,

@@ -27,6 +27,7 @@ import {
   goalStepsQuery,
   habitLogsQuery,
   habitsQuery,
+  journalQuery,
   projectsQuery,
   settingsQuery,
   subprojectsQuery,
@@ -46,6 +47,8 @@ export type {
   Goal,
   GoalStep,
   Habit,
+  JournalEntry,
+  Mood,
   NavLayout,
   Project,
   Settings,
@@ -62,6 +65,7 @@ const EMPTY_STATE: AppState = {
   goals: [],
   projects: [],
   events: [],
+  journal: [],
   focusSessions: [],
   settings: DEFAULT_SETTINGS,
 };
@@ -87,6 +91,7 @@ export function useAppState(): AppState {
   const projects = useQuery({ ...projectsQuery(userId), enabled });
   const subprojects = useQuery({ ...subprojectsQuery(userId), enabled });
   const events = useQuery({ ...eventsQuery(userId), enabled });
+  const journal = useQuery({ ...journalQuery(userId), enabled });
   const focusSessions = useQuery({ ...focusSessionsQuery(userId), enabled });
   const settings = useQuery({ ...settingsQuery(userId), enabled });
 
@@ -145,6 +150,7 @@ export function useAppState(): AppState {
       goals: composedGoals,
       projects: composedProjects,
       events: events.data ?? [],
+      journal: journal.data ?? [],
       focusSessions: focusSessions.data ?? [],
       settings: settings.data ?? DEFAULT_SETTINGS,
     };
@@ -158,6 +164,7 @@ export function useAppState(): AppState {
     projects.data,
     subprojects.data,
     events.data,
+    journal.data,
     focusSessions.data,
     settings.data,
   ]);

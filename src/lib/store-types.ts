@@ -89,6 +89,18 @@ export interface CalEvent {
   htmlLink?: string;
 }
 
+/** Named rather than numeric on purpose — see the migration. */
+export type Mood = "low" | "tender" | "steady" | "good" | "wired";
+
+export interface JournalEntry {
+  id: string;
+  /** ISO yyyy-mm-dd. One entry per day. */
+  date: string;
+  body: string;
+  mood?: Mood;
+  gratitude?: string;
+}
+
 export type CalendarProvider = "google" | "microsoft";
 
 /** 'needs_reauth' is routine rather than exceptional: Google refresh tokens for
@@ -130,6 +142,7 @@ export interface Settings {
 
 export interface AppState {
   tasks: Task[];
+  journal: JournalEntry[];
   habits: Habit[];
   goals: Goal[];
   projects: Project[];

@@ -16,6 +16,7 @@ import {
   rowToGoal,
   rowToGoalStep,
   rowToHabit,
+  rowToJournalEntry,
   rowToHabitLog,
   rowToProject,
   rowToSettings,
@@ -117,6 +118,19 @@ export function eventsQuery(userId: string) {
     queryFn: async () => {
       const res = await supabase.from("events").select("*").order("date", { ascending: true });
       return unwrap(res).map(rowToEvent);
+    },
+  });
+}
+
+export function journalQuery(userId: string) {
+  return queryOptions({
+    queryKey: qk.journal(userId),
+    queryFn: async () => {
+      const res = await supabase
+        .from("journal_entries")
+        .select("*")
+        .order("date", { ascending: false });
+      return unwrap(res).map(rowToJournalEntry);
     },
   });
 }

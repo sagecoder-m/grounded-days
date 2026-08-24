@@ -18,6 +18,8 @@ import type {
   CalendarProvider,
   CalEvent,
   Goal,
+  JournalEntry,
+  Mood,
   Project,
   Settings,
   Subproject,
@@ -531,6 +533,55 @@ export const actions = {
     const { userId } = requireStoreContext();
     void write([{ key: qk.events(userId), update: listRemove<CalEvent>(id) }], () =>
       supabase.from("events").delete().eq("id", id).eq("source", "local"),
+    );
+  },
+
+  // ----------------------------------------------------------------- journal
+
+  /**
+   * Write today's entry, creating it if this is the first edit of the day.
+   *
+   * An upsert on (user_id, date) rather than create-then-update: the editor
+   * saves on a debounce as you type, and a first keystroke racing its own
+   * follow-up would otherwise produce two rows for one day.
+   */
+  saveJournalEntry(date: string, patch: { body?: string; mood?: Mood | null; gratitude?: string }) {
+    const { userId, queryClient } = requireStoreContext();
+    const existing = (
+      (queryClient.getQueryData(qk.journal(userId)) as JournalEntry[] | undefined) ?? []
+    ).find((e) => e.date === date);
+    const id = existing?.id ?? uuid();
+
+    const merged: JournalEntry = {
+      id,
+      date,
+      body: patch.body ?? existing?.body ?? "",
+      mood: patch.mood === null ? undefined : (patch.mood ?? existing?.mood),
+      gratitude: patch.gratitude ?? existing?.gratitude,
+    };
+
+    void write(
+      [
+        {
+          key: qk.journal(userId),
+          update: (prev: JournalEntry[] | undefined) => {
+            const rest = (prev ?? []).filter((e) => e.date !== date);
+            return [merged, ...rest].sort((a, b) => b.date.localeCompare(a.date));
+          },
+        },
+      ],
+      () =>
+        supabase.from("journal_entries").upsert(
+          {
+            id,
+            user_id: userId,
+            date,
+            body: merged.body,
+            mood: merged.mood ?? null,
+            gratitude: merged.gratitude ?? null,
+          },
+          { onConflict: "user_id,date" },
+        ),
     );
   },
 
