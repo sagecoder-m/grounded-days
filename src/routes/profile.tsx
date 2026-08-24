@@ -35,9 +35,12 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
+/** Also the set of keys that still exist. Anything saved against an older
+ *  layout — "tasks", from when today's work had its own section above "A look
+ *  at today" — is filtered out rather than shown as a switch that toggles
+ *  nothing. */
 const WIDGET_LABELS: Record<string, string> = {
   greeting: "Greeting & date",
-  tasks: "Today's tasks",
   goals: "Area progress",
   chart: "Two-week rhythm chart",
   day: "A look at today",
@@ -205,7 +208,7 @@ function DisplayNameSection({ value }: { value: string }) {
 function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [working, setWorking] = useState<Settings["widgets"] | null>(null);
-  const shown = working ?? widgets;
+  const shown = (working ?? widgets).filter((w) => w.key in WIDGET_LABELS);
 
   function commit(next: Settings["widgets"]) {
     setWorking(null);

@@ -202,7 +202,6 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "greeting", enabled: true },
   { key: "chart", enabled: true },
   { key: "goals", enabled: true },
-  { key: "tasks", enabled: true },
   { key: "day", enabled: true },
   { key: "upcoming", enabled: true },
 ];

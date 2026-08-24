@@ -1,0 +1,70 @@
+/**
+ * Pushes this app's events into a DayFlow calendar after it has been created.
+ *
+ * This hook exists because of a real constraint in DayFlow's React wrapper, not
+ * a preference. `useCalendarApp` builds its CalendarApp inside a useMemo keyed
+ * only on its `version` argument, and the config sync it runs afterwards does
+ * not carry the `events` array across. So the event list DayFlow renders is
+ * whichever one existed on the very first render — which, for anything loaded
+ * from a query, is the empty array. Events arriving a tick later never appear.
+ *
+ * The documented lever is to bump `version` and rebuild, but rebuilding throws
+ * away the CalendarApp's own state: the view the user picked and the month they
+ * had navigated to. Dragging one event would snap them back to today in month
+ * view. So instead we reconcile through DayFlow's imperative event API, which
+ * is what it's for, and the calendar keeps its place.
+ *
+ * Changes are applied with source `"remote"`, which is how DayFlow labels a
+ * mutation that came from a backing store rather than from the UI. That is what
+ * keeps this from looping: a drag writes to Supabase, the query re-reads, this
+ * hook reconciles, and the resulting change is marked remote instead of being
+ * mistaken for a fresh user edit and written back again.
+ */
+import { useEffect } from "react";
+import type { Event as DayFlowEvent, UseCalendarAppReturn } from "@dayflow/core";
+
+/**
+ * Everything a change to an event could alter that DayFlow needs to redraw.
+ * Compared as a string because start/end are Temporal objects, which are only
+ * equal by identity — two PlainDateTimes for the same instant are !== each
+ * other, so a structural comparison would report every event as changed on
+ * every render and never settle.
+ */
+function fingerprint(event: DayFlowEvent): string {
+  return [
+    event.title,
+    String(event.start),
+    String(event.end),
+    String(event.allDay),
+    event.calendarId ?? "",
+    // Joined on NUL rather than a printable separator because no event title
+    // can contain it, so no title can forge a field boundary and make two
+    // different events fingerprint alike. Written as an escape, not a raw
+    // byte: a literal NUL in the source makes git treat the file as binary.
+  ].join("\0");
+}
+
+export function useDayFlowEventSync(calendar: UseCalendarAppReturn, events: DayFlowEvent[]) {
+  useEffect(() => {
+    const existing = calendar.getAllEvents();
+
+    const ours = new Map(events.map((e) => [e.id, e]));
+    const theirs = new Map(existing.map((e) => [e.id, e]));
+
+    const add = events.filter((e) => !theirs.has(e.id));
+    const remove = existing.filter((e) => !ours.has(e.id)).map((e) => e.id);
+    const update = events
+      .filter((e) => {
+        const prev = theirs.get(e.id);
+        return prev && fingerprint(prev) !== fingerprint(e);
+      })
+      .map((e) => ({ id: e.id, updates: e }));
+
+    // Bailing out when there is nothing to do is what makes this safe to run on
+    // every render: applying an empty change set would still notify DayFlow's
+    // subscribers, re-render, and land back here in a loop.
+    if (add.length === 0 && remove.length === 0 && update.length === 0) return;
+
+    calendar.applyEventsChanges({ add, update, delete: remove }, false, "remote");
+  }, [calendar, events]);
+}
