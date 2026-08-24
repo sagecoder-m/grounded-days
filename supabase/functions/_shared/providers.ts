@@ -75,7 +75,17 @@ export function providerConfig(provider: ProviderId): ProviderConfig {
     id: "microsoft",
     authorizeUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    scopes: ["Calendars.Read", "offline_access", "openid", "email", "profile"].join(" "),
+    // Calendars.Read covers only the user's own calendars. Anything another
+    // person shared with them needs Calendars.Read.Shared as well — without it
+    // a shared calendar is invisible rather than empty, which is worse.
+    scopes: [
+      "Calendars.Read",
+      "Calendars.Read.Shared",
+      "offline_access",
+      "openid",
+      "email",
+      "profile",
+    ].join(" "),
     clientId: requireEnv("MICROSOFT_CLIENT_ID"),
     clientSecret: requireEnv("MICROSOFT_CLIENT_SECRET"),
     extraAuthParams: {},
@@ -176,9 +186,53 @@ export async function fetchEvents(
   windowStart: Date,
   windowEnd: Date,
 ): Promise<NormalizedEvent[]> {
-  return provider === "google"
-    ? await fetchGoogleEvents(accessToken, windowStart, windowEnd)
-    : await fetchMicrosoftEvents(accessToken, windowStart, windowEnd);
+  const calendars = await listCalendars(provider, accessToken);
+  const all: NormalizedEvent[] = [];
+  for (const cal of calendars) {
+    const events =
+      provider === "google"
+        ? await fetchGoogleEvents(accessToken, cal.id, windowStart, windowEnd)
+        : await fetchMicrosoftEvents(accessToken, cal.id, windowStart, windowEnd);
+    all.push(...events);
+  }
+  return all;
+}
+
+interface CalendarRef {
+  id: string;
+  name: string;
+}
+
+/**
+ * Every calendar worth reading, not just the default one.
+ *
+ * A shared calendar is a separate calendar id, so reading only "primary" meant
+ * anything shared with the user was silently absent — which looks like a broken
+ * sync rather than a missing scope.
+ *
+ * Google's notion of "selected" is whether the calendar is ticked in their own
+ * calendar UI, which is exactly the right filter: it imports what they actually
+ * look at, and leaves the holiday and birthday calendars they unticked alone.
+ */
+async function listCalendars(provider: ProviderId, accessToken: string): Promise<CalendarRef[]> {
+  if (provider === "google") {
+    const data = await authedJson(
+      "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250",
+      accessToken,
+    );
+    const items = (data.items ?? []) as Record<string, unknown>[];
+    const chosen = items.filter((c) => !c.deleted && (c.selected === true || c.primary === true));
+    // A brand-new account can have nothing marked selected; falling back to
+    // primary beats syncing nothing at all.
+    const list = chosen.length > 0 ? chosen : items.filter((c) => c.primary === true);
+    return list.map((c) => ({ id: String(c.id), name: String(c.summary ?? c.id) }));
+  }
+
+  const data = await authedJson("https://graph.microsoft.com/v1.0/me/calendars", accessToken);
+  return ((data.value ?? []) as Record<string, unknown>[]).map((c) => ({
+    id: String(c.id),
+    name: String(c.name ?? c.id),
+  }));
 }
 
 async function authedJson(
@@ -200,6 +254,7 @@ async function authedJson(
 
 async function fetchGoogleEvents(
   accessToken: string,
+  calendarId: string,
   windowStart: Date,
   windowEnd: Date,
 ): Promise<NormalizedEvent[]> {
@@ -218,7 +273,7 @@ async function fetchGoogleEvents(
     if (pageToken) params.set("pageToken", pageToken);
 
     const data = await authedJson(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
       accessToken,
     );
 
@@ -229,8 +284,12 @@ async function fetchGoogleEvents(
       if (!startRaw) continue;
 
       events.push({
-        externalId: item.id,
-        calendarId: "primary",
+        // Namespaced by calendar: the same event shared into two calendars can
+        // carry the same id, and a bare id would make them collide on the
+        // (connection_id, external_id) unique index — one silently overwriting
+        // the other.
+        externalId: `${calendarId}:${item.id}`,
+        calendarId,
         title: item.summary ?? "(no title)",
         startsAt: allDay ? null : startRaw,
         endsAt: allDay ? null : endRaw,
@@ -249,6 +308,7 @@ async function fetchGoogleEvents(
 
 async function fetchMicrosoftEvents(
   accessToken: string,
+  calendarId: string,
   windowStart: Date,
   windowEnd: Date,
 ): Promise<NormalizedEvent[]> {
@@ -260,7 +320,8 @@ async function fetchMicrosoftEvents(
     $top: "200",
   });
   // calendarView (not /events) is the endpoint that expands recurrence.
-  let url: string | undefined = `https://graph.microsoft.com/v1.0/me/calendarView?${params}`;
+  let url: string | undefined =
+    `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(calendarId)}/calendarView?${params}`;
 
   while (url) {
     // Ask Graph to return timestamps in UTC so parsing needs no tz lookup.
@@ -281,8 +342,8 @@ async function fetchMicrosoftEvents(
       if (!startRaw) continue;
 
       events.push({
-        externalId: item.id,
-        calendarId: "default",
+        externalId: `${calendarId}:${item.id}`,
+        calendarId,
         title: item.subject ?? "(no title)",
         startsAt: allDay ? null : startRaw,
         endsAt: allDay ? null : endRaw,

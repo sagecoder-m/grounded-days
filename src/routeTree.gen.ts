@@ -16,6 +16,7 @@ import { Route as ProfessionalRouteImport } from './routes/professional'
 import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as EducationRouteImport } from './routes/education'
+import { Route as CalendarV2TestRouteImport } from './routes/calendar-v2-test'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssistantRouteImport } from './routes/assistant'
@@ -56,6 +57,11 @@ const EducationRoute = EducationRouteImport.update({
   path: '/education',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarV2TestRoute = CalendarV2TestRouteImport.update({
+  id: '/calendar-v2-test',
+  path: '/calendar-v2-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/calendar-v2-test': typeof CalendarV2TestRoute
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/calendar-v2-test': typeof CalendarV2TestRoute
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/calendar-v2-test': typeof CalendarV2TestRoute
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/calendar-v2-test'
     | '/education'
     | '/journal'
     | '/personal'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/calendar-v2-test'
     | '/education'
     | '/journal'
     | '/personal'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/calendar-v2-test'
     | '/education'
     | '/journal'
     | '/personal'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
+  CalendarV2TestRoute: typeof CalendarV2TestRoute
   EducationRoute: typeof EducationRoute
   JournalRoute: typeof JournalRoute
   PersonalRoute: typeof PersonalRoute
@@ -224,6 +237,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EducationRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar-v2-test': {
+      id: '/calendar-v2-test'
+      path: '/calendar-v2-test'
+      fullPath: '/calendar-v2-test'
+      preLoaderRoute: typeof CalendarV2TestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/calendar': {
       id: '/calendar'
       path: '/calendar'
@@ -260,6 +280,7 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
+  CalendarV2TestRoute: CalendarV2TestRoute,
   EducationRoute: EducationRoute,
   JournalRoute: JournalRoute,
   PersonalRoute: PersonalRoute,

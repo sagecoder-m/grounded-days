@@ -1,6 +1,35 @@
+/*
+ * Layer order is declared before anything else, because the first declaration
+ * is what fixes the order for the whole document.
+ *
+ * The awkward part of this list is `dayflow`, and it earns the explanation.
+ * @dayflow/core ships a fully compiled Tailwind build of its own — 150KB, flat,
+ * and crucially not wrapped in any @layer. Unlayered CSS beats layered CSS
+ * unconditionally, so importing it as-is let DayFlow's private copy of the
+ * Preflight reset outrank this app's utilities *everywhere* on the page:
+ * `button { background-color: transparent; border-radius: 0 }` plus
+ * `* { padding: 0 }` flattened every styled button in the app, not just the
+ * ones near a calendar.
+ *
+ * The fix is not simply "put it last", because the conflict runs both ways.
+ * DayFlow styles its own markup with plain class selectors (.df-header,
+ * .df-view-switcher-btn), and a class selector still loses to an *earlier
+ * layer* no matter how specific it is — so demoting DayFlow below `base` just
+ * swapped which side broke, and the app's Preflight flattened DayFlow's own
+ * view switcher instead.
+ *
+ * So DayFlow sits above Tailwind's `base` (its .df-* rules beat our Preflight)
+ * and below everything we author (`app-base`, `components`, `utilities`), which
+ * means its duplicate Preflight can never touch our markup. `app-base` exists
+ * only to hold this file's own element-level rules above the vendor layer;
+ * without it they would share `base` with Preflight and lose to DayFlow.
+ */
+@layer theme, base, dayflow, app-base, components, utilities;
+
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@dayflow/core/dist/styles.css" layer(dayflow);
 
 /*
  * Fonts are self-hosted rather than loaded from fonts.googleapis.com.
@@ -70,7 +99,11 @@
   --radius-3xl: calc(var(--radius) + 12px);
 
   --font-serif: "Fraunces", ui-serif, Georgia, serif;
-  --font-sans: "Karla", ui-sans-serif, system-ui, sans-serif;
+  /* The stack lives in --font-app-sans, and --font-sans only points at it, so
+     the re-assertion in @layer app-base (which exists because DayFlow's
+     stylesheet also defines --font-sans, generically) cannot drift from it. */
+  --font-app-sans: "Karla", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-app-sans);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -204,7 +237,16 @@
   --radius: 0.875rem;
 }
 
-@layer base {
+/* `app-base`, not `base`: these are element-level rules that must outrank the
+   vendor `dayflow` layer. In `base` they would sit alongside Tailwind's
+   Preflight, below DayFlow, and DayFlow's own Preflight copy would win —
+   turning every border currentColor and dropping the heading weight. */
+@layer app-base {
+  /* DayFlow's stylesheet defines --font-sans as a generic system stack. It sits
+     in a lower layer than this, so re-pointing it here keeps Karla. */
+  :root {
+    --font-sans: var(--font-app-sans);
+  }
   * {
     border-color: var(--color-border);
   }
