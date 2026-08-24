@@ -110,13 +110,37 @@
     color: var(--ink);
   }
 
-  /* Quieter, wider-tracked weekday labels — the calm-typography cue the rest
-     of the app uses for column headers. */
-  .df-day-label {
+  /*
+   * Weekday labels, in one voice across every view.
+   *
+   * DayFlow names them differently per view and styles them differently too:
+   * the month grid's .df-day-label came through at 12px, while the week grid's
+   * .df-week-all-day-weekday-name was 14px sentence-case with no tracking, and
+   * the phone's .df-compact-header-label 10px sentence-case. Three sizes and two
+   * cases for the same seven words, so switching views changed the voice of the
+   * furniture. All three now get the quiet uppercase tracking the rest of the
+   * app uses for column headers, each keeping the size its own density needs.
+   *
+   * Only the treatment is unified, not the wording — the phone's M/Tu/W/Th/F/
+   * Sa/Su is DayFlow's shortest-unambiguous scheme and is set in its markup,
+   * not something CSS should be faking with generated content.
+   */
+  .df-day-label,
+  .df-week-all-day-weekday-name,
+  .df-compact-header-label {
     color: var(--ink-soft);
-    font-size: 0.75rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+  }
+
+  .df-day-label,
+  .df-week-all-day-weekday-name {
+    font-size: 0.75rem;
+  }
+
+  /* Smaller because seven of them share a phone's width. */
+  .df-compact-header-label {
+    font-size: 0.625rem;
   }
 
   /* Pill controls, like the nav chips and buttons everywhere else. */
@@ -128,6 +152,30 @@
   /* Event chips pick up the app's softer corner rather than a 4px radius. */
   .df-event {
     border-radius: var(--radius-sm);
+  }
+
+  /*
+   * Text and icons that DayFlow paints with literal cool greys rather than
+   * through its own --df-color-* variables, so the palette mapping never
+   * reached them: the view switcher (gray-600, gray-900 when active), the
+   * prev/Today/next buttons (gray-700), the + and search icons (gray-500) and
+   * the hour numbers down the time axis (#5a5a5a).
+   *
+   * Individually almost invisible; together they were a row of cold grey
+   * furniture sitting on warm beige, which is the kind of mismatch that reads
+   * as "not quite ours" without being obvious enough to point at.
+   */
+  .df-view-switcher-btn,
+  .df-icon-btn,
+  .df-time-axis-num {
+    color: var(--ink-soft);
+  }
+
+  .df-view-switcher-btn[data-active="true"],
+  .df-nav-button,
+  .df-today-button,
+  .df-mini-calendar-month-label {
+    color: var(--ink);
   }
 
   /*
