@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { track } from "@/lib/telemetry";
 import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -96,6 +97,7 @@ function AssistantPage() {
     setBusy(true);
 
     try {
+      track("assistant_message");
       const { data, error: fnError } = await supabase.functions.invoke("ai-chat", {
         body: { messages: next },
       });

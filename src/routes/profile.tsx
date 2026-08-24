@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   actions,
   deleteAllUserData,
@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PasscodeSettings } from "@/components/passcode-settings";
+import { useIsAdmin } from "@/lib/use-is-admin";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ShareLinksSection } from "@/components/share-links";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
@@ -68,6 +69,32 @@ const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
   { key: "tan", label: "Tan", swatch: "var(--tan)" },
 ];
 
+/**
+ * Only rendered for the HQ account — everyone else's Profile has no admin tab
+ * and no hint one exists. The hook's query returns their own admin_users row
+ * or nothing; the portal itself re-checks server-side.
+ */
+function AdminSection() {
+  const { isAdmin } = useIsAdmin();
+  if (!isAdmin) return null;
+  return (
+    <section className="card-soft flex flex-wrap items-center justify-between gap-3 p-6">
+      <div>
+        <h2 className="font-serif text-2xl">Admin</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Pilot dashboard — usage, errors, and tester accounts.
+        </p>
+      </div>
+      <Link
+        to="/admin"
+        className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground"
+      >
+        Open HQ
+      </Link>
+    </section>
+  );
+}
+
 function ProfilePage() {
   const settings = useAppState().settings;
 
@@ -80,6 +107,8 @@ function ProfilePage() {
           Adjust the space so it feels comfortable. Nothing here is permanent.
         </p>
       </header>
+
+      <AdminSection />
 
       <DisplayNameSection value={settings.displayName} />
 

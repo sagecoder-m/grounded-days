@@ -41,6 +41,8 @@ import {
   type ProjectBase,
   type SubprojectWithParent,
 } from "./mappers";
+// Only ever called with a fixed event name — no titles or content pass through.
+import { track } from "@/lib/telemetry";
 
 const uuid = () => crypto.randomUUID();
 
@@ -139,6 +141,7 @@ export const actions = {
   // ------------------------------------------------------------------- tasks
 
   addTask(input: Omit<Task, "id" | "done" | "createdAt">) {
+    track("task_add");
     const { userId } = requireStoreContext();
     const id = uuid();
     const optimistic: Task = { ...input, id, done: false, createdAt: Date.now() };
@@ -158,6 +161,7 @@ export const actions = {
   },
 
   toggleTask(id: string) {
+    track("task_toggle");
     const { userId, queryClient } = requireStoreContext();
     const current = (queryClient.getQueryData(qk.tasks(userId)) as Task[] | undefined)?.find(
       (t) => t.id === id,
@@ -185,6 +189,7 @@ export const actions = {
   // ------------------------------------------------------------------ habits
 
   addHabit(name: string) {
+    track("habit_add");
     const { userId } = requireStoreContext();
     const id = uuid();
     const optimistic: HabitBase = { id, name, createdAt: Date.now() };
@@ -258,6 +263,7 @@ export const actions = {
    * constraint make rapid double-taps harmless.
    */
   toggleHabit(id: string, date: string) {
+    track("habit_toggle");
     const { userId, queryClient } = requireStoreContext();
     const logs =
       (queryClient.getQueryData(qk.habitLogs(userId)) as HabitLogEntry[] | undefined) ?? [];
@@ -297,6 +303,7 @@ export const actions = {
   // ------------------------------------------------------------------- goals
 
   addGoal(input: Omit<Goal, "id" | "progress" | "steps"> & { progress?: number }) {
+    track("goal_add");
     const { userId } = requireStoreContext();
     const id = uuid();
     const progress = input.progress ?? 0;
@@ -505,6 +512,7 @@ export const actions = {
   // write to them outright, so these three only ever handle local events —
   // callers must not offer edit affordances on a synced event.
   addEvent(input: Omit<CalEvent, "id" | "source" | "allDay">) {
+    track("event_add");
     const { userId } = requireStoreContext();
     const id = uuid();
     const optimistic: CalEvent = { ...input, id, source: "local", allDay: true };
@@ -522,6 +530,7 @@ export const actions = {
   },
 
   updateEvent(id: string, patch: Partial<CalEvent>) {
+    track("event_move");
     const { userId } = requireStoreContext();
     void write([{ key: qk.events(userId), update: listPatch<CalEvent>(id, patch) }], () =>
       supabase.from("events").update(eventPatchToRow(patch)).eq("id", id).eq("source", "local"),
@@ -545,6 +554,7 @@ export const actions = {
    * follow-up would otherwise produce two rows for one day.
    */
   saveJournalEntry(date: string, patch: { body?: string; mood?: Mood | null; gratitude?: string }) {
+    track("journal_entry_add");
     const { userId, queryClient } = requireStoreContext();
     const existing = (
       (queryClient.getQueryData(qk.journal(userId)) as JournalEntry[] | undefined) ?? []
@@ -642,6 +652,7 @@ export const actions = {
   // ---------------------------------------------------------------- focus
 
   logFocus(label: string, minutes: number) {
+    track("focus_session");
     const { userId } = requireStoreContext();
     const id = uuid();
     const completedAt = Date.now();

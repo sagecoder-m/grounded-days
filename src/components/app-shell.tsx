@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Briefcase,
@@ -21,6 +21,7 @@ import { useApp, useSyncStatus } from "@/lib/store";
 import { useSession } from "@/lib/use-session";
 import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
+import { installErrorReporting, track } from "@/lib/telemetry";
 
 const NAV = [
   { to: "/", label: "Overview", icon: Home },
@@ -78,6 +79,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   // Collapsing is a per-session preference, not worth a round trip to store.
   const [railCollapsed, setRailCollapsed] = useState(false);
+
+  // Telemetry lives here because AppShell only mounts behind the passcode gate:
+  // a page_view can never fire for a locked or signed-out screen. track() sends
+  // the route name only — see telemetry.ts for the full privacy contract.
+  useEffect(() => {
+    installErrorReporting();
+    track("page_view");
+  }, [pathname]);
 
   const topLayout = settings.navLayout === "top";
 

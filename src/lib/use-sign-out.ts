@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { setStoreContext } from "./db/context";
 import { lockNow } from "./use-passcode";
+import { resetTelemetry } from "./telemetry";
 
 /**
  * The single sign-out path, shared by the sidebar account box and the lock
@@ -21,6 +22,7 @@ export function useSignOut() {
     queryClient.clear();
     lockNow();
     setStoreContext(null);
+    resetTelemetry();
     await supabase.auth.signOut();
     router.navigate({ to: "/auth", replace: true });
   }, [queryClient, router]);
