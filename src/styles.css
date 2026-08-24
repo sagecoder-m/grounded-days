@@ -23,6 +23,11 @@
  * means its duplicate Preflight can never touch our markup. `app-base` exists
  * only to hold this file's own element-level rules above the vendor layer;
  * without it they would share `base` with Preflight and lose to DayFlow.
+ *
+ * The import sits here rather than in the calendar route because moving it
+ * there buys nothing: TanStack Start hoists route CSS onto __root__, so the
+ * sheet is linked on every page regardless. Measured both ways — same bytes on
+ * first paint, one fewer file this way.
  */
 @layer theme, base, dayflow, app-base, components, utilities;
 
@@ -30,6 +35,9 @@
 @source "../src";
 @import "tw-animate-css";
 @import "@dayflow/core/dist/styles.css" layer(dayflow);
+/* Must follow the line above: it re-points DayFlow's palette at this app's
+   tokens, and it can only do that from a later layer. */
+@import "./dayflow-theme.css";
 
 /*
  * Fonts are self-hosted rather than loaded from fonts.googleapis.com.

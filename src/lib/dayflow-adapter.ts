@@ -6,17 +6,30 @@
  * 1. Each Grounded *area* becomes its own DayFlow calendar (`personal`,
  *    `professional`, `education`), so DayFlow's own area-colour rendering
  *    replaces the dotColor() lookup the hand-rolled board used to do by hand.
- *    A synced provider becomes its own read-only calendar per connection
- *    (`google:<connectionId>`, `microsoft:<connectionId>`), which is what
- *    DayFlow's own permission resolver reads to disable dragging — no
- *    per-item isSynced() check needed at render time, the library enforces it.
+ *    Each synced *provider* becomes one read-only calendar (`google`,
+ *    `microsoft`), which is what DayFlow's own permission resolver reads to
+ *    disable dragging — no per-item isSynced() check needed at render time,
+ *    the library enforces it.
+ *
+ *    Per provider, not per connection, because CalEvent only records which
+ *    provider an event came from (`source`) and not which account. Splitting
+ *    two connected Google accounts into separate calendars would need a
+ *    connection id on the event row first; until then a second Google account
+ *    joins the same read-only bucket, which affects only the calendar's label,
+ *    never whether the event is locked.
  *
  * 2. Tasks are not represented as DayFlow events. DayFlow has no concept of
  *    "done", and forcing a checklist item into an event model to get it drawn
  *    on a grid is the wrong direction — tasks render in their own list beside
  *    the calendar, the same split the Overview day view already uses.
  */
-import { dateToPlainDateTime, plainDateTimeToDate } from "@dayflow/react";
+import {
+  dateToPlainDate,
+  dateToPlainDateTime,
+  isPlainDate,
+  plainDateTimeToDate,
+  plainDateToDate,
+} from "@dayflow/react";
 import type { CalendarType, Event as DayFlowEvent } from "@dayflow/core";
 
 import type { Area, CalEvent } from "@/lib/store-types";
@@ -34,10 +47,7 @@ const UNASSIGNED_COLOR = { eventColor: "var(--tan)", lineColor: "var(--ink-soft)
 
 export function calendarIdFor(event: CalEvent): string {
   if (event.source === "local") return event.area ?? "unassigned";
-  // One calendar per synced connection, not per provider: two connected
-  // Google accounts must not merge into one read-only bucket that hides which
-  // account an event actually came from.
-  return `${event.source}`;
+  return event.source;
 }
 
 /**
@@ -58,16 +68,30 @@ export function buildCalendarTypes(connections: CalendarConnection[]): CalendarT
     colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
   };
 
-  const syncedCalendars: CalendarType[] = connections.map((conn) => ({
-    id: conn.provider,
-    name: conn.provider === "google" ? "Google Calendar" : "Outlook Calendar",
-    colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
-    // This is the actual lockdown: DayFlow's permission resolver checks this
-    // per-calendar flag before allowing a drag, so a synced event cannot be
-    // moved even though rendering treats it like any other event.
-    readOnly: true,
-    source: conn.provider === "google" ? "Google Calendar" : "Outlook Calendar",
-  }));
+  // Deduplicated by provider, because calendarIdFor() resolves a synced event
+  // to its provider. Mapping connections straight through would emit two
+  // calendars sharing the id "google" the moment a second Google account is
+  // connected, and a registry with duplicate ids has no defined winner.
+  const providers = [...new Set(connections.map((conn) => conn.provider))];
+
+  const syncedCalendars: CalendarType[] = providers.map((provider) => {
+    const label = provider === "google" ? "Google Calendar" : "Outlook Calendar";
+    const forProvider = connections.filter((conn) => conn.provider === provider);
+    // The account email is only informative while it is unambiguous; with two
+    // accounts in one bucket, naming one of them would be actively misleading.
+    const single = forProvider.length === 1 ? forProvider[0].accountEmail : undefined;
+
+    return {
+      id: provider,
+      name: single ? `${label} (${single})` : label,
+      colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
+      // This is the actual lockdown: DayFlow's permission resolver checks this
+      // per-calendar flag before allowing a drag, so a synced event cannot be
+      // moved even though rendering treats it like any other event.
+      readOnly: true,
+      source: label,
+    };
+  });
 
   return [...areaCalendars, unassigned, ...syncedCalendars];
 }
@@ -83,12 +107,14 @@ export function toDayFlowEvent(event: CalEvent): DayFlowEvent {
   return {
     id: event.id,
     title: event.title,
-    // allDay events use PlainDate (date only); timed events use PlainDateTime.
-    // Both come from DayFlow's own converters rather than hand-built Temporal
-    // objects, so there is no risk of an instance mismatch against whatever
-    // Temporal polyfill version @dayflow/core bundles internally.
-    start: event.allDay ? dateToPlainDateTime(start) : dateToPlainDateTime(start),
-    end: event.allDay ? dateToPlainDateTime(end) : dateToPlainDateTime(end),
+    // All-day events use PlainDate, which is how DayFlow's model expresses "no
+    // meaningful instant" — the same thing CalEvent means by a null startsAt.
+    // Timed events use PlainDateTime. Both come from DayFlow's own converters
+    // rather than hand-built Temporal objects, so there is no risk of an
+    // instance mismatch against whatever Temporal polyfill version
+    // @dayflow/core bundles internally.
+    start: event.allDay ? dateToPlainDate(start) : dateToPlainDateTime(start),
+    end: event.allDay ? dateToPlainDate(end) : dateToPlainDateTime(end),
     allDay: event.allDay,
     calendarId: calendarIdFor(event),
     meta: { groundedId: event.id, source: event.source, htmlLink: event.htmlLink },
@@ -102,12 +128,18 @@ export function fromDayFlowEvent(event: DayFlowEvent): {
   startsAt?: string;
   endsAt?: string;
 } {
-  const start = plainDateTimeToDate(event.start as never);
-  const end = plainDateTimeToDate(event.end as never);
+  // Branch on the Temporal type rather than on event.allDay, because after a
+  // drag the two can disagree: DayFlow rewrites start/end when an event is
+  // dropped between the all-day strip and the time grid, and passing a
+  // PlainDate to plainDateTimeToDate throws rather than degrading.
+  const toDate = (value: DayFlowEvent["start"]) =>
+    isPlainDate(value) ? plainDateToDate(value) : plainDateTimeToDate(value as never);
+
+  const start = toDate(event.start);
   const date = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(
     start.getDate(),
   ).padStart(2, "0")}`;
 
-  if (event.allDay) return { date };
-  return { date, startsAt: start.toISOString(), endsAt: end.toISOString() };
+  if (isPlainDate(event.start)) return { date };
+  return { date, startsAt: start.toISOString(), endsAt: toDate(event.end).toISOString() };
 }

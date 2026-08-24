@@ -1,0 +1,132 @@
+/*
+ * Makes DayFlow look like it belongs to Grounded rather than to Tailwind's
+ * default palette. Out of the box its chrome is white cards, #e5e5e5 rules and
+ * a near-black "today" dot, which reads as a control panel bolted onto a calm
+ * earth-toned app.
+ *
+ * Two halves, and the split matters:
+ *
+ * 1. The variable mapping below does most of the work. DayFlow namespaces its
+ *    entire palette as --df-color-*, so pointing those at this app's *semantic*
+ *    tokens — var(--card), var(--primary) — rather than at literal colours
+ *    means the calendar inherits everything the tokens already carry: the .dark
+ *    override block and the [data-accent] variants chosen in Profile both flow
+ *    through for free. Hard-coding oklch values here would have frozen the
+ *    calendar in light sage while the rest of the app changed around it.
+ *
+ * 2. The structural rules only cover what no variable can reach: the serif
+ *    heading face, corner radii, and the soft shadow. Deliberately short —
+ *    every rule here is a thing that breaks if DayFlow renames a class, so the
+ *    list is kept to what visibly matters.
+ *
+ * Both halves sit above the `dayflow` layer (see src/styles.css for why that
+ * layer exists), which is what lets a plain :root declaration here beat
+ * DayFlow's own :root and its prefers-color-scheme block.
+ */
+
+@layer app-base {
+  :root {
+    /* Surfaces. The calendar body becomes the cream card colour, so the grid
+       sits on the same surface as every other panel in the app. */
+    --df-color-background: var(--card);
+    --df-color-card: var(--card);
+    --df-color-card-foreground: var(--card-foreground);
+    --df-color-foreground: var(--foreground);
+
+    /* Tan rules instead of neutral grey — the single biggest tell. */
+    --df-color-border: var(--border);
+    --df-color-hover: var(--accent);
+
+    /* Switcher track, "no events" text, secondary labels. */
+    --df-color-muted: var(--secondary);
+    --df-color-muted-foreground: var(--muted-foreground);
+
+    /* Drives the today marker and selected states, so this is what turns the
+       near-black dot sage (or clay/brown, per the Profile accent). */
+    --df-color-primary: var(--primary);
+    --df-color-primary-foreground: var(--primary-foreground);
+    --df-color-secondary: var(--brown);
+    --df-color-secondary-foreground: var(--primary-foreground);
+
+    --df-color-destructive: var(--destructive);
+    --df-color-destructive-foreground: var(--destructive-foreground);
+    --df-color-ring: var(--ring);
+
+    /* Year-view density ramp. DayFlow ships a blue scale; this walks the sage
+       family instead so a dense month reads as "full", not "alert". */
+    --df-heat-1: var(--sage-soft);
+    --df-heat-2: oklch(0.83 0.038 131);
+    --df-heat-3: oklch(0.762 0.047 132);
+    --df-heat-4: var(--sage);
+    --df-heat-5: var(--sage-deep);
+
+    /* Portaled UI — context menus and the range picker render outside the
+       calendar wrapper, so these have to be mapped too or a right-click drops
+       a slate-900 panel into the middle of a beige page. */
+    --df-context-menu-background: var(--popover);
+    --df-context-menu-border: var(--border);
+    --df-context-menu-foreground: var(--popover-foreground);
+    --df-context-menu-primary: var(--primary);
+    --df-context-menu-primary-foreground: var(--primary-foreground);
+    --df-context-menu-destructive: var(--destructive);
+    --df-context-menu-destructive-foreground: var(--destructive-foreground);
+    --df-context-menu-swatch-border: var(--border);
+    --df-context-menu-swatch-ring: oklch(0.352 0.02 66 / 0.25);
+
+    --df-range-picker-background: var(--popover);
+    --df-range-picker-border: var(--border);
+    --df-range-picker-foreground: var(--popover-foreground);
+    --df-range-picker-muted: var(--muted-foreground);
+    --df-range-picker-primary: var(--primary);
+    --df-range-picker-primary-foreground: var(--primary-foreground);
+  }
+}
+
+@layer components {
+  /* DayFlow ships a hard 800px height, which spills out of whatever box the
+     page gives it. Filling the parent instead puts the sizing decision back
+     where it belongs — the container that knows the page layout. Callers must
+     therefore give the wrapping element a height. */
+  .df-calendar-wrapper,
+  .df-calendar-container {
+    height: 100%;
+  }
+
+  /* The calendar becomes a panel like any other, matching card-soft. */
+  .df-calendar-container {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-soft);
+    /* The grid draws its own edge-to-edge rules, which would otherwise square
+       off the rounded corners. */
+    overflow: hidden;
+  }
+
+  /* "August 2026" in Fraunces, matching every other heading in the app. */
+  .df-view-header-title {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  /* Quieter, wider-tracked weekday labels — the calm-typography cue the rest
+     of the app uses for column headers. */
+  .df-day-label {
+    color: var(--ink-soft);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Pill controls, like the nav chips and buttons everywhere else. */
+  .df-view-switcher,
+  .df-view-switcher-btn {
+    border-radius: 9999px;
+  }
+
+  /* Event chips pick up the app's softer corner rather than a 4px radius. */
+  .df-event {
+    border-radius: var(--radius-sm);
+  }
+}
