@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { CalendarBoard } from "@/components/calendar-board";
+import { CalendarDayFlow } from "@/components/calendar-dayflow";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({
@@ -26,7 +26,7 @@ function CalendarPage() {
           Everything scheduled, in one quiet place. Week, month, or the whole year.
         </p>
       </header>
-      <CalendarBoard tall heading="Schedule" />
+      <CalendarDayFlow heading="Schedule" />
     </div>
   );
 }
