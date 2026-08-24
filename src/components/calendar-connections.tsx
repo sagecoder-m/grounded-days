@@ -114,7 +114,7 @@ export function CalendarConnectionsSection() {
       </div>
 
       <p className="text-sm text-ink-soft max-w-lg">
-        Bring your real schedule alongside your tasks. Events come in read-only — Grounded never
+        Bring your real schedule alongside your tasks. Events come in read-only — grounded never
         changes anything in Google or Outlook.
       </p>
 

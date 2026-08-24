@@ -38,7 +38,7 @@ const ALLOWED_TABLES = [
 
 const DENIED_TABLES = ["journal_entries", "user_security", "calendar_credentials"] as const;
 
-const SYSTEM_PROMPT = `You are the assistant inside Grounded, a calm personal planning app used by someone with ADHD.
+const SYSTEM_PROMPT = `You are the assistant inside grounded, a calm personal planning app used by someone with ADHD.
 
 How to be useful here:
 - Suggest the next small concrete step, not a system to adopt. One clear thing beats a complete plan.
@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
         // OpenRouter asks for these to attribute traffic; they are not secret.
         "HTTP-Referer": Deno.env.get("APP_BASE_URL") ?? "https://grounded-days.vercel.app",
-        "X-Title": "Grounded",
+        "X-Title": "grounded",
       },
       body: JSON.stringify({
         model,

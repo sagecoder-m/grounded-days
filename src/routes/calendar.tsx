@@ -5,9 +5,9 @@ import { CalendarBoard } from "@/components/calendar-board";
 export const Route = createFileRoute("/calendar")({
   head: () => ({
     meta: [
-      { title: "Calendar — Grounded" },
-      { name: "description", content: "A calm week, month, and year view of your tasks and events in Grounded." },
-      { property: "og:title", content: "Calendar — Grounded" },
+      { title: "Calendar — grounded" },
+      { name: "description", content: "A calm week, month, and year view of your tasks and events in grounded." },
+      { property: "og:title", content: "Calendar — grounded" },
       { property: "og:description", content: "See your week, month, and year at a glance — gently." },
     ],
   }),
