@@ -129,4 +129,19 @@
   .df-event {
     border-radius: var(--radius-sm);
   }
+
+  /*
+   * The compact header — the date strip DayFlow swaps in on narrow screens —
+   * fills its selected-day pill with --df-color-foreground. Upstream that is
+   * the same near-black as --df-color-primary, so "selected" and "today" read
+   * as one colour and the choice is invisible. Here the two diverge: primary
+   * became sage and foreground became ink, so the phone showed a hard dark
+   * brown pill while the month grid marked today in sage — the same day styled
+   * two ways depending on screen width. Sage is the app's active colour
+   * everywhere else, so the pill follows it.
+   */
+  .df-compact-header-date-pill[data-selected="true"] {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
 }
