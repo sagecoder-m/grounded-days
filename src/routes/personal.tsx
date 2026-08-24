@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useMounted } from "@/lib/use-mounted";
+import { toast } from "sonner";
 import { InlineText } from "@/components/inline-text";
 import {
   Line,
@@ -84,7 +85,8 @@ function PersonalPage() {
             <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
           ) : (
             <>
-              <div className="hidden md:grid grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 mb-2 text-[10px] uppercase text-ink-soft tracking-widest">
+              {/* Wide screens: one header row across the whole table. */}
+              <div className="mb-2 hidden grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 text-[10px] uppercase tracking-widest text-ink-soft md:grid">
                 <div>Habit</div>
                 {days.map((d) => (
                   <div key={d.toISOString()} className="text-center">
@@ -93,11 +95,21 @@ function PersonalPage() {
                 ))}
                 <div />
               </div>
+
+              {/* Narrow screens: the dots wrap below each habit name, so the day
+                  letters go here instead. The transparent border and matching
+                  padding make this line up with the cards below to the pixel —
+                  without labels the seven circles are unreadable. */}
+              <div className="mb-1 grid grid-cols-7 gap-2 rounded-2xl border border-transparent px-3 text-center text-[10px] uppercase tracking-widest text-ink-soft md:hidden">
+                {days.map((d) => (
+                  <div key={d.toISOString()}>{format(d, "EEEEE")}</div>
+                ))}
+              </div>
               <div className="space-y-2">
                 {state.habits.map((h) => (
                   <div
                     key={h.id}
-                    className="group grid grid-cols-[1fr_auto] md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] items-center gap-2 rounded-2xl border border-border bg-background px-3 py-2"
+                    className="group grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 rounded-2xl border border-border bg-background px-3 py-2 md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] md:gap-2"
                   >
                     <InlineText
                       value={h.name}
@@ -144,9 +156,25 @@ function PersonalPage() {
                       })}
                     </div>
                     <button
-                      onClick={() => actions.deleteHabit(h.id)}
-                      className="opacity-0 group-hover:opacity-100 text-ink-soft hover:text-[color:var(--clay)] p-1"
-                      aria-label="Remove"
+                      onClick={() => {
+                        // Capture the logged days before they go, so Undo can
+                        // put the history back and not just the name.
+                        const dates = Object.keys(h.log).filter((d) => h.log[d]);
+                        const name = h.name;
+                        actions.deleteHabit(h.id);
+                        toast(`"${name}" removed`, {
+                          description:
+                            dates.length > 0
+                              ? `${dates.length} logged ${dates.length === 1 ? "day" : "days"} went with it.`
+                              : undefined,
+                          action: {
+                            label: "Undo",
+                            onClick: () => actions.restoreHabit(name, dates),
+                          },
+                        });
+                      }}
+                      className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
+                      aria-label={`Remove habit "${h.name}"`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -348,7 +376,7 @@ function PersonalProject({ projectId, name }: { projectId: string; name: string 
           />
           <button
             onClick={() => actions.deleteProject(projectId)}
-            className="p-1 text-ink-soft opacity-0 transition-opacity group-hover:opacity-100 hover:text-[color:var(--clay)]"
+            className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
             aria-label={`Delete project "${name}"`}
           >
             <Trash2 className="h-4 w-4" />

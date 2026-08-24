@@ -192,6 +192,43 @@ export const actions = {
     );
   },
 
+  /**
+   * Put back a deleted habit along with its completion history.
+   *
+   * Deleting a habit takes weeks of logged days with it, and the control that
+   * does it sits one tap from the habit's name. An undo is a better answer than
+   * a confirmation dialog: it keeps deleting as quick as it should be, and
+   * matches an app whose whole premise is that nothing here is permanent.
+   *
+   * The habit comes back under a new id — the rows are gone, not archived — so
+   * this is a faithful restore rather than a true reversal.
+   */
+  restoreHabit(name: string, dates: string[]) {
+    const { userId } = requireStoreContext();
+    const id = uuid();
+    const optimistic: HabitBase = { id, name, createdAt: Date.now() };
+    void write(
+      [
+        { key: qk.habits(userId), update: listAdd(optimistic) },
+        {
+          key: qk.habitLogs(userId),
+          update: (prev: HabitLogEntry[] | undefined) => [
+            ...(prev ?? []),
+            ...dates.map((date) => ({ habitId: id, date })),
+          ],
+        },
+      ],
+      async () => {
+        const created = await supabase.from("habits").insert({ id, user_id: userId, name });
+        if (created.error) return created;
+        if (dates.length === 0) return created;
+        return await supabase
+          .from("habit_logs")
+          .insert(dates.map((date) => ({ user_id: userId, habit_id: id, date })));
+      },
+    );
+  },
+
   updateHabit(id: string, patch: Partial<{ name: string }>) {
     const { userId } = requireStoreContext();
     void write([{ key: qk.habits(userId), update: listPatch<HabitBase>(id, patch) }], () =>

@@ -85,7 +85,7 @@ function TaskTile({ task }: { task: Task }) {
       <button
         onClick={() => actions.deleteTask(task.id)}
         aria-label={`Delete "${task.title}"`}
-        className="absolute right-1.5 bottom-1.5 rounded-lg p-1.5 text-ink-soft opacity-0 transition-opacity group-hover:opacity-100 hover:text-[color:var(--clay)]"
+        className="reveal-control absolute right-1.5 bottom-1.5 rounded-lg p-1.5 text-ink-soft hover:text-[color:var(--clay)]"
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>

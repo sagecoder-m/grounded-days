@@ -22,9 +22,9 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("./fonts/fraunces-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Fraunces";
@@ -32,9 +32,10 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("./fonts/fraunces-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
-    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
-    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 @font-face {
   font-family: "Karla";
@@ -42,9 +43,9 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("./fonts/karla-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Karla";
@@ -52,9 +53,10 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("./fonts/karla-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
-    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
-    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 
 @custom-variant dark (&:is(.dark *));
@@ -118,20 +120,20 @@
   --radius: 1.125rem;
 
   /* Earth tone palette (converted to oklch approximations of the hex spec) */
-  --beige: oklch(0.933 0.021 82);        /* #EFE9DD */
-  --cream: oklch(0.955 0.020 84);        /* #F8F4EB */
-  --surface-2: oklch(0.907 0.028 82);    /* #EDE4D3 */
-  --tan: oklch(0.828 0.041 82);          /* #D9CBB2 */
-  --sage: oklch(0.678 0.055 132);        /* #8CA382 */
-  --sage-deep: oklch(0.575 0.052 133);   /* #6E8664 */
-  --sage-soft: oklch(0.891 0.031 130);   /* #DDE5D6 */
-  --clay: oklch(0.708 0.077 62);         /* #C29A76 */
-  --clay-soft: oklch(0.891 0.034 70);    /* #EBDCCB */
-  --brown: oklch(0.643 0.045 68);        /* #A98E6F */
-  --brown-soft: oklch(0.885 0.029 72);   /* #E7DCCB */
-  --ink: oklch(0.352 0.020 66);          /* #4B4237 */
-  --ink-soft: oklch(0.548 0.030 74);     /* #857763 */
-  --border-c: oklch(0.868 0.026 82);     /* #E2D8C6 */
+  --beige: oklch(0.933 0.021 82); /* #EFE9DD */
+  --cream: oklch(0.955 0.02 84); /* #F8F4EB */
+  --surface-2: oklch(0.907 0.028 82); /* #EDE4D3 */
+  --tan: oklch(0.828 0.041 82); /* #D9CBB2 */
+  --sage: oklch(0.678 0.055 132); /* #8CA382 */
+  --sage-deep: oklch(0.575 0.052 133); /* #6E8664 */
+  --sage-soft: oklch(0.891 0.031 130); /* #DDE5D6 */
+  --clay: oklch(0.708 0.077 62); /* #C29A76 */
+  --clay-soft: oklch(0.891 0.034 70); /* #EBDCCB */
+  --brown: oklch(0.643 0.045 68); /* #A98E6F */
+  --brown-soft: oklch(0.885 0.029 72); /* #E7DCCB */
+  --ink: oklch(0.352 0.02 66); /* #4B4237 */
+  --ink-soft: oklch(0.548 0.03 74); /* #857763 */
+  --border-c: oklch(0.868 0.026 82); /* #E2D8C6 */
 
   --background: var(--beige);
   --foreground: var(--ink);
@@ -188,7 +190,7 @@
   --primary: var(--brown);
   --ring: var(--brown);
   --accent: var(--brown-soft);
-  --accent-foreground: oklch(0.40 0.03 68);
+  --accent-foreground: oklch(0.4 0.03 68);
   --sidebar-primary: var(--brown);
   --gradient-sage: linear-gradient(90deg, oklch(0.48 0.03 68), var(--brown));
 }
@@ -206,13 +208,18 @@
   * {
     border-color: var(--color-border);
   }
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4, h5 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
     font-family: var(--font-serif);
     font-weight: 500;
     letter-spacing: -0.01em;
@@ -247,4 +254,36 @@
 }
 [data-density="comfy"] .density-p {
   padding: 1.25rem;
+}
+
+/*
+ * Controls that fade in on hover.
+ *
+ * The hidden state must also be unclickable. CSS opacity does not affect hit
+ * testing, so an invisible delete button still deletes — which is exactly how
+ * the demo account kept losing its habits: a phone has no hover, so the button
+ * never appeared, but it sat at the edge of every row waiting to be tapped.
+ *
+ * On anything without a fine pointer the control is simply always visible,
+ * because a reveal-on-hover affordance cannot be revealed at all.
+ */
+.reveal-control {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-control {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+
+  .group:hover .reveal-control,
+  .group\/step:hover .reveal-control,
+  .group\/inline:hover .reveal-control,
+  .reveal-control:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }

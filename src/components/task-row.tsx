@@ -28,7 +28,10 @@ interface Props {
 }
 
 export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: Props) {
-  const overdue = task.date && !task.done && isBefore(parseISO(task.date), new Date(new Date().setHours(0, 0, 0, 0)));
+  const overdue =
+    task.date &&
+    !task.done &&
+    isBefore(parseISO(task.date), new Date(new Date().setHours(0, 0, 0, 0)));
   return (
     <div
       className={cn(
@@ -44,10 +47,17 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
       <div className="min-w-0 flex-1">
         {readOnly ? (
           <>
-            <div className={cn("text-sm font-medium leading-snug", task.done && "line-through decoration-1")}>
+            <div
+              className={cn(
+                "text-sm font-medium leading-snug",
+                task.done && "line-through decoration-1",
+              )}
+            >
               {task.title}
             </div>
-            {task.description && <div className="text-xs text-ink-soft mt-0.5">{task.description}</div>}
+            {task.description && (
+              <div className="text-xs text-ink-soft mt-0.5">{task.description}</div>
+            )}
           </>
         ) : (
           <>
@@ -55,7 +65,10 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
               value={task.title}
               onSave={(v) => v && actions.updateTask(task.id, { title: v })}
               showIcon
-              className={cn("text-sm font-medium leading-snug", task.done && "line-through decoration-1")}
+              className={cn(
+                "text-sm font-medium leading-snug",
+                task.done && "line-through decoration-1",
+              )}
             />
             <InlineText
               value={task.description ?? ""}
@@ -69,13 +82,22 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           {showArea && <AreaChip area={task.area} />}
           {task.date && readOnly && (
-            <span suppressHydrationWarning className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
+            <span
+              suppressHydrationWarning
+              className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}
+            >
               {niceDate(task.date)}
             </span>
           )}
           {!readOnly && (
             <label className="relative inline-flex items-center">
-              <span suppressHydrationWarning className={cn("cursor-pointer text-[11px] underline decoration-dotted underline-offset-4", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}>
+              <span
+                suppressHydrationWarning
+                className={cn(
+                  "cursor-pointer text-[11px] underline decoration-dotted underline-offset-4",
+                  overdue ? "text-[color:var(--clay)]" : "text-ink-soft",
+                )}
+              >
                 {task.date ? niceDate(task.date) : "add a date"}
               </span>
               <input
@@ -92,7 +114,7 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
       {!readOnly && onDelete && (
         <button
           onClick={onDelete}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-ink-soft hover:text-[color:var(--clay)] p-1"
+          className="reveal-control text-ink-soft hover:text-[color:var(--clay)] p-1"
           aria-label="Delete task"
         >
           <Trash2 className="h-4 w-4" />

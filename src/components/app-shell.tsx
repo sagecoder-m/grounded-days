@@ -199,7 +199,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function NavChips({ pathname }: { pathname: string }) {
   return (
-    <nav className="flex items-center gap-1 overflow-x-auto px-2 pb-2">
+    <nav className="flex flex-wrap items-center gap-1 px-2 pb-2">
       {NAV.map((n) => {
         const active = pathname === n.to;
         return (

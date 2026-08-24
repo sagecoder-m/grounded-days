@@ -53,7 +53,7 @@ export function GoalCard({ goal, tint = "sage" }: { goal: Goal; tint?: Tint }) {
         </div>
         <button
           onClick={() => actions.deleteGoal(goal.id)}
-          className="p-1 text-ink-soft opacity-0 transition-opacity group-hover:opacity-100 hover:text-[color:var(--clay)]"
+          className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
           aria-label="Delete goal"
         >
           <Trash2 className="h-4 w-4" />
@@ -99,7 +99,7 @@ export function GoalCard({ goal, tint = "sage" }: { goal: Goal; tint?: Tint }) {
             />
             <button
               onClick={() => actions.deleteGoalStep(step.id)}
-              className="p-1 text-ink-soft opacity-0 transition-opacity group-hover/step:opacity-100 hover:text-[color:var(--clay)]"
+              className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
               aria-label={`Remove step "${step.title}"`}
             >
               <Trash2 className="h-3.5 w-3.5" />

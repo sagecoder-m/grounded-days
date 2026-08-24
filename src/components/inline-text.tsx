@@ -45,7 +45,8 @@ export function InlineText({
   if (editing) {
     const shared = {
       value: draft,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        setDraft(e.target.value),
       onBlur: commit,
       onKeyDown: (e: React.KeyboardEvent) => {
         if (e.key === "Escape") {
@@ -79,12 +80,12 @@ export function InlineText({
         className,
       )}
     >
-      <span className={cn("flex-1 whitespace-pre-wrap break-words", !value && "italic text-ink-soft")}>
+      <span
+        className={cn("flex-1 whitespace-pre-wrap break-words", !value && "italic text-ink-soft")}
+      >
         {value || placeholder}
       </span>
-      {showIcon && (
-        <Pencil className="mt-1 h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover/inline:opacity-60" />
-      )}
+      {showIcon && <Pencil className="reveal-control mt-1 h-3 w-3 shrink-0" />}
     </button>
   );
 }
