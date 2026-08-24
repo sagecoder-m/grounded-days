@@ -97,15 +97,22 @@ function PersonalPage() {
             <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
           ) : (
             <>
-              {/* Wide screens: one header row across the whole table. */}
-              <div className="mb-2 hidden grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 text-[10px] uppercase tracking-widest text-ink-soft md:grid">
+              {/* Wide screens: one header row across the whole table. The
+                  transparent border, matching padding and fixed-width spacer
+                  mirror the habit cards' horizontal box exactly — same trick
+                  the narrow header below uses. Without them the cards' px-3,
+                  1px border and 24px delete button made the day columns start
+                  50px further left than the header's, so every letter floated
+                  37px right of its dots. */}
+              <div className="mb-2 hidden grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 rounded-2xl border border-transparent px-3 text-[10px] uppercase tracking-widest text-ink-soft md:grid">
                 <div>Habit</div>
                 {days.map((d) => (
                   <div key={d.toISOString()} className="text-center">
                     {format(d, "EEEEE")}
                   </div>
                 ))}
-                <div />
+                {/* Same width as the delete button in each card's last column. */}
+                <div className="w-6" />
               </div>
 
               {/* Narrow screens: the dots wrap below each habit name, so the day
