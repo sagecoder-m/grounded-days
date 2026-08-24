@@ -38,6 +38,8 @@ import type { AppState, Area, Goal, Habit, Project, SyncStatus } from "./store-t
 
 export type {
   AccentVariant,
+  AssistantLength,
+  AssistantTone,
   AppState,
   Area,
   CalEvent,

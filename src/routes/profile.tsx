@@ -6,6 +6,8 @@ import {
   type AccentVariant,
   type CalView,
   type Density,
+  type AssistantLength,
+  type AssistantTone,
   type NavLayout,
   type Settings,
   type WeekStart,
@@ -60,6 +62,18 @@ const WEEK_STARTS: { key: WeekStart; label: string }[] = [
   { key: 1, label: "Monday" },
   { key: 0, label: "Sunday" },
   { key: 6, label: "Saturday" },
+];
+
+const TONES: { key: AssistantTone; label: string; hint: string }[] = [
+  { key: "gentle", label: "Gentle", hint: "Warm, encouraging, never blunt" },
+  { key: "neutral", label: "Neutral", hint: "Plain and matter-of-fact" },
+  { key: "direct", label: "Direct", hint: "Straight to the point, no cushioning" },
+];
+
+const LENGTHS: { key: AssistantLength; label: string; hint: string }[] = [
+  { key: "brief", label: "Brief", hint: "A couple of sentences" },
+  { key: "balanced", label: "Balanced", hint: "A short paragraph or two" },
+  { key: "thorough", label: "Thorough", hint: "Fuller explanations when useful" },
 ];
 
 const ACCENTS: { key: AccentVariant; label: string; swatch: string }[] = [
@@ -208,6 +222,8 @@ function ProfilePage() {
         </div>
       </section>
 
+      <AssistantSection settings={settings} />
+
       <WidgetSection widgets={settings.widgets} />
 
       <PasscodeSettings />
@@ -265,6 +281,95 @@ function DisplayNameSection({ value }: { value: string }) {
  * drop. The old version wrote on every onDragOver, which with async writes
  * meant each move recomputed from a stale array and scrambled the list.
  */
+/**
+ * The client's brief for the assistant.
+ *
+ * Asked rather than inferred. Guessing someone's preferred tone from how they
+ * use the app would be both less accurate — the app cannot see why a week was
+ * slow — and a quiet widening of what the assistant knows about them. This keeps
+ * the person in charge of their own instructions.
+ */
+function AssistantSection({ settings }: { settings: Settings }) {
+  const [notes, setNotes] = useState(settings.assistantNotes);
+  const dirty = notes !== settings.assistantNotes;
+
+  return (
+    <section className="card-soft space-y-5 p-6">
+      <div>
+        <h2 className="font-serif text-2xl">Your assistant</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          How it should talk to you. It already sees your goals, tasks, habits and
+          schedule — never your journal.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Tone</Label>
+        <div className="flex flex-wrap gap-2">
+          {TONES.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => actions.updateSettings({ assistantTone: t.key })}
+              title={t.hint}
+              className={`chip ${
+                settings.assistantTone === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-ink-soft"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Reply length</Label>
+        <div className="flex flex-wrap gap-2">
+          {LENGTHS.map((l) => (
+            <button
+              key={l.key}
+              onClick={() => actions.updateSettings({ assistantLength: l.key })}
+              title={l.hint}
+              className={`chip ${
+                settings.assistantLength === l.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-ink-soft"
+              }`}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="assistant-notes">Anything it should know</Label>
+        <textarea
+          id="assistant-notes"
+          value={notes}
+          maxLength={600}
+          rows={3}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="e.g. Long lists overwhelm me — give me one thing. Mornings are my best hours."
+          className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+        />
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-ink-soft">{notes.length}/600</span>
+          <Button
+            size="sm"
+            disabled={!dirty}
+            onClick={() => actions.updateSettings({ assistantNotes: notes })}
+            className="rounded-full"
+          >
+            {dirty ? "Save" : "Saved"}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [working, setWorking] = useState<Settings["widgets"] | null>(null);

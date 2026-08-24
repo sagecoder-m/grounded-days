@@ -142,6 +142,10 @@ export type NavLayout = "sidebar" | "top";
  */
 export type WeekStart = 0 | 1 | 6;
 
+/** How the assistant should speak to this person, in their own words. */
+export type AssistantTone = "gentle" | "neutral" | "direct";
+export type AssistantLength = "brief" | "balanced" | "thorough";
+
 export interface Settings {
   displayName: string;
   density: Density;
@@ -149,6 +153,10 @@ export interface Settings {
   defaultCalView: CalView;
   navLayout: NavLayout;
   weekStartsOn: WeekStart;
+  assistantTone: AssistantTone;
+  assistantLength: AssistantLength;
+  /** Free text the client writes for the assistant. Capped at 600 chars. */
+  assistantNotes: string;
   widgets: { key: string; enabled: boolean }[];
 }
 

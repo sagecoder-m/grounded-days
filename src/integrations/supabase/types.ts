@@ -649,6 +649,9 @@ export type Database = {
       user_settings: {
         Row: {
           accent: string
+          assistant_length: string
+          assistant_notes: string
+          assistant_tone: string
           created_at: string
           default_cal_view: string
           density: string
@@ -661,6 +664,9 @@ export type Database = {
         }
         Insert: {
           accent?: string
+          assistant_length?: string
+          assistant_notes?: string
+          assistant_tone?: string
           created_at?: string
           default_cal_view?: string
           density?: string
@@ -673,6 +679,9 @@ export type Database = {
         }
         Update: {
           accent?: string
+          assistant_length?: string
+          assistant_notes?: string
+          assistant_tone?: string
           created_at?: string
           default_cal_view?: string
           density?: string

@@ -26,6 +26,8 @@ import type {
   Mood,
   Habit,
   Project,
+  AssistantLength,
+  AssistantTone,
   Settings,
   Subproject,
   WeekStart,
@@ -214,6 +216,9 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultCalView: "week",
   navLayout: "sidebar",
   weekStartsOn: 1,
+  assistantTone: "gentle",
+  assistantLength: "brief",
+  assistantNotes: "",
   widgets: DEFAULT_WIDGETS,
 };
 
@@ -247,6 +252,17 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     weekStartsOn: ([0, 1, 6] as const).includes(row.week_starts_on as WeekStart)
       ? (row.week_starts_on as WeekStart)
       : 1,
+    assistantTone: oneOf<AssistantTone>(
+      ["gentle", "neutral", "direct"],
+      row.assistant_tone,
+      "gentle",
+    ),
+    assistantLength: oneOf<AssistantLength>(
+      ["brief", "balanced", "thorough"],
+      row.assistant_length,
+      "brief",
+    ),
+    assistantNotes: (row.assistant_notes ?? "").slice(0, 600),
     widgets: toWidgets(row.widgets),
   };
 }
@@ -265,6 +281,9 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
   if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
   if (patch.weekStartsOn !== undefined) row.week_starts_on = patch.weekStartsOn;
+  if (patch.assistantTone !== undefined) row.assistant_tone = patch.assistantTone;
+  if (patch.assistantLength !== undefined) row.assistant_length = patch.assistantLength;
+  if (patch.assistantNotes !== undefined) row.assistant_notes = patch.assistantNotes.slice(0, 600);
   if (patch.widgets !== undefined) row.widgets = widgetsToJson(patch.widgets);
   return row;
 }
