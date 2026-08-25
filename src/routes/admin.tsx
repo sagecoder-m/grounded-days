@@ -18,11 +18,12 @@
  * not data.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { RetentionHeatmap } from "@/components/hq-retention";
+import type { ActivityWeek } from "@/lib/hq-analytics";
 import { FeatureTrendChart } from "@/components/hq-feature-trend";
 import { format, parseISO, subDays } from "date-fns";
 import {
@@ -196,6 +197,20 @@ function Portal() {
     },
   });
 
+  /**
+   * Pre-telemetry activity, via the admin-only aggregate. Same is_admin() gate as
+   * the SELECT policies above, enforced inside the function; it returns weeks and
+   * user ids and nothing else.
+   */
+  const activityWeeks = useQuery({
+    queryKey: ["hq-activity-weeks"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("admin_activity_weeks");
+      if (error) throw error;
+      return (data ?? []) satisfies ActivityWeek[];
+    },
+  });
+
   const accounts = useQuery({
     queryKey: ["hq-accounts"],
     queryFn: async () => {
@@ -237,7 +252,8 @@ function Portal() {
       <RetentionHeatmap
         accounts={accounts.data}
         events={pilotEvents.data}
-        loading={pilotEvents.isLoading || accounts.isLoading}
+        backfill={activityWeeks.data}
+        loading={pilotEvents.isLoading || accounts.isLoading || activityWeeks.isLoading}
         truncated={pilotTruncated}
       />
       <FeatureTrendChart
@@ -585,6 +601,42 @@ function suggestPassword() {
   return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 12);
 }
 
+/**
+ * Clipboard write with a spoken result.
+ *
+ * Silence after a copy is indistinguishable from failure, and the failure is
+ * real: clipboard access is refused in some mobile browsers and over plain
+ * http. When it does fail the value is still on screen and selectable, so the
+ * message says that rather than leaving a dead end.
+ */
+async function copyText(value: string, success: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(success);
+  } catch {
+    toast.error("Couldn't copy", { description: "Select the text and copy it manually." });
+  }
+}
+
+function CopyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-ink-soft">{label}</span>
+      {/* min-w-0 so a long value truncates instead of pushing the button out of
+          the card, and select-all keeps manual copying available. */}
+      <code className="min-w-0 flex-1 select-all truncate font-mono">{value}</code>
+      <button
+        type="button"
+        aria-label={`Copy ${label.toLowerCase()}`}
+        onClick={() => void copyText(value, `${label} copied`)}
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 function CreateAccountCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState(suggestPassword);
@@ -632,10 +684,29 @@ function CreateAccountCard() {
       {created && (
         <div className="rounded-2xl border border-dashed border-tan bg-secondary/60 p-3 text-xs">
           <p className="font-medium">Hand these to the tester:</p>
-          <p className="mt-1 select-all font-mono">{created.email}</p>
-          <p className="select-all font-mono">{created.password}</p>
-          <p className="mt-1 text-ink-soft">
-            Shown once — it isn't stored anywhere you can read it back.
+
+          {/* Selectable text was the whole handoff, which means selecting a
+              12-character password by hand and hoping you got the edges. These
+              are shown once and never recoverable, so a mis-copy costs the
+              tester their account — worth a button. */}
+          <div className="mt-2 space-y-1.5">
+            <CopyRow label="Email" value={created.email} />
+            <CopyRow label="Password" value={created.password} />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2.5 h-8 w-full rounded-full border-tan text-xs"
+            onClick={() =>
+              void copyText(`Email: ${created.email}\nPassword: ${created.password}`, "Both copied")
+            }
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy both
+          </Button>
+
+          <p className="mt-2 text-ink-soft">
+            Shown once — it isn&rsquo;t stored anywhere you can read it back.
           </p>
         </div>
       )}

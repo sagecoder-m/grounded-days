@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 
-import { buildCohorts, type RetentionAccount, type UsageFact } from "@/lib/hq-analytics";
+import {
+  buildCohorts,
+  type ActivityWeek,
+  type RetentionAccount,
+  type UsageFact,
+} from "@/lib/hq-analytics";
 
 /**
  * Cohort retention for the pilot: signup week down, weeks since signup across.
@@ -50,18 +55,24 @@ function cellStyle(pct: number) {
 export function RetentionHeatmap({
   accounts,
   events,
+  backfill,
   loading,
   truncated,
 }: {
   accounts?: RetentionAccount[];
   events?: UsageFact[];
+  /** Pre-telemetry activity recovered from people's own rows. */
+  backfill?: ActivityWeek[];
   loading: boolean;
   /** The event query hit its row cap, so weeks may be under-counted. */
   truncated?: boolean;
 }) {
   const { cohorts, columns } = useMemo(
-    () => (accounts && events ? buildCohorts(accounts, events) : { cohorts: [], columns: 1 }),
-    [accounts, events],
+    () =>
+      accounts && events
+        ? buildCohorts(accounts, events, backfill ?? [])
+        : { cohorts: [], columns: 1 },
+    [accounts, events, backfill],
   );
 
   return (
@@ -183,6 +194,13 @@ export function RetentionHeatmap({
               &middot; not recorded then
             </span>
             <span>Active = any deliberate action, not just opening the app.</span>
+            {(backfill?.length ?? 0) > 0 && (
+              <span className="basis-full">
+                Weeks before usage tracking existed are reconstructed from what people created then
+                — tasks, habits, entries, goals. That catches making things, not quieter visits, so
+                those weeks read low rather than high.
+              </span>
+            )}
           </div>
         </div>
       )}

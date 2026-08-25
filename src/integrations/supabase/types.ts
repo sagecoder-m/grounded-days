@@ -756,6 +756,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      admin_activity_weeks: {
+        Args: Record<PropertyKey, never>
+        Returns: { user_id: string; week_start: string }[]
+      }
       change_passcode: {
         Args: { old_passcode: string; new_passcode: string }
         Returns: boolean

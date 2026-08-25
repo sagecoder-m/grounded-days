@@ -23,6 +23,27 @@ export interface UsageFact {
 }
 
 /**
+ * One week in which a person created something, recovered from their own rows
+ * rather than from telemetry — see the admin_activity_weeks migration.
+ *
+ * week_start is a local calendar date string (YYYY-MM-DD), deliberately not a
+ * Date or a timestamp: new Date("2026-07-06") parses as UTC midnight, which is
+ * the previous day west of Greenwich and therefore the previous *week* once
+ * bucketed. Parsed by component below.
+ */
+export interface ActivityWeek {
+  user_id: string;
+  week_start: string;
+}
+
+/** Parses YYYY-MM-DD as a local date, never via Date's UTC string path. */
+function localDate(iso: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
  * One cell of the retention grid.
  *
  * A discriminated union rather than a nullable percentage, so the compiler will
@@ -68,7 +89,22 @@ const WEEK_OPTS = { weekStartsOn: 1 } as const;
  *  the grid stops fitting and the tail is too thin to read anyway. */
 export const MAX_WEEKS = 12;
 
-export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) {
+export function buildCohorts(
+  accounts: RetentionAccount[],
+  events: UsageFact[],
+  /**
+   * Pre-telemetry activity, recovered from the rows people created.
+   *
+   * Folded into the same set of active weeks rather than kept apart, because a
+   * week is either one in which somebody did something or it is not — the
+   * evidence for it does not change the answer. Set membership also makes this
+   * immune to double counting where the two sources overlap, which is exactly
+   * why the feature-trend chart does NOT take this input: that one counts, and
+   * counting a task twice (once as a row, once as a usage_event) would inflate
+   * the recent half of every comparison.
+   */
+  backfill: ActivityWeek[] = [],
+) {
   const now = new Date();
   const thisWeek = startOfWeek(now, WEEK_OPTS);
 
@@ -81,11 +117,23 @@ export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) 
    * without this a cohort that joined before instrumentation shows a wall of 0%
    * that reads as total churn.
    */
-  const firstRecordAt = events.reduce<number | null>((min, e) => {
+  const earliestEvent = events.reduce<number | null>((min, e) => {
     const t = new Date(e.created_at).getTime();
     if (Number.isNaN(t)) return min;
     return min === null || t < min ? t : min;
   }, null);
+  const earliestBackfill = backfill.reduce<number | null>((min, b) => {
+    const d = localDate(b.week_start);
+    if (!d) return min;
+    const t = d.getTime();
+    return min === null || t < min ? t : min;
+  }, null);
+  const firstRecordAt =
+    earliestEvent === null
+      ? earliestBackfill
+      : earliestBackfill === null
+        ? earliestEvent
+        : Math.min(earliestEvent, earliestBackfill);
 
   /** user -> the set of week offsets in which they did something deliberate. */
   const activeWeeks = new Map<string, Set<number>>();
@@ -112,6 +160,18 @@ export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) 
     if (offset < 0 || offset >= MAX_WEEKS) continue;
     let set = activeWeeks.get(e.user_id);
     if (!set) activeWeeks.set(e.user_id, (set = new Set()));
+    set.add(offset);
+  }
+
+  for (const b of backfill) {
+    const cohortStart = signupWeek.get(b.user_id);
+    if (!cohortStart) continue;
+    const week = localDate(b.week_start);
+    if (!week) continue;
+    const offset = differenceInCalendarWeeks(startOfWeek(week, WEEK_OPTS), cohortStart, WEEK_OPTS);
+    if (offset < 0 || offset >= MAX_WEEKS) continue;
+    let set = activeWeeks.get(b.user_id);
+    if (!set) activeWeeks.set(b.user_id, (set = new Set()));
     set.add(offset);
   }
 
