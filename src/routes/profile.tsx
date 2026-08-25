@@ -3,6 +3,7 @@ import {
   actions,
   deleteAllUserData,
   useAppState,
+  PINNED_WIDGETS,
   type AccentVariant,
   type CalView,
   type Density,
@@ -31,7 +32,7 @@ import { PasscodeSettings } from "@/components/passcode-settings";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ShareLinksSection } from "@/components/share-links";
-import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
+import { ArrowDown, ArrowUp, GripVertical, Pin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -299,8 +300,8 @@ function AssistantSection({ settings }: { settings: Settings }) {
       <div>
         <h2 className="font-serif text-lg">Your assistant</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          How it should talk to you. It already sees your goals, tasks, habits and
-          schedule — never your journal.
+          How it should talk to you. It already sees your goals, tasks, habits and schedule — never
+          your journal.
         </p>
       </div>
 
@@ -389,6 +390,10 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
   }
 
   function move(index: number, dir: -1 | 1) {
+    // Pinned widgets have no position to change, and moving a movable one is not
+    // allowed to reorder around them either — the Overview ignores their saved
+    // index entirely, so a control that appeared to work would be lying.
+    if (PINNED_WIDGETS.has(shown[index].key)) return;
     const next = [...shown];
     const target = index + dir;
     if (target < 0 || target >= next.length) return;
@@ -408,8 +413,9 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
         {shown.map((w, i) => (
           <div
             key={w.key}
-            draggable
+            draggable={!PINNED_WIDGETS.has(w.key)}
             onDragStart={(e) => {
+              if (PINNED_WIDGETS.has(w.key)) return;
               setDragIndex(i);
               setWorking([...shown]);
               e.dataTransfer.effectAllowed = "move";
@@ -417,6 +423,7 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
             onDragOver={(e) => {
               e.preventDefault();
               if (dragIndex === null || dragIndex === i) return;
+              if (PINNED_WIDGETS.has(shown[i].key)) return;
               const next = [...shown];
               const [moved] = next.splice(dragIndex, 1);
               next.splice(i, 0, moved);
@@ -427,30 +434,40 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
             className={`flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 transition-opacity ${dragIndex === i ? "opacity-50" : ""}`}
           >
             <div className="flex items-center gap-3">
-              <GripVertical
-                className="h-4 w-4 cursor-grab active:cursor-grabbing text-ink-soft"
-                aria-hidden
-              />
-              <div className="flex flex-col">
-                <button
-                  onClick={() => move(i, -1)}
-                  className="text-ink-soft hover:text-ink"
-                  aria-label="Move up"
-                >
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => move(i, 1)}
-                  className="text-ink-soft hover:text-ink"
-                  aria-label="Move down"
-                >
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {PINNED_WIDGETS.has(w.key) ? (
+                // Same width as the grip plus the arrow stack it replaces, so
+                // the labels of pinned and movable rows still line up.
+                <Pin className="ml-0.5 h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
+              ) : (
+                <>
+                  <GripVertical
+                    className="h-4 w-4 cursor-grab active:cursor-grabbing text-ink-soft"
+                    aria-hidden
+                  />
+                  <div className="flex flex-col">
+                    <button
+                      onClick={() => move(i, -1)}
+                      className="text-ink-soft hover:text-ink"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => move(i, 1)}
+                      className="text-ink-soft hover:text-ink"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
               <div>
                 <div className="text-sm font-medium">{WIDGET_LABELS[w.key] ?? w.key}</div>
                 <div className="text-[11px] text-ink-soft">
-                  Position {i + 1} &middot; {SIZE_LABELS[w.size] ?? "Full width"}
+                  {PINNED_WIDGETS.has(w.key)
+                    ? "Always at the top, full width"
+                    : `Position ${i + 1} \u00b7 ${SIZE_LABELS[w.size] ?? "Full width"}`}
                 </div>
               </div>
             </div>
@@ -465,7 +482,6 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
           </div>
         ))}
       </div>
-
     </section>
   );
 }

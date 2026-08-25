@@ -235,6 +235,17 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
 
 const WIDGET_SIZES = ["square", "wide", "tall"] as const;
 
+/**
+ * Widgets that are furniture rather than content, and so do not move.
+ *
+ * The greeting is the page's header — the date and "Good afternoon, Demi". It is
+ * not a panel you arrange around, it is the thing that tells you where you are,
+ * and a header that can be dragged into the middle of the page is a header that
+ * can be lost. It stays first, stays full width, and has no drag handle or size
+ * menu; it can still be switched off in Profile for anyone who does not want it.
+ */
+export const PINNED_WIDGETS = new Set(["greeting"]);
+
 export const DEFAULT_SETTINGS: Settings = {
   displayName: "friend",
   density: "comfy",

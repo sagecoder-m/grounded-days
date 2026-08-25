@@ -127,7 +127,8 @@ export function TaskGrid({
         // Timed events first, in clock order, then all-day ones — the order the
         // day actually happens in.
         events: group.events.sort(
-          (a, b) => Number(!!b.startsAt) - Number(!!a.startsAt) ||
+          (a, b) =>
+            Number(!!b.startsAt) - Number(!!a.startsAt) ||
             (a.startsAt ?? "").localeCompare(b.startsAt ?? ""),
         ),
         // Unfinished work first; done work stays visible but recedes, because
@@ -136,8 +137,7 @@ export function TaskGrid({
       }));
   }, [tasks, events, from, to]);
 
-  const total =
-    groups.reduce((n, g) => n + g.tasks.length + g.events.length, 0) + overdue.length;
+  const total = groups.reduce((n, g) => n + g.tasks.length + g.events.length, 0) + overdue.length;
 
   return (
     <div className="space-y-4">
@@ -176,26 +176,38 @@ export function TaskGrid({
           {emptyText}
         </p>
       ) : (
-        groups.map((group) => (
-          <div key={group.date} className="space-y-2">
-            {showGroupLabels && (
-              <p
-                suppressHydrationWarning
-                className="px-1 text-[11px] uppercase tracking-[0.08em] text-ink-soft"
-              >
-                {dayLabel(group.date)}
-              </p>
-            )}
+        /*
+          Days flow into columns once there is room for them.
 
-            {group.events.map((event) => (
-              <EventRow key={event.id} event={event} />
-            ))}
+          Keyed to the container, not the window, so this answers the width the
+          grid has actually been given — which on the Overview is whatever size
+          the person chose for that widget. A full-width Upcoming used to be one
+          narrow column of cards down the middle of a very wide card, with the
+          days you most need to see pushed furthest down the page. items-start so
+          a heavy Thursday does not stretch a light Friday to match it.
+        */
+        <div className="grid items-start gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3">
+          {groups.map((group) => (
+            <div key={group.date} className="space-y-2">
+              {showGroupLabels && (
+                <p
+                  suppressHydrationWarning
+                  className="px-1 text-[11px] uppercase tracking-[0.08em] text-ink-soft"
+                >
+                  {dayLabel(group.date)}
+                </p>
+              )}
 
-            {group.tasks.map((task) => (
-              <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
-            ))}
-          </div>
-        ))
+              {group.events.map((event) => (
+                <EventRow key={event.id} event={event} />
+              ))}
+
+              {group.tasks.map((task) => (
+                <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
+              ))}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -219,9 +231,7 @@ function EventRow({ event }: { event: CalEvent }) {
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{event.title}</div>
         <div className="text-[11px] text-ink-soft">
-          {!event.allDay && event.startsAt
-            ? format(new Date(event.startsAt), "h:mm a")
-            : "all day"}
+          {!event.allDay && event.startsAt ? format(new Date(event.startsAt), "h:mm a") : "all day"}
           {event.source === "google" && " · Google"}
           {event.source === "microsoft" && " · Outlook"}
         </div>

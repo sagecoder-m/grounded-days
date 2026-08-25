@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
-import { useAppState } from "@/lib/store";
+import { PINNED_WIDGETS, useAppState } from "@/lib/store";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
@@ -118,7 +118,17 @@ function Overview() {
 
   const settings = state.settings;
   const w = (k: string) => settings.widgets.find((x) => x.key === k)?.enabled ?? true;
-  const orderedWidgets = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
+  /**
+   * Pinned widgets first, in their own fixed order, then everything else in
+   * whatever order the person arranged.
+   *
+   * Partitioned here rather than relying on the saved array, so a drag that
+   * happens to land at index 0 cannot push the header down the page. The saved
+   * order for a pinned key is simply never consulted.
+   */
+  const enabled = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
+  const pinnedWidgets = enabled.filter((k) => PINNED_WIDGETS.has(k));
+  const orderedWidgets = enabled.filter((k) => !PINNED_WIDGETS.has(k));
 
   // Which section is being dragged and what it is hovering over. Held here
   // rather than per-section so one section can react to another being dragged
@@ -150,6 +160,19 @@ function Overview() {
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
+        {/* Furniture: full width, no handle, no size menu, nothing to drop on.
+            Rendered outside ReorderableSection so it carries no data-section
+            attribute and therefore cannot be a drag target at all. */}
+        {pinnedWidgets.map((key) => {
+          const section = renderSection(key);
+          if (!section) return null;
+          return (
+            <div key={key} className="@container @2xl/board:col-span-2">
+              {section}
+            </div>
+          );
+        })}
+
         {orderedWidgets.map((key) => {
           const section = renderSection(key);
           if (!section) return null;

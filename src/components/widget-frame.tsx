@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { EyeOff, RectangleHorizontal, RectangleVertical, Square } from "lucide-react";
+import { EyeOff, LayoutGrid, RectangleHorizontal, RectangleVertical, Square } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -193,12 +193,32 @@ export function WidgetFrame({
         {/* Anchored to the widget's top-right rather than the cursor. A menu that
             appears where the widget is makes it obvious which one is being
             changed, which matters when two sit side by side. */}
+        {/*
+          A visible control, not only a gesture.
+
+          Right-click and long-press still work, but they cannot be the only way
+          in. The frame yields the gesture wherever the browser's own menu is
+          worth more — links and text fields — and some widgets are mostly text
+          fields: the focus timer has six, and every task row carries inline
+          editors. On those, right-clicking worked on some pixels and did nothing
+          on others, which is not a control, it is a coin toss. Hence a button
+          that is always in the same place and always works.
+
+          Left margin under the drag handle rather than inside the widget: the
+          two controls that act on a tile rather than its contents belong
+          together, outside the tile, and that margin is already proven to have
+          room. Always faintly visible for the same reason the handle is — a
+          control that appears on hover of the box it sits outside of fades as
+          you reach for it.
+        */}
         <DropdownMenuTrigger asChild>
           <button
-            aria-label="Widget options"
-            className="absolute right-0 top-0 h-8 w-8 opacity-0"
-            tabIndex={-1}
-          />
+            aria-label="Change widget size"
+            title="Widget size"
+            className="absolute -left-1 top-8 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-6 md:w-6"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52 bg-card">
           {SIZE_OPTIONS.map((option) => (
@@ -218,8 +238,8 @@ export function WidgetFrame({
           ))}
           {singleColumn && (
             <p className="px-2 py-1.5 text-[11px] leading-snug text-ink-soft">
-              This window is too narrow to place two widgets side by side, so
-              sizes are saved but look the same for now.
+              This window is too narrow to place two widgets side by side, so sizes are saved but
+              look the same for now.
             </p>
           )}
           <DropdownMenuSeparator />

@@ -65,6 +65,7 @@ export type {
 } from "./store-types";
 
 export { actions, deleteAllUserData } from "./db/mutations";
+export { PINNED_WIDGETS } from "./db/mappers";
 
 const EMPTY_STATE: AppState = {
   tasks: [],
