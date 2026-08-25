@@ -231,6 +231,11 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   // as an 838px card around a 104px dial.
   { key: "focus", enabled: true, size: "square" },
   { key: "upcoming", enabled: true, size: "wide" },
+  // The reflective panels. Wide for rhythm because twelve weeks of columns needs
+  // the room; the other two pair up as one half-width row.
+  { key: "rhythm", enabled: true, size: "wide" },
+  { key: "balance", enabled: true, size: "square" },
+  { key: "movement", enabled: true, size: "square" },
 ];
 
 const WIDGET_SIZES = ["square", "wide", "tall"] as const;

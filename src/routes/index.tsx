@@ -6,6 +6,9 @@ import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
+import { RhythmGrid } from "@/components/rhythm-grid";
+import { AreaBalance } from "@/components/area-balance";
+import { MovementCards } from "@/components/movement-cards";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
 import {
@@ -374,6 +377,10 @@ function Overview() {
           </div>
         </section>
       );
+
+    if (key === "rhythm" && w("rhythm")) return <RhythmGrid key={key} state={state} />;
+    if (key === "balance" && w("balance")) return <AreaBalance key={key} state={state} />;
+    if (key === "movement" && w("movement")) return <MovementCards key={key} state={state} />;
 
     if (key === "upcoming" && w("upcoming"))
       return (

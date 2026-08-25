@@ -51,6 +51,9 @@ const WIDGET_LABELS: Record<string, string> = {
   day: "A look at today",
   focus: "Focus",
   upcoming: "Upcoming",
+  rhythm: "Your rhythm",
+  balance: "Where your attention went",
+  movement: "How it's been going",
 };
 
 const NAV_LAYOUTS: { key: NavLayout; label: string; hint: string }[] = [
