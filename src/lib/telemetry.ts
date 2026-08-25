@@ -30,6 +30,16 @@ const EVENTS = [
   "journal_entry_add",
   "assistant_message",
   "focus_session",
+  // Sharing had no event at all, so the HQ feature-trend chart would have shown
+  // a permanent zero for it — which reads as "nobody shares" when the truth was
+  // "we never looked". Both of these fire for the signed-in owner of a link.
+  //
+  // There is deliberately no share_link_open: a link is opened by whoever it was
+  // sent to, who is not signed in, and track() has nothing to attribute. An
+  // event that can never fire is worse than an absent one, because it looks
+  // measured.
+  "share_link_create",
+  "share_link_copy",
 ] as const;
 
 export type UsageEvent = (typeof EVENTS)[number];

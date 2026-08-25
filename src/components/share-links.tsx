@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { createShareLink, DEFAULT_SHARE_DAYS } from "@/lib/share";
+import { track } from "@/lib/telemetry";
 import { AREA_META } from "@/lib/store";
 import type { Area } from "@/lib/store-types";
 import { useSession } from "@/lib/use-session";
@@ -57,6 +58,7 @@ export function ShareLinksSection() {
   const create = useMutation({
     mutationFn: () => createShareLink({ areas, label, expiresInDays: DEFAULT_SHARE_DAYS }),
     onSuccess: (url) => {
+      track("share_link_create");
       setFreshUrl(url);
       setCopied(false);
       setAreas([]);
@@ -84,6 +86,7 @@ export function ShareLinksSection() {
   async function copy(url: string) {
     try {
       await navigator.clipboard.writeText(url);
+      track("share_link_copy");
       setCopied(true);
       toast.success("Link copied");
     } catch {

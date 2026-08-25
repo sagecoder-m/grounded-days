@@ -21,6 +21,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+
+import { RetentionHeatmap } from "@/components/hq-retention";
+import { FeatureTrendChart } from "@/components/hq-feature-trend";
 import { format, parseISO, subDays } from "date-fns";
 import {
   Bar,
@@ -47,6 +50,23 @@ export const Route = createFileRoute("/admin")({
 
 const WINDOW_DAYS = 30;
 
+/**
+ * The cohort and trend panels need the whole pilot, not the last month.
+ * Retention across the 3-5-10-10-10 onboarding waves is a ten-week-plus shape,
+ * and "grew or declined over the pilot" needs two halves worth comparing.
+ *
+ * A separate window rather than widening WINDOW_DAYS, so Pulse, Usage and
+ * Friction keep the 30-day framing they have always been read against.
+ */
+const PILOT_WINDOW_DAYS = 120;
+
+/**
+ * Row cap for the pilot-window query. Well above what ~40 testers generate over
+ * four months, but if it is ever hit the data is silently truncated and both
+ * charts would read too positive — so the panels are told, and they say so.
+ */
+const PILOT_ROW_LIMIT = 50000;
+
 /** Route -> the section name humans use for it. */
 const SECTION_LABELS: Record<string, string> = {
   "/": "Overview",
@@ -70,7 +90,17 @@ const EVENT_LABELS: Record<string, string> = {
   journal_entry_add: "Journal writing",
   assistant_message: "Assistant used",
   focus_session: "Focus session",
+  share_link_create: "Share link made",
+  share_link_copy: "Share link copied",
 };
+
+/** The pilot-window query selects less per row than UsageRow, since neither
+ *  chart needs the route. */
+interface PilotUsageRow {
+  event: string;
+  user_id: string;
+  created_at: string;
+}
 
 interface UsageRow {
   event: string;
@@ -148,6 +178,24 @@ function Portal() {
     },
   });
 
+  /* Same table and same admin-scoped SELECT policy as the 30-day query above —
+     a wider date range, not a different access path. */
+  const pilotSince = useMemo(() => subDays(new Date(), PILOT_WINDOW_DAYS).toISOString(), []);
+
+  const pilotEvents = useQuery({
+    queryKey: ["hq-pilot-usage", pilotSince],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("usage_events")
+        .select("event, user_id, created_at")
+        .gte("created_at", pilotSince)
+        .order("created_at", { ascending: false })
+        .limit(PILOT_ROW_LIMIT);
+      if (error) throw error;
+      return data as PilotUsageRow[];
+    },
+  });
+
   const accounts = useQuery({
     queryKey: ["hq-accounts"],
     queryFn: async () => {
@@ -158,6 +206,8 @@ function Portal() {
       return (data as { users: AccountRow[] }).users;
     },
   });
+
+  const pilotTruncated = (pilotEvents.data?.length ?? 0) >= PILOT_ROW_LIMIT;
 
   return (
     <div className="space-y-10">
@@ -181,6 +231,21 @@ function Portal() {
 
       <PulsePanel events={events.data} accounts={accounts.data} errors={errors.data} />
       <UsagePanel events={events.data} loading={events.isLoading} />
+
+      {/* Both pilot-window panels together, so retention and the cut/keep call
+          are read side by side rather than on separate screens. */}
+      <RetentionHeatmap
+        accounts={accounts.data}
+        events={pilotEvents.data}
+        loading={pilotEvents.isLoading || accounts.isLoading}
+        truncated={pilotTruncated}
+      />
+      <FeatureTrendChart
+        events={pilotEvents.data}
+        loading={pilotEvents.isLoading}
+        windowDays={PILOT_WINDOW_DAYS}
+        truncated={pilotTruncated}
+      />
       <FrictionPanel errors={errors.data} events={events.data} loading={errors.isLoading} />
       <AccountsPanel accounts={accounts.data} loading={accounts.isLoading} error={accounts.isError} />
       <PilotChecklist />
