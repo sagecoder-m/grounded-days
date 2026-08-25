@@ -115,6 +115,7 @@ export function rowToGoal(row: Tables<"goals">): GoalBase {
     description: row.description ?? undefined,
     progress: row.progress,
     position: row.position,
+    targetDate: row.target_date ?? undefined,
     projectId: row.project_id ?? undefined,
     subprojectId: row.subproject_id ?? undefined,
   };
@@ -347,6 +348,9 @@ export function goalPatchToRow(patch: Partial<Goal>): TablesUpdate<"goals"> {
   // progress stays writable for goals that have no steps yet; once a goal has
   // steps its percentage is derived and nothing writes this column.
   if (patch.progress !== undefined) row.progress = patch.progress;
+  // Explicit null on clear, so removing a target date actually removes it rather
+  // than being dropped as "no change".
+  if (patch.targetDate !== undefined) row.target_date = patch.targetDate ?? null;
   if (patch.projectId !== undefined) row.project_id = patch.projectId ?? null;
   if (patch.subprojectId !== undefined) row.subproject_id = patch.subprojectId ?? null;
   return row;

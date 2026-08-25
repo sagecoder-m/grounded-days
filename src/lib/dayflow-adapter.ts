@@ -41,7 +41,7 @@ import {
 } from "@dayflow/react";
 import type { CalendarType, Event as DayFlowEvent } from "@dayflow/core";
 
-import type { Area, CalEvent, Task } from "@/lib/store-types";
+import type { Area, CalEvent, Goal, Task } from "@/lib/store-types";
 import type { CalendarConnection } from "@/lib/store-types";
 
 const AREA_COLORS: Record<Area, { eventColor: string; lineColor: string; textColor: string }> = {
@@ -257,5 +257,37 @@ export function taskToDayFlowEvent(task: Task & { date: string }): DayFlowEvent 
     allDay: true,
     calendarId: task.area,
     meta: { groundedId: task.id, source: "task", done: task.done },
+  };
+}
+
+/** Namespace for goals on the grid, for the same reason tasks have one. */
+export const GOAL_EVENT_PREFIX = "goal:";
+
+export function isGoalEventId(id: string): boolean {
+  return id.startsWith(GOAL_EVENT_PREFIX);
+}
+
+export function goalIdFromEventId(id: string): string {
+  return id.slice(GOAL_EVENT_PREFIX.length);
+}
+
+/**
+ * A goal with a target date, as an all-day item on that day.
+ *
+ * Marked with a flag rather than a checkbox, because a goal is not a thing you
+ * tick — it has a percentage, and the glyph should not imply otherwise. The
+ * progress rides in the title for the same reason the task's box does: DayFlow
+ * has no field for it, and a number in the label survives every view.
+ */
+export function goalToDayFlowEvent(goal: Goal & { targetDate: string }): DayFlowEvent {
+  const day = dateToPlainDate(new Date(`${goal.targetDate}T00:00:00`));
+  return {
+    id: `${GOAL_EVENT_PREFIX}${goal.id}`,
+    title: `\u2691 ${goal.name}${goal.progress > 0 ? ` \u00b7 ${goal.progress}%` : ""}`,
+    start: day,
+    end: day,
+    allDay: true,
+    calendarId: goal.area,
+    meta: { groundedId: goal.id, source: "goal", progress: goal.progress },
   };
 }

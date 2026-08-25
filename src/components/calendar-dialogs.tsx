@@ -42,14 +42,14 @@ import { useSession } from "@/lib/use-session";
 
 export const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
-/** What the calendar can create. Goals carry no date, which is why the date
- *  fields disappear when one is selected. */
+/** What the calendar can create. All three carry a day now: an event has a start
+ *  and an end, a task has a due date, a goal has an optional target. */
 type AddKind = "event" | "task" | "goal";
 
 const KINDS: { key: AddKind; label: string; hint: string }[] = [
   { key: "event", label: "Event", hint: "Something happening on the calendar" },
   { key: "task", label: "Task", hint: "Something to do, with a due date" },
-  { key: "goal", label: "Goal", hint: "Something to work towards" },
+  { key: "goal", label: "Goal", hint: "Something to work towards, by a chosen day" },
 ];
 
 /**
@@ -104,7 +104,10 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
     } else if (kind === "task") {
       actions.addTask({ area: area as Area, title: name, date: startDate });
     } else {
-      actions.addGoal({ area: area as Area, name });
+      // The date used to be collected and then dropped on the floor here, so a
+      // goal added from a particular day on the calendar landed with no
+      // connection to that day at all.
+      actions.addGoal({ area: area as Area, name, targetDate: startDate || undefined });
     }
     reset();
   }
@@ -188,6 +191,23 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
             </div>
           )}
 
+          {kind === "goal" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="goal-target">Target date</Label>
+              <Input
+                id="goal-target"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              {/* Said plainly, because an empty date field usually reads as
+                  something you forgot rather than something you chose. */}
+              <p className="text-xs text-ink-soft">
+                Optional. Clear it if this one isn&rsquo;t working to a date.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Area</Label>
             <Select value={area} onValueChange={setArea}>
@@ -224,13 +244,7 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
  * to change when it happens, and a pair of time inputs that silently disagreed
  * with where the block sat would be worse than not offering them.
  */
-export function EditEventDialog({
-  event,
-  onClose,
-}: {
-  event: CalEvent;
-  onClose: () => void;
-}) {
+export function EditEventDialog({ event, onClose }: { event: CalEvent; onClose: () => void }) {
   const [title, setTitle] = useState(event.title);
   const [date, setDate] = useState(event.date ?? iso(new Date()));
   const [endDate, setEndDate] = useState(event.endDate ?? "");

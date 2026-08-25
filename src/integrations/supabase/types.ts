@@ -401,6 +401,7 @@ export type Database = {
           id: string
           name: string
           progress: number
+          target_date: string | null
           project_id: string | null
           subproject_id: string | null
           updated_at: string
@@ -414,6 +415,7 @@ export type Database = {
           id?: string
           name: string
           progress?: number
+          target_date?: string | null
           project_id?: string | null
           subproject_id?: string | null
           updated_at?: string
@@ -428,6 +430,7 @@ export type Database = {
           id?: string
           name?: string
           progress?: number
+          target_date?: string | null
           project_id?: string | null
           subproject_id?: string | null
           updated_at?: string

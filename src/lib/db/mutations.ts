@@ -376,10 +376,7 @@ export const actions = {
    * per card: a five-card reorder should not be five round trips, and a partial
    * failure would leave the list in an order nobody chose.
    */
-  reorderCards(
-    collection: "goals" | "projects" | "habits" | "courses",
-    orderedIds: string[],
-  ) {
+  reorderCards(collection: "goals" | "projects" | "habits" | "courses", orderedIds: string[]) {
     const { userId, queryClient } = requireStoreContext();
     const key =
       collection === "goals"
@@ -421,9 +418,7 @@ export const actions = {
     const { userId, queryClient } = requireStoreContext();
     const id = uuid();
     const progress = input.progress ?? 0;
-    const position = nextPosition(
-      queryClient.getQueryData(qk.goals(userId)) as Goal[] | undefined,
-    );
+    const position = nextPosition(queryClient.getQueryData(qk.goals(userId)) as Goal[] | undefined);
     const optimistic: Goal = { ...input, id, progress, position, steps: [] };
     void write([{ key: qk.goals(userId), update: listAdd(optimistic) }], () =>
       supabase.from("goals").insert({
@@ -433,6 +428,7 @@ export const actions = {
         name: input.name,
         description: input.description ?? null,
         progress,
+        target_date: input.targetDate ?? null,
         project_id: input.projectId ?? null,
         subproject_id: input.subprojectId ?? null,
         position,
@@ -758,9 +754,7 @@ export const actions = {
 
     if (error) {
       throw new Error(
-        error.code === "23505"
-          ? "You are already subscribed to that feed."
-          : error.message,
+        error.code === "23505" ? "You are already subscribed to that feed." : error.message,
       );
     }
 

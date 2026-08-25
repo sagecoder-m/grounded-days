@@ -36,6 +36,9 @@ import { useSession } from "@/lib/use-session";
 import {
   buildCalendarTypes,
   fromDayFlowEvent,
+  goalIdFromEventId,
+  goalToDayFlowEvent,
+  isGoalEventId,
   isTaskEventId,
   taskIdFromEventId,
   taskToDayFlowEvent,
@@ -200,8 +203,19 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
         Boolean(t.date) && (areaFilter.size === 0 || areaFilter.has(t.area)),
     );
 
-    return [...visible.map(toDayFlowEvent), ...tasks.map(taskToDayFlowEvent)];
-  }, [state.events, state.tasks, areaFilter]);
+    /** Goals that are aimed at a particular day. Most have no target date, and
+     *  those stay off the grid — there is no day to put them on. */
+    const goals = state.goals.filter(
+      (g): g is typeof g & { targetDate: string } =>
+        Boolean(g.targetDate) && (areaFilter.size === 0 || areaFilter.has(g.area)),
+    );
+
+    return [
+      ...visible.map(toDayFlowEvent),
+      ...tasks.map(taskToDayFlowEvent),
+      ...goals.map(goalToDayFlowEvent),
+    ];
+  }, [state.events, state.tasks, state.goals, areaFilter]);
 
   /**
    * Writes a drag or resize back through the same actions.updateEvent the old
@@ -223,6 +237,14 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
       });
       return;
     }
+    // Dragging a goal moves what it is aiming at, which is the one thing about a
+    // goal a calendar is the natural place to change.
+    if (isGoalEventId(updated.id)) {
+      actions.updateGoal(goalIdFromEventId(updated.id), {
+        targetDate: fromDayFlowEvent(updated).date,
+      });
+      return;
+    }
     if ((updated.meta as { source?: string } | undefined)?.source !== "local") return;
     actions.updateEvent(updated.id, fromDayFlowEvent(updated));
   }, []);
@@ -236,7 +258,7 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
       // with no undo, and a calendar grid is dense enough that a mis-click is
       // routine — so the box is shown here and ticked where there is a real
       // checkbox. Rescheduling, which a drag makes unambiguous, is offered.
-      if (isTaskEventId(clicked.id)) return;
+      if (isTaskEventId(clicked.id) || isGoalEventId(clicked.id)) return;
       const match = state.events.find((e) => e.id === clicked.id);
       if (match && match.source === "local") setEditing(match);
     },

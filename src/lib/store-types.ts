@@ -65,6 +65,14 @@ export interface Goal {
   progress: number;
   /** Drag order within its area. */
   position: number;
+  /**
+   * Optional day the goal is aimed at, ISO yyyy-mm-dd.
+   *
+   * Undefined is the normal case, not an incomplete one — plenty of goals have
+   * no deadline and should not be given one. Set, it puts the goal on the
+   * calendar for that day.
+   */
+  targetDate?: string;
   steps: GoalStep[];
   projectId?: string;
   subprojectId?: string;
