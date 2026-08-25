@@ -14,6 +14,7 @@
  * later. Failures roll the cache back and toast.
  */
 import { useMemo } from "react";
+import { Briefcase, GraduationCap, Sprout, type LucideIcon } from "lucide-react";
 import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
 
@@ -209,12 +210,33 @@ export function useSyncStatus(): SyncStatus {
 export { qk as queryKeys };
 
 // ---------- helpers ----------
+/**
+ * Everything that makes an area recognisable, in one place.
+ *
+ * `icon` is here rather than only in the nav because the three areas were being
+ * drawn two different ways: a sprout, a briefcase and a cap in the side rail,
+ * but an anonymous coloured dot on every chip. Same three things, two visual
+ * languages, and on a chip the only thing distinguishing them was colour —
+ * sage, brown and clay, three muted earth tones that are close in value and
+ * genuinely hard to tell apart if you do not see colour well.
+ *
+ * One icon per area, defined once, used by both. Colour stops being the only
+ * cue and the rail stops disagreeing with the chip.
+ */
 export const AREA_META: Record<
   Area,
-  { label: string; color: string; bg: string; text: string; ring: string }
+  {
+    label: string;
+    color: string;
+    bg: string;
+    text: string;
+    ring: string;
+    icon: LucideIcon;
+  }
 > = {
   personal: {
     label: "Personal",
+    icon: Sprout,
     color: "sage",
     bg: "bg-sage-soft",
     text: "text-sage-deep",
@@ -222,6 +244,7 @@ export const AREA_META: Record<
   },
   professional: {
     label: "Professional",
+    icon: Briefcase,
     color: "brown",
     bg: "bg-brown-soft",
     text: "text-[color:var(--brown)]",
@@ -229,6 +252,7 @@ export const AREA_META: Record<
   },
   education: {
     label: "Education",
+    icon: GraduationCap,
     color: "clay",
     bg: "bg-clay-soft",
     text: "text-[color:var(--clay)]",

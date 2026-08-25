@@ -1,11 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  Briefcase,
   CalendarDays,
   Cloud,
   CloudOff,
-  GraduationCap,
   Home,
   Lock,
   LogOut,
@@ -18,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 
-import { useApp, useSyncStatus } from "@/lib/store";
+import { AREA_META, useApp, useSyncStatus } from "@/lib/store";
 import { useSession } from "@/lib/use-session";
 import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
@@ -38,9 +36,25 @@ import { installErrorReporting, track } from "@/lib/telemetry";
 const NAV = [
   { to: "/", label: "Overview", icon: Home, group: "daily" },
   { to: "/journal", label: "Journal", icon: NotebookPen, group: "daily" },
-  { to: "/personal", label: "Personal", icon: Sprout, group: "areas" },
-  { to: "/professional", label: "Professional", icon: Briefcase, group: "areas" },
-  { to: "/education", label: "Education", icon: GraduationCap, group: "areas" },
+  // Areas take their icon from AREA_META, the same one their chips use.
+  {
+    to: "/personal",
+    label: AREA_META.personal.label,
+    icon: AREA_META.personal.icon,
+    group: "areas",
+  },
+  {
+    to: "/professional",
+    label: AREA_META.professional.label,
+    icon: AREA_META.professional.icon,
+    group: "areas",
+  },
+  {
+    to: "/education",
+    label: AREA_META.education.label,
+    icon: AREA_META.education.icon,
+    group: "areas",
+  },
   { to: "/calendar", label: "Calendar", icon: CalendarDays, group: "tools" },
   { to: "/assistant", label: "Assistant", icon: Sparkles, group: "tools" },
   { to: "/profile", label: "Profile", icon: User, group: "tools" },
@@ -253,7 +267,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                     )}
                     <div className="space-y-0.5">
                       {items.map((n) => (
-                        <RailLink key={n.to} item={n} active={pathname === n.to} collapsed={railCollapsed} />
+                        <RailLink
+                          key={n.to}
+                          item={n}
+                          active={pathname === n.to}
+                          collapsed={railCollapsed}
+                        />
                       ))}
                     </div>
                   </div>
