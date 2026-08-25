@@ -14,9 +14,15 @@ import { actions, type Settings } from "@/lib/store";
  * on touch at all, which would have made this desktop-only. Same reason the
  * calendar moved off it.
  *
- * The handle only appears on hover on devices that have a pointer, and is
- * always visible on touch — a control you cannot reveal is a control that does
- * not exist, and there is no hover on a phone.
+ * The handle is always present, faint until you approach it.
+ *
+ * It used to use .reveal-control — hidden until the section was hovered. That
+ * made it literally unreachable: the handle sits in the margin to the LEFT of
+ * the section, outside its box, and .group/section:hover only fires while the
+ * pointer is inside that box. Moving toward the handle left the hover zone, so
+ * it faded out before the cursor arrived. A control that vanishes as you reach
+ * for it is worse than one that is always there, and a drag affordance nobody
+ * can find is not an affordance at all.
  */
 
 /** Where a dragged section would land, or null when nothing is being dragged. */
@@ -98,8 +104,8 @@ export function ReorderableSection({
           [next[index], next[target]] = [next[target], next[index]];
           actions.reorderWidgets(next);
         }}
-        className={`reveal-control absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink md:-left-9 ${
-          grabbed ? "cursor-grabbing bg-secondary text-ink" : "cursor-grab"
+        className={`absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-9 ${
+          grabbed ? "cursor-grabbing bg-secondary text-ink opacity-100" : "cursor-grab"
         }`}
       >
         <GripVertical className="h-4 w-4" />

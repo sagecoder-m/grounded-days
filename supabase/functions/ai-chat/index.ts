@@ -127,8 +127,11 @@ How to be useful here:
 - Break big things down when asked. Name specific steps that could be ticked off.
 - When they ask you to add, create, remember or track something, call create_task. Do not
   just describe the task in prose — actually create it. One call per task.
-- Be brief. Two or three short paragraphs at most unless asked for more.
 - Refer to their actual goals, tasks and schedule by name. You have them below.
+
+Length is not yours to choose. Each person sets it, and the instruction arrives
+in the last system message. Follow it exactly — it overrides any instinct to be
+thorough, and a short answer is never a worse answer here.
 
 How not to be:
 - Never shame, guilt, or imply they are behind. No streak language, no "you should have".
@@ -283,9 +286,24 @@ const TONE_RULES: Record<string, string> = {
 };
 
 const LENGTH_RULES: Record<string, string> = {
-  brief: "Two or three sentences. One idea.",
+  brief: "Two or three sentences. One idea. No preamble, no summary at the end.",
   balanced: "A short paragraph, two at most.",
   thorough: "Explain your reasoning when it helps, but never pad.",
+};
+
+/**
+ * A ceiling per setting, because the prompt alone did not hold.
+ *
+ * "Brief" was producing multi-paragraph replies: the base prompt allowed "two or
+ * three short paragraphs", which contradicted the per-person rule and, being the
+ * more permissive of the two, won. That contradiction is gone, and this is the
+ * mechanical backstop — a model that ignores the instruction still cannot run on.
+ * Set generously enough that a compliant answer is never cut mid-sentence.
+ */
+const LENGTH_TOKENS: Record<string, number> = {
+  brief: 260,
+  balanced: 520,
+  thorough: 900,
 };
 
 /**
@@ -437,8 +455,11 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     const convo: any[] = [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "system", content: briefPrompt(brief) },
       { role: "system", content: `Here is their current state:\n\n${context}` },
+      // Last, deliberately. This used to sit before the context block, so the
+      // length rule was the furthest thing from the model's generation point
+      // with a few thousand tokens of tasks and events in between.
+      { role: "system", content: briefPrompt(brief) },
       ...recent,
     ];
 
@@ -459,7 +480,7 @@ Deno.serve(async (req) => {
           ...(fallbacks.length > 0 ? { models: fallbacks } : {}),
           messages: convo,
           ...(withTools ? { tools: TOOLS } : {}),
-          max_tokens: 800,
+          max_tokens: LENGTH_TOKENS[brief.length] ?? LENGTH_TOKENS.brief,
           temperature: 0.6,
         }),
       });

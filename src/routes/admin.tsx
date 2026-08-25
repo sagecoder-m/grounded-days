@@ -18,6 +18,7 @@
  * not data.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO, subDays } from "date-fns";
@@ -160,7 +161,16 @@ function Portal() {
 
   return (
     <div className="space-y-10">
-      <header>
+      <header className="space-y-3">
+        {/* HQ is reached from Profile and is not in the main nav, so without this
+            the only way back is the browser's own back button. */}
+        <Link
+          to="/profile"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to profile
+        </Link>
         <h1 className="font-serif text-4xl md:text-5xl">HQ</h1>
         <p className="mt-2 max-w-xl text-ink-soft">
           The pilot at a glance — last {WINDOW_DAYS} days. Counts of feature
