@@ -9,7 +9,8 @@ import {
   Home,
   Lock,
   LogOut,
-  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   NotebookPen,
   RefreshCw,
   Sparkles,
@@ -35,14 +36,29 @@ import { installErrorReporting, track } from "@/lib/telemetry";
  * Personal / Professional / Education is also the sequence used everywhere else.
  */
 const NAV = [
-  { to: "/", label: "Overview", icon: Home },
-  { to: "/journal", label: "Journal", icon: NotebookPen },
-  { to: "/personal", label: "Personal", icon: Sprout },
-  { to: "/professional", label: "Professional", icon: Briefcase },
-  { to: "/education", label: "Education", icon: GraduationCap },
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/assistant", label: "Assistant", icon: Sparkles },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/", label: "Overview", icon: Home, group: "daily" },
+  { to: "/journal", label: "Journal", icon: NotebookPen, group: "daily" },
+  { to: "/personal", label: "Personal", icon: Sprout, group: "areas" },
+  { to: "/professional", label: "Professional", icon: Briefcase, group: "areas" },
+  { to: "/education", label: "Education", icon: GraduationCap, group: "areas" },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays, group: "tools" },
+  { to: "/assistant", label: "Assistant", icon: Sparkles, group: "tools" },
+  { to: "/profile", label: "Profile", icon: User, group: "settings" },
+] as const;
+
+/**
+ * How the side rail breaks the list up. Eight undifferentiated rows is a list to
+ * read; three small groups is a shape to scan, and the groups are real — two
+ * daily screens, the three life areas, then the tools that serve them.
+ *
+ * Derived from NAV rather than restating it, so the order stays defined once.
+ * "settings" is absent deliberately: Profile pins to the bottom by the account
+ * box, because it is where you change things rather than somewhere you work.
+ */
+const RAIL_GROUPS = [
+  { key: "daily", label: "Day to day" },
+  { key: "areas", label: "Your areas" },
+  { key: "tools", label: "Tools" },
 ] as const;
 
 /**
@@ -183,56 +199,80 @@ export function AppShell({ children }: { children: ReactNode }) {
               railCollapsed ? "md:w-[4.5rem]" : "md:w-60"
             }`}
           >
+            {/*
+              The collapse control lives in the brand row, not the nav.
+              
+              It used to be the first item in the list, with the same pill shape,
+              text size and hover as the real destinations — so the eye had to
+              rule it out before finding anywhere to go. It is a control on the
+              rail, so it sits with the rail's header.
+            */}
             <div
-              className={`flex items-center gap-2 py-6 ${railCollapsed ? "justify-center px-3" : "px-6"}`}
-            >
-              {railCollapsed ? <Brand variant="icon" /> : <Brand subtitle />}
-            </div>
-
-            <button
-              onClick={() => setRailCollapsed((v) => !v)}
-              aria-label={railCollapsed ? "Expand navigation" : "Collapse navigation"}
-              aria-expanded={!railCollapsed}
-              className={`mb-2 flex items-center gap-3 rounded-2xl py-2 text-sm text-ink-soft transition-colors hover:bg-secondary ${
-                railCollapsed ? "mx-3 justify-center px-0" : "mx-3 px-3"
+              className={`flex items-center py-5 ${
+                railCollapsed ? "justify-center px-3" : "justify-between px-5"
               }`}
             >
-              <Menu className="h-4 w-4 shrink-0" />
-              {!railCollapsed && <span>Collapse</span>}
-            </button>
+              {railCollapsed ? <Brand variant="icon" /> : <Brand subtitle />}
+              {!railCollapsed && (
+                <button
+                  onClick={() => setRailCollapsed(true)}
+                  aria-label="Collapse navigation"
+                  aria-expanded
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-soft opacity-60 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
-            <nav className="flex-1 space-y-1 px-3">
-              {NAV.map((n) => {
-                const active = pathname === n.to;
+            {railCollapsed && (
+              <button
+                onClick={() => setRailCollapsed(false)}
+                aria-label="Expand navigation"
+                aria-expanded={false}
+                className="mx-auto mb-3 grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            )}
+
+            <nav className="flex-1 px-3" aria-label="Sections">
+              {RAIL_GROUPS.map((group, groupIndex) => {
+                const items = NAV.filter((n) => n.group === group.key);
+                if (items.length === 0) return null;
                 return (
-                  <Link
-                    key={n.to}
-                    to={n.to}
-                    title={railCollapsed ? n.label : undefined}
-                    className={`flex items-center gap-3 rounded-2xl py-2.5 text-sm transition-colors ${
-                      railCollapsed ? "justify-center px-0" : "px-3"
-                    } ${active ? "text-ink" : "text-ink-soft hover:bg-secondary"}`}
-                    style={
-                      active
-                        ? {
-                            backgroundColor: "color-mix(in oklab, var(--primary) 14%, transparent)",
-                          }
-                        : undefined
-                    }
-                  >
-                    <n.icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : ""}`} />
-                    {!railCollapsed && n.label}
-                  </Link>
+                  <div key={group.key} className={groupIndex === 0 ? "" : "mt-5"}>
+                    {/* Collapsed, the labels would not fit, so a hairline carries
+                        the grouping instead of losing it. */}
+                    {railCollapsed ? (
+                      groupIndex > 0 && <div className="mx-auto mb-3 h-px w-6 bg-border" />
+                    ) : (
+                      <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+                        {group.label}
+                      </p>
+                    )}
+                    <div className="space-y-0.5">
+                      {items.map((n) => (
+                        <RailLink key={n.to} item={n} active={pathname === n.to} collapsed={railCollapsed} />
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
             </nav>
 
-            {!railCollapsed && (
-              <div className="space-y-3 px-4 py-6 text-xs text-ink-soft">
-                <AccountBox />
-                <p className="px-2 italic">One thing at a time.</p>
+            <div className="mt-4 border-t border-border px-3 pb-4 pt-3">
+              {NAV.filter((n) => n.group === "settings").map((n) => (
+                <RailLink key={n.to} item={n} active={pathname === n.to} collapsed={railCollapsed} />
+              ))}
+
+              {/* Collapsed used to hide this whole block, which took Lock and
+                  Sign out with it — a rail you collapsed could not be signed out
+                  of. Collapsed now gets the same two controls as icons. */}
+              <div className={railCollapsed ? "mt-2" : "mt-3"}>
+                <AccountBox compact={railCollapsed} iconsOnly={railCollapsed} />
               </div>
-            )}
+            </div>
           </aside>
 
           <main className="min-w-0 flex-1">
@@ -255,6 +295,49 @@ export function AppShell({ children }: { children: ReactNode }) {
  * the row still reads correctly to a screen reader and a hover or long-press
  * names each icon.
  */
+/**
+ * One row in the side rail.
+ *
+ * The active row gets a left accent bar as well as the tint. The tint alone is a
+ * soft wash at 14% and, in a list of eight, took a moment to locate; a 2px bar
+ * on the edge is found without reading anything.
+ */
+function RailLink({
+  item,
+  active,
+  collapsed,
+}: {
+  item: (typeof NAV)[number];
+  active: boolean;
+  collapsed: boolean;
+}) {
+  return (
+    <Link
+      to={item.to}
+      title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex items-center gap-3 rounded-xl py-2 text-sm transition-colors ${
+        collapsed ? "justify-center px-0" : "px-3"
+      } ${active ? "font-medium text-ink" : "text-ink-soft hover:bg-secondary hover:text-ink"}`}
+      style={
+        active
+          ? { backgroundColor: "color-mix(in oklab, var(--primary) 12%, transparent)" }
+          : undefined
+      }
+    >
+      {active && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary"
+        />
+      )}
+      <item.icon className={`h-4 w-4 shrink-0 ${active ? "text-primary" : ""}`} />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </Link>
+  );
+}
+
 function NavChips({ pathname }: { pathname: string }) {
   return (
     <nav className="flex items-center justify-between gap-1 px-3 pb-2" aria-label="Sections">
@@ -279,7 +362,14 @@ function NavChips({ pathname }: { pathname: string }) {
   );
 }
 
-function AccountBox({ compact = false }: { compact?: boolean }) {
+function AccountBox({
+  compact = false,
+  iconsOnly = false,
+}: {
+  compact?: boolean;
+  /** Collapsed rail: the same two controls with their labels dropped. */
+  iconsOnly?: boolean;
+}) {
   const { user } = useSession();
   const sync = useSyncStatus();
   const signOut = useSignOut();
@@ -294,6 +384,29 @@ function AccountBox({ compact = false }: { compact?: boolean }) {
     ) : (
       <Cloud className="h-3 w-3" />
     );
+
+  if (iconsOnly) {
+    return (
+      <div className="flex flex-col items-center gap-1.5">
+        <button
+          onClick={lockNow}
+          aria-label="Lock"
+          title="Lock"
+          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+        >
+          <Lock className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={signOut}
+          aria-label="Sign out"
+          title="Sign out"
+          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
 
   if (compact) {
     return (

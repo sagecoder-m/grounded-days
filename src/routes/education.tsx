@@ -48,6 +48,11 @@ function EducationPage() {
         </p>
       </header>
 
+      {/* Above the work, deliberately: on a study page the first useful action
+          is usually "start a block", not "read the list". Medium rather than
+          full size so it leads without dominating. */}
+      <FocusTimer size="medium" />
+
       {/* Replaces the old "To do" list. Assignments are tasks, so this is the
           same grid the Overview uses — one component, one behaviour, and a
           course's work shows up here automatically because it carries a date. */}
@@ -133,8 +138,6 @@ function EducationPage() {
           ))}
         </div>
       </section>
-
-      <FocusTimer />
 
       <section>
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">

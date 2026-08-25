@@ -11,7 +11,13 @@ import { Input } from "@/components/ui/input";
  * around courses. Behaviour is unchanged — extracted so the route file is about
  * courses and assignments rather than also carrying a timer.
  */
-export function FocusTimer() {
+/**
+ * `medium` shrinks the dial and tightens the padding so the timer can lead a
+ * page without dominating it. At 240px the dial was the largest thing on
+ * Education and pulled the eye before the assignments did — which is the wrong
+ * order when it sits at the top.
+ */
+export function FocusTimer({ size: variant = "large" }: { size?: "large" | "medium" } = {}) {
   const [focusMin, setFocusMin] = useState(25);
   const [breakMin, setBreakMin] = useState(5);
   const [label, setLabel] = useState("Study session");
@@ -79,7 +85,7 @@ export function FocusTimer() {
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  const size = 240;
+  const size = variant === "medium" ? 168 : 240;
   const stroke = 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -90,7 +96,11 @@ export function FocusTimer() {
         <h2 className="font-serif text-2xl">Focus timer</h2>
         <span className="text-xs text-ink-soft italic">One block at a time.</span>
       </div>
-      <div className="card-soft p-6 md:p-8 grid md:grid-cols-[auto_1fr] gap-8 items-center">
+      <div
+        className={`card-soft grid items-center md:grid-cols-[auto_1fr] ${
+          variant === "medium" ? "gap-6 p-5 md:p-6" : "gap-8 p-6 md:p-8"
+        }`}
+      >
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
@@ -109,7 +119,7 @@ export function FocusTimer() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
-            <div className="font-serif text-5xl tabular-nums mt-1">{mm}:{ss}</div>
+            <div className={`mt-1 font-serif tabular-nums ${variant === "medium" ? "text-3xl" : "text-5xl"}`}>{mm}:{ss}</div>
             <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
           </div>
         </div>
