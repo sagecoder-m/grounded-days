@@ -26,12 +26,20 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * the touch path being a second-class imitation.
  */
 
-/** Grid placement per size, keyed to the board's width rather than the window's
- *  — see the grid in routes/index.tsx for why. One column below @3xl, where two
- *  would be too thin for either to be readable. */
+/**
+ * Grid placement per size, keyed to the board's width rather than the window's —
+ * see the grid in routes/index.tsx for why.
+ *
+ * @2xl is 42rem of board, which is two ~324px columns. The threshold has to be
+ * stated in board width, but it is worth knowing what that costs in window
+ * width: the rail and padding take about 344px, so two columns start at roughly
+ * a 1016px window with the rail open and an 800px one with it collapsed. Set
+ * this any higher and the feature quietly stops existing on ordinary laptops —
+ * @3xl looked reasonable and turned out to need a 1248px window.
+ */
 const SPAN: Record<WidgetSize, string> = {
-  wide: "@3xl/board:col-span-2",
-  square: "@3xl/board:col-span-1",
+  wide: "@2xl/board:col-span-2",
+  square: "@2xl/board:col-span-1",
   /*
     row-span-2 is what lets two other widgets stack beside a tall one, rather
     than the tall one simply being a square with a gap under it.
@@ -43,7 +51,7 @@ const SPAN: Record<WidgetSize, string> = {
     section inside it; if that nesting ever changes the worst case is the hole
     coming back, not a break.
   */
-  tall: "@3xl/board:col-span-1 @3xl/board:row-span-2 [&>*]:h-full [&>*>*]:h-full",
+  tall: "@2xl/board:col-span-1 @2xl/board:row-span-2 [&>*]:h-full [&>*>*]:h-full",
 };
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: typeof Square }[] = [
@@ -104,8 +112,25 @@ export function WidgetFrame({
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  /**
+   * Whether the board is currently narrow enough that every size renders the
+   * same. The choice is still saved — it applies when there is room — but
+   * silently accepting a size and changing nothing is what made resizing feel
+   * broken, so the menu says so instead.
+   */
+  const [singleColumn, setSingleColumn] = useState(false);
+  const frameRef = useRef<HTMLElement | null>(null);
   const holdTimer = useRef<number | null>(null);
   const holdOrigin = useRef<{ x: number; y: number } | null>(null);
+
+  /** Read the grid itself rather than re-deriving the breakpoint in JS, so this
+   *  cannot drift out of step with the CSS above. */
+  function openMenu() {
+    const grid = frameRef.current?.parentElement;
+    const cols = grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 2;
+    setSingleColumn(cols < 2);
+    setMenuOpen(true);
+  }
 
   const entry = widgets.find((w) => w.key === widgetKey);
   const size = entry?.size ?? "wide";
@@ -132,6 +157,7 @@ export function WidgetFrame({
 
   return (
     <section
+      ref={frameRef}
       // @container so a widget's own contents lay out against the width it
       // actually has. Without it, half-width widgets keep asking the viewport
       // how much room they have and get the wrong answer.
@@ -141,14 +167,14 @@ export function WidgetFrame({
         // desktop half of the same gesture the hold covers on touch.
         if (isBrowserMenuWanted(e.target)) return;
         e.preventDefault();
-        setMenuOpen(true);
+        openMenu();
       }}
       onPointerDown={(e) => {
         // Mouse right-clicks are handled above; only a touch or pen press starts
         // a hold, so a left-click-and-drag on a chart never opens a menu.
         if (e.pointerType === "mouse" || isControl(e.target)) return;
         holdOrigin.current = { x: e.clientX, y: e.clientY };
-        holdTimer.current = window.setTimeout(() => setMenuOpen(true), HOLD_MS);
+        holdTimer.current = window.setTimeout(openMenu, HOLD_MS);
       }}
       onPointerMove={(e) => {
         const origin = holdOrigin.current;
@@ -190,6 +216,12 @@ export function WidgetFrame({
               </span>
             </DropdownMenuItem>
           ))}
+          {singleColumn && (
+            <p className="px-2 py-1.5 text-[11px] leading-snug text-ink-soft">
+              This window is too narrow to place two widgets side by side, so
+              sizes are saved but look the same for now.
+            </p>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={hide} className="gap-2.5">
             <EyeOff className="h-4 w-4 text-ink-soft" />

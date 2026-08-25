@@ -140,12 +140,13 @@ function Overview() {
       window every size collapsed to one column and choosing "Half width" did
       nothing at all: the menu took the choice and the layout ignored it. The
       window is the wrong thing to measure anyway, since the side rail can be
-      expanded or collapsed and takes 280px when it is open. @3xl is 48rem of
-      actual board, where half a board is still wide enough to read.
+      expanded or collapsed and takes 280px when it is open. @2xl is 42rem of
+      actual board — two ~324px columns, which start at roughly a 1016px window
+      with the rail open and an 800px one with it collapsed.
     */
     <div className="@container/board">
       <div
-        className="grid grid-flow-row-dense auto-rows-min gap-6 @3xl/board:grid-cols-2"
+        className="grid grid-flow-row-dense auto-rows-min gap-6 @2xl/board:grid-cols-2"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
