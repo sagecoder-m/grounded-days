@@ -178,6 +178,16 @@ export type WeekStart = 0 | 1 | 6;
 export type AssistantTone = "gentle" | "neutral" | "direct";
 export type AssistantLength = "brief" | "balanced" | "thorough";
 
+/**
+ * How much of the Overview grid a widget takes.
+ *
+ * Two columns on a wide screen, one below that. "wide" spans both, "square"
+ * takes one, "tall" takes one and two rows — enough vocabulary to put two things
+ * side by side or give a long list the height it wants, without becoming a
+ * layout editor nobody asked for.
+ */
+export type WidgetSize = "square" | "wide" | "tall";
+
 export interface Settings {
   displayName: string;
   density: Density;
@@ -189,7 +199,9 @@ export interface Settings {
   assistantLength: AssistantLength;
   /** Free text the client writes for the assistant. Capped at 600 chars. */
   assistantNotes: string;
-  widgets: { key: string; enabled: boolean }[];
+  /** Size is optional on read for rows written before it existed. */
+  widgets: { key: string; enabled: boolean; size: WidgetSize }[];
+  showFocusTimer: boolean;
 }
 
 export interface AppState {

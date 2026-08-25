@@ -150,7 +150,7 @@ function AssistantPage() {
     <div className="space-y-6">
       <header>
         <p className="chip bg-secondary text-ink-soft">Assistant</p>
-        <h1 className="mt-3 font-serif text-4xl">Think it through with me</h1>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">Think it through with me</h1>
         <p className="mt-2 max-w-lg text-ink-soft">
           It can see your goals, tasks, projects, habits and schedule, and it can add tasks for
           you. It cannot see your journal.

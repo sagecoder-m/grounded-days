@@ -707,6 +707,7 @@ export type Database = {
           density: string
           display_name: string
           nav_layout: string
+          show_focus_timer: boolean
           updated_at: string
           user_id: string
           week_starts_on: number
@@ -722,6 +723,7 @@ export type Database = {
           density?: string
           display_name?: string
           nav_layout?: string
+          show_focus_timer?: boolean
           updated_at?: string
           user_id: string
           week_starts_on?: number
@@ -737,6 +739,7 @@ export type Database = {
           density?: string
           display_name?: string
           nav_layout?: string
+          show_focus_timer?: boolean
           updated_at?: string
           user_id?: string
           week_starts_on?: number

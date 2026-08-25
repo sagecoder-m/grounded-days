@@ -102,7 +102,7 @@ export function ShareLinksSection() {
   return (
     <section className="card-soft space-y-5 p-6">
       <div>
-        <h2 className="font-serif text-2xl">Share a read-only view</h2>
+        <h2 className="font-serif text-lg">Share a read-only view</h2>
         <p className="mt-2 max-w-lg text-sm text-ink-soft">
           Create a link that shows only the areas you choose. Whoever opens it needs no account and
           can't change anything — and it stops working after {DEFAULT_SHARE_DAYS} days.

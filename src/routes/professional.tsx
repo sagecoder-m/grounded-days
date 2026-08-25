@@ -46,7 +46,7 @@ function ProfessionalPage() {
             />{" "}
             Professional
           </p>
-          <h1 className="mt-3 font-serif text-4xl">Your work, organized softly</h1>
+          <h1 className="mt-3 font-serif text-2xl md:text-3xl">Your work, organized softly</h1>
           <p className="mt-2 text-ink-soft max-w-lg">
             Projects hold sub-projects, which hold goals and tasks. Roll it up when it's too much.
           </p>

@@ -41,7 +41,7 @@ function EducationPage() {
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--clay)" }} />{" "}
           Education
         </p>
-        <h1 className="mt-3 font-serif text-4xl">Learn at your own pace</h1>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">Learn at your own pace</h1>
         <p className="mt-2 max-w-lg text-ink-soft">
           Courses hold your assignments. Everything with a date also lands on your
           calendar.
@@ -58,7 +58,7 @@ function EducationPage() {
           course's work shows up here automatically because it carries a date. */}
       <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-serif text-2xl">Due today</h2>
+          <h2 className="font-serif text-lg">Due today</h2>
           <Link
             to="/calendar"
             className="inline-flex items-center gap-1.5 text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
@@ -79,7 +79,7 @@ function EducationPage() {
 
       <section onPointerUp={courseDrag.endDrag} onPointerLeave={courseDrag.endDrag}>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-serif text-2xl">Courses</h2>
+          <h2 className="font-serif text-lg">Courses</h2>
           <AddCourseDialog
             trigger={
               <Button variant="outline" size="sm" className="rounded-full border-tan">
@@ -113,7 +113,7 @@ function EducationPage() {
 
       <section onPointerUp={goalDrag.endDrag} onPointerLeave={goalDrag.endDrag}>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-serif text-2xl">Goals</h2>
+          <h2 className="font-serif text-lg">Goals</h2>
           <AddGoalDialog
             area="education"
             trigger={
@@ -141,7 +141,7 @@ function EducationPage() {
 
       <section>
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-serif text-2xl">History</h2>
+          <h2 className="font-serif text-lg">History</h2>
           <span className="text-xs text-ink-soft">
             {history.length} completed · {state.focusSessions.length} focus sessions
           </span>

@@ -48,7 +48,6 @@ const WIDGET_LABELS: Record<string, string> = {
   goals: "Area progress",
   chart: "Two-week rhythm chart",
   day: "A look at today",
-
   upcoming: "Upcoming",
 };
 
@@ -95,7 +94,7 @@ function AdminSection() {
   return (
     <section className="card-soft flex flex-wrap items-center justify-between gap-3 p-6">
       <div>
-        <h2 className="font-serif text-2xl">Admin</h2>
+        <h2 className="font-serif text-lg">Admin</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Pilot dashboard — usage, errors, and tester accounts.
         </p>
@@ -117,7 +116,7 @@ function ProfilePage() {
     <div className="space-y-10">
       <header>
         <p className="chip bg-secondary text-ink-soft">Profile</p>
-        <h1 className="mt-3 font-serif text-4xl">Make it yours</h1>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">Make it yours</h1>
         <p className="mt-2 text-ink-soft max-w-lg">
           Adjust the space so it feels comfortable. Nothing here is permanent.
         </p>
@@ -132,7 +131,7 @@ function ProfilePage() {
       <ShareLinksSection />
 
       <section className="card-soft p-6 space-y-5">
-        <h2 className="font-serif text-2xl">Accent color</h2>
+        <h2 className="font-serif text-lg">Accent color</h2>
         <div className="flex flex-wrap gap-3">
           {ACCENTS.map((a) => (
             <button
@@ -148,7 +147,7 @@ function ProfilePage() {
       </section>
 
       <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-2xl">Navigation</h2>
+        <h2 className="font-serif text-lg">Navigation</h2>
         <p className="text-sm text-ink-soft">
           Where the tabs live on a wide screen. Phones always use the top bar.
         </p>
@@ -169,7 +168,7 @@ function ProfilePage() {
       </section>
 
       <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-2xl">Density</h2>
+        <h2 className="font-serif text-lg">Density</h2>
         <div className="flex gap-3">
           {(["comfy", "compact"] as Density[]).map((d) => (
             <button
@@ -187,7 +186,7 @@ function ProfilePage() {
       </section>
 
       <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-2xl">Default calendar view</h2>
+        <h2 className="font-serif text-lg">Default calendar view</h2>
         <div className="flex gap-2">
           {(["week", "month", "year"] as CalView[]).map((v) => (
             <button
@@ -202,7 +201,7 @@ function ProfilePage() {
       </section>
 
       <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-2xl">Week starts on</h2>
+        <h2 className="font-serif text-lg">Week starts on</h2>
         <p className="text-sm text-ink-soft">
           Sets the first column of the habit grid and the first day of the week on the calendar.
         </p>
@@ -225,7 +224,7 @@ function ProfilePage() {
 
       <AssistantSection settings={settings} />
 
-      <WidgetSection widgets={settings.widgets} />
+      <WidgetSection widgets={settings.widgets} showFocusTimer={settings.showFocusTimer} />
 
       <PasscodeSettings />
 
@@ -260,7 +259,7 @@ function DisplayNameSection({ value }: { value: string }) {
 
   return (
     <section className="card-soft p-6 space-y-4">
-      <h2 className="font-serif text-2xl">Display name</h2>
+      <h2 className="font-serif text-lg">Display name</h2>
       <div className="space-y-1.5 max-w-sm">
         <Label htmlFor="dn">Used in your greeting</Label>
         <Input
@@ -297,7 +296,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
   return (
     <section className="card-soft space-y-5 p-6">
       <div>
-        <h2 className="font-serif text-2xl">Your assistant</h2>
+        <h2 className="font-serif text-lg">Your assistant</h2>
         <p className="mt-1 text-sm text-ink-soft">
           How it should talk to you. It already sees your goals, tasks, habits and
           schedule — never your journal.
@@ -371,7 +370,19 @@ function AssistantSection({ settings }: { settings: Settings }) {
   );
 }
 
-function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
+const SIZE_LABELS: Record<string, string> = {
+  wide: "Full width",
+  square: "Half width",
+  tall: "Tall",
+};
+
+function WidgetSection({
+  widgets,
+  showFocusTimer,
+}: {
+  widgets: Settings["widgets"];
+  showFocusTimer: boolean;
+}) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [working, setWorking] = useState<Settings["widgets"] | null>(null);
   const shown = (working ?? widgets).filter((w) => w.key in WIDGET_LABELS);
@@ -392,9 +403,11 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
 
   return (
     <section className="card-soft p-6 space-y-4">
-      <h2 className="font-serif text-2xl">Overview widgets</h2>
+      <h2 className="font-serif text-lg">Overview widgets</h2>
       <p className="text-sm text-ink-soft">
-        Drag by the handle to re-order — or use the arrows. Switches control what appears.
+        Drag by the handle to re-order — or use the arrows. Switches control what appears. On the
+        Overview itself you can right-click a widget (or press and hold on a phone) to change its
+        size.
       </p>
       <div className="space-y-2">
         {shown.map((w, i) => (
@@ -441,7 +454,9 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
               </div>
               <div>
                 <div className="text-sm font-medium">{WIDGET_LABELS[w.key] ?? w.key}</div>
-                <div className="text-[11px] text-ink-soft">Position {i + 1}</div>
+                <div className="text-[11px] text-ink-soft">
+                  Position {i + 1} &middot; {SIZE_LABELS[w.size] ?? "Full width"}
+                </div>
               </div>
             </div>
             <Switch
@@ -454,6 +469,19 @@ function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
             />
           </div>
         ))}
+      </div>
+
+      <div className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">
+        <div>
+          <div className="text-sm font-medium">Focus timer</div>
+          <div className="text-[11px] text-ink-soft">
+            Sits beside your areas. No position of its own.
+          </div>
+        </div>
+        <Switch
+          checked={showFocusTimer}
+          onCheckedChange={(v) => actions.updateSettings({ showFocusTimer: v })}
+        />
       </div>
     </section>
   );
@@ -480,7 +508,7 @@ function DataSection() {
 
   return (
     <section className="card-soft p-6 space-y-3">
-      <h2 className="font-serif text-2xl">Data</h2>
+      <h2 className="font-serif text-lg">Data</h2>
       <p className="text-sm text-ink-soft">
         Everything is saved to your account, so it follows you between devices. If you'd like a
         blank slate, you can clear it all.
@@ -493,7 +521,7 @@ function DataSection() {
         </AlertDialogTrigger>
         <AlertDialogContent className="bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-2xl">Clear everything?</AlertDialogTitle>
+            <AlertDialogTitle className="font-serif text-lg">Clear everything?</AlertDialogTitle>
             <AlertDialogDescription>
               This removes your tasks, habits, goals, projects, events, focus history, and
               preferences from your account. It can't be undone — your sign-in and passcode stay as

@@ -54,7 +54,7 @@ export function PasscodeSettings() {
 
   return (
     <section className="card-soft p-6 space-y-4">
-      <h2 className="font-serif text-2xl">Passcode</h2>
+      <h2 className="font-serif text-lg">Passcode</h2>
       <p className="text-sm text-ink-soft">
         Your passcode keeps this space private. It's checked on our side, so it never leaves your
         account unprotected.

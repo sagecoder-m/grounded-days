@@ -129,7 +129,18 @@ function Overview() {
   const endDrag = () => setDrag(null);
 
   return (
-    <div className="space-y-8" onPointerUp={endDrag} onPointerLeave={endDrag}>
+    /*
+      A two-column grid rather than a stack, so a widget's shape is the person's
+      choice as well as its order. auto-rows-min keeps each row only as tall as
+      it needs, and grid-flow-dense lets a half-width widget fill the gap beside
+      an earlier one instead of leaving a hole. One column below lg, where two
+      would make both too thin to read.
+    */
+    <div
+      className="grid grid-flow-row-dense auto-rows-min gap-6 lg:grid-cols-2"
+      onPointerUp={endDrag}
+      onPointerLeave={endDrag}
+    >
       {orderedWidgets.map((key) => {
         const section = renderSection(key);
         if (!section) return null;
@@ -149,13 +160,13 @@ function Overview() {
   );
 
   function renderSection(key: string) {
-    if (key === "greeting")
+    if (key === "greeting" && w("greeting"))
       return (
         <section key={key}>
           <p suppressHydrationWarning className="text-sm text-ink-soft">
             {format(today, "EEEE, MMMM d, yyyy")}
           </p>
-          <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">
+          <h1 suppressHydrationWarning className="mt-1 font-serif text-2xl md:text-3xl">
             {greeting(settings.displayName || "friend")}
           </h1>
           <p className="mt-2 text-ink-soft max-w-lg">
@@ -168,7 +179,7 @@ function Overview() {
       return (
         <section key={key}>
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-serif text-2xl">How your areas are moving</h2>
+            <h2 className="font-serif text-lg">How your areas are moving</h2>
           </div>
           {/*
             The timer sits at the end of this row rather than in a section of its
@@ -180,8 +191,8 @@ function Overview() {
             size. 13rem is the largest square that still reads as a sibling of a
             progress card rather than the point of the row.
           */}
-          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
-            <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid items-stretch gap-4 @3xl:grid-cols-[minmax(0,1fr)_13rem]">
+            <div className="grid gap-4 @lg:grid-cols-3">
               {areaProgress.map((a) => (
                 <div key={a.area} className="card-soft density-p flex h-full flex-col justify-between p-5">
                   <div className="mb-3 flex items-center justify-between gap-2">
@@ -197,12 +208,9 @@ function Overview() {
                 </div>
               ))}
             </div>
-            {/* Not gated on a widget key. It was one for a day, but a key in the
-                reorder list whose position does nothing and whose switch does
-                is a half-working control — worse than no control. The timer is
-                part of this row now, and hiding it is a one-line change if it
-                turns out nobody wants it here. */}
-            <FocusTimer size="square" />
+            {/* A real setting rather than a widget key: it lives inside this
+                row, so it has a switch in Profile and no position of its own. */}
+            {settings.showFocusTimer && <FocusTimer size="square" />}
           </div>
         </section>
       );
@@ -211,7 +219,7 @@ function Overview() {
       return (
         <section key={key}>
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-serif text-2xl">A look at today</h2>
+            <h2 className="font-serif text-lg">A look at today</h2>
             {/* HTML entity, not a unicode escape: in a JSX text child a
                     backslash-u sequence is not an escape at all, just six
                     literal characters, and it was rendering as written. */}
@@ -225,11 +233,11 @@ function Overview() {
       return (
         <section key={key}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-serif text-2xl">{encouragement.headline}</h2>
+            <h2 className="font-serif text-lg">{encouragement.headline}</h2>
             <span className="text-xs text-ink-soft">{encouragement.sub}</span>
           </div>
           <div className="card-soft p-4 md:p-6">
-            <div className="grid md:grid-cols-[2fr_1fr] gap-6">
+            <div className="grid gap-6 @3xl:grid-cols-[2fr_1fr]">
               <div className="h-56">
                 <ResponsiveContainer>
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -294,7 +302,7 @@ function Overview() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-              <div className="h-56">
+              <div className="hidden h-56 @3xl:block">
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
@@ -333,7 +341,7 @@ function Overview() {
       return (
         <section key={key}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-serif text-2xl">Upcoming</h2>
+            <h2 className="font-serif text-lg">Upcoming</h2>
             <span suppressHydrationWarning className="text-xs text-ink-soft">
               {upcomingLabel}
             </span>

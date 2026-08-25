@@ -31,6 +31,7 @@ import type {
   AssistantTone,
   Settings,
   Subproject,
+  WidgetSize,
   WeekStart,
   Task,
 } from "@/lib/store-types";
@@ -220,12 +221,14 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
 // chart sit above the task list so the first thing seen is movement already
 // made, not work outstanding. Keep in step with the migration's column default.
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
-  { key: "greeting", enabled: true },
-  { key: "chart", enabled: true },
-  { key: "goals", enabled: true },
-  { key: "day", enabled: true },
-  { key: "upcoming", enabled: true },
+  { key: "greeting", enabled: true, size: "wide" },
+  { key: "chart", enabled: true, size: "wide" },
+  { key: "goals", enabled: true, size: "wide" },
+  { key: "day", enabled: true, size: "wide" },
+  { key: "upcoming", enabled: true, size: "wide" },
 ];
+
+const WIDGET_SIZES = ["square", "wide", "tall"] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   displayName: "friend",
@@ -234,6 +237,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultCalView: "week",
   navLayout: "sidebar",
   weekStartsOn: 1,
+  showFocusTimer: true,
   assistantTone: "gentle",
   assistantLength: "brief",
   assistantNotes: "",
@@ -247,7 +251,18 @@ function toWidgets(value: unknown): Settings["widgets"] {
     if (typeof entry !== "object" || entry === null) return [];
     const { key, enabled } = entry as { key?: unknown; enabled?: unknown };
     if (typeof key !== "string") return [];
-    return [{ key, enabled: enabled !== false }];
+    const size = (entry as { size?: unknown }).size;
+    return [
+      {
+        key,
+        enabled: enabled !== false,
+        // Defaults to wide so a row written before sizes existed keeps looking
+        // exactly as it did.
+        size: (WIDGET_SIZES as readonly string[]).includes(size as string)
+          ? (size as WidgetSize)
+          : "wide",
+      },
+    ];
   });
   return cleaned.length > 0 ? cleaned : DEFAULT_WIDGETS;
 }
@@ -281,13 +296,14 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
       "brief",
     ),
     assistantNotes: (row.assistant_notes ?? "").slice(0, 600),
+    showFocusTimer: row.show_focus_timer !== false,
     widgets: toWidgets(row.widgets),
   };
 }
 
 /** Widgets is a jsonb column, so the array needs widening to Json. */
 export function widgetsToJson(widgets: Settings["widgets"]): Json {
-  return widgets.map((w) => ({ key: w.key, enabled: w.enabled }));
+  return widgets.map((w) => ({ key: w.key, enabled: w.enabled, size: w.size }));
 }
 
 /** Partial domain settings -> partial column patch. */
@@ -299,6 +315,7 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
   if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
   if (patch.weekStartsOn !== undefined) row.week_starts_on = patch.weekStartsOn;
+  if (patch.showFocusTimer !== undefined) row.show_focus_timer = patch.showFocusTimer;
   if (patch.assistantTone !== undefined) row.assistant_tone = patch.assistantTone;
   if (patch.assistantLength !== undefined) row.assistant_length = patch.assistantLength;
   if (patch.assistantNotes !== undefined) row.assistant_notes = patch.assistantNotes.slice(0, 600);

@@ -60,6 +60,7 @@ export type {
   SyncStatus,
   Task,
   WeekStart,
+  WidgetSize,
 } from "./store-types";
 
 export { actions, deleteAllUserData } from "./db/mutations";

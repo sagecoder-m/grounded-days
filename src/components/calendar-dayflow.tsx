@@ -292,7 +292,7 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">{heading}</h2>
+        <h2 className="font-serif text-lg">{heading}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <AreaFilter selected={areaFilter} onChange={setAreaFilter} />
           <SyncedHint />

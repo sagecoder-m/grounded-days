@@ -113,7 +113,7 @@ export function CalendarConnectionsSection() {
   return (
     <section className="card-soft p-6 space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">Connected calendars</h2>
+        <h2 className="font-serif text-lg">Connected calendars</h2>
         {rows.length > 0 && (
           <Button
             variant="ghost"

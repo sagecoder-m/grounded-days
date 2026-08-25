@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
 
 import { actions, type Settings } from "@/lib/store";
+import { WidgetFrame } from "@/components/widget-frame";
 
 /**
  * Drag-to-reorder for the Overview's sections, on the page itself.
@@ -61,68 +62,76 @@ export function ReorderableSection({
   }
 
   return (
-    <div
-      data-section={sectionKey}
-      onPointerEnter={() => {
-        // Only meaningful mid-drag; setting it otherwise would fight the
-        // pointer-up that ends the gesture.
-        if (drag && drag.key !== sectionKey) setDrag({ ...drag, overKey: sectionKey });
-      }}
-      className={`group/section relative transition-opacity ${isDragging ? "opacity-40" : ""} ${
-        isTarget
-          ? "before:absolute before:-top-3 before:left-0 before:h-0.5 before:w-full before:rounded-full before:bg-primary"
-          : ""
-      }`}
-    >
-      <button
-        type="button"
-        aria-label={`Reorder this section. Press and drag, or use arrow keys.`}
-        onPointerDown={(e) => {
-          e.preventDefault();
-          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-          setGrabbed(true);
-          setDrag({ key: sectionKey, overKey: null });
+    <WidgetFrame widgetKey={sectionKey} widgets={widgets}>
+      <div
+        data-section={sectionKey}
+        onPointerEnter={() => {
+          // Only meaningful mid-drag; setting it otherwise would fight the
+          // pointer-up that ends the gesture.
+          if (drag && drag.key !== sectionKey) setDrag({ ...drag, overKey: sectionKey });
         }}
-        onPointerMove={(e) => {
-          // Pointer capture (set above) routes every subsequent pointer event to
-          // this button, so the sections underneath never fire onPointerEnter
-          // during a real drag — which is why dragging did nothing while a
-          // synthetic test that dispatched pointerenter straight at the target
-          // appeared to pass. The element under the cursor has to be looked up.
-          if (!drag) return;
-          const under = document.elementFromPoint(e.clientX, e.clientY);
-          const over = under?.closest("[data-section]")?.getAttribute("data-section") ?? null;
-          if (over && over !== drag.overKey) setDrag({ ...drag, overKey: over });
-        }}
-        onPointerUp={() => {
-          if (drag?.overKey) commit(drag.key, drag.overKey);
-          setGrabbed(false);
-          setDrag(null);
-        }}
-        onPointerCancel={() => {
-          setGrabbed(false);
-          setDrag(null);
-        }}
-        onKeyDown={(e) => {
-          // Keyboard equivalent, because a drag handle that only responds to a
-          // pointer is unusable for anyone not using one.
-          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-          e.preventDefault();
-          const index = widgets.findIndex((w) => w.key === sectionKey);
-          const target = index + (e.key === "ArrowUp" ? -1 : 1);
-          if (index < 0 || target < 0 || target >= widgets.length) return;
-          const next = [...widgets];
-          [next[index], next[target]] = [next[target], next[index]];
-          actions.reorderWidgets(next);
-        }}
-        className={`absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-9 ${
-          grabbed ? "cursor-grabbing bg-secondary text-ink opacity-100" : "cursor-grab"
+        className={`group/section relative transition-opacity ${isDragging ? "opacity-40" : ""} ${
+          isTarget
+            ? "before:absolute before:-top-3 before:left-0 before:h-0.5 before:w-full before:rounded-full before:bg-primary"
+            : ""
         }`}
       >
-        <GripVertical className="h-4 w-4" />
-      </button>
+        <button
+          type="button"
+          aria-label={`Reorder this section. Press and drag, or use arrow keys.`}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            setGrabbed(true);
+            setDrag({ key: sectionKey, overKey: null });
+          }}
+          onPointerMove={(e) => {
+            // Pointer capture (set above) routes every subsequent pointer event to
+            // this button, so the sections underneath never fire onPointerEnter
+            // during a real drag — which is why dragging did nothing while a
+            // synthetic test that dispatched pointerenter straight at the target
+            // appeared to pass. The element under the cursor has to be looked up.
+            if (!drag) return;
+            const under = document.elementFromPoint(e.clientX, e.clientY);
+            const over = under?.closest("[data-section]")?.getAttribute("data-section") ?? null;
+            if (over && over !== drag.overKey) setDrag({ ...drag, overKey: over });
+          }}
+          onPointerUp={() => {
+            if (drag?.overKey) commit(drag.key, drag.overKey);
+            setGrabbed(false);
+            setDrag(null);
+          }}
+          onPointerCancel={() => {
+            setGrabbed(false);
+            setDrag(null);
+          }}
+          onKeyDown={(e) => {
+            // Keyboard equivalent, because a drag handle that only responds to a
+            // pointer is unusable for anyone not using one.
+            if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+            e.preventDefault();
+            const index = widgets.findIndex((w) => w.key === sectionKey);
+            const target = index + (e.key === "ArrowUp" ? -1 : 1);
+            if (index < 0 || target < 0 || target >= widgets.length) return;
+            const next = [...widgets];
+            [next[index], next[target]] = [next[target], next[index]];
+            actions.reorderWidgets(next);
+          }}
+          // -left-6 is the column gap exactly (gap-6), not a guess. The handle
+        // used to sit at -left-9 with a 32px box, which was fine when every
+        // widget was full width and it had the page margin to sit in. Now that
+        // two widgets can share a row, that offset put the right-hand widget's
+        // handle 12px inside the left-hand widget's card. Filling the gap
+        // precisely keeps it in the margin in both columns.
+        className={`absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-6 md:w-6 ${
+            grabbed ? "cursor-grabbing bg-secondary text-ink opacity-100" : "cursor-grab"
+          }`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
 
-      {children}
-    </div>
+        {children}
+      </div>
+    </WidgetFrame>
   );
 }

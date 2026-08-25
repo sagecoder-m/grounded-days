@@ -47,7 +47,7 @@ function JournalPage() {
     <div className="space-y-8">
       <header>
         <p className="chip bg-secondary text-ink-soft">Journal</p>
-        <h1 className="mt-3 font-serif text-4xl">A few words is enough</h1>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">A few words is enough</h1>
         <p className="mt-2 max-w-lg text-ink-soft">
           No prompts you have to answer, no streak to keep. Write a sentence or leave it blank.
         </p>
@@ -165,7 +165,7 @@ function Editor({
   return (
     <section className="card-soft space-y-5 p-5 md:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">
+        <h2 className="font-serif text-lg">
           {isToday ? "Today" : format(parseISO(date), "EEEE, MMMM d")}
         </h2>
         {isToday && (
@@ -312,7 +312,7 @@ function WeeklyReview() {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">This week</h2>
+        <h2 className="font-serif text-lg">This week</h2>
         <span className="text-xs text-ink-soft">{review.weekLabel}</span>
       </div>
 

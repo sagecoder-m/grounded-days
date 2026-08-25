@@ -84,7 +84,7 @@ function PersonalPage() {
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--sage)" }} />{" "}
           Personal
         </p>
-        <h1 className="mt-3 font-serif text-4xl">Tend to yourself</h1>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">Tend to yourself</h1>
         <p className="mt-2 text-ink-soft max-w-lg">
           Small, repeatable acts of care. No streaks to break — just gentle dots.
         </p>
@@ -93,7 +93,7 @@ function PersonalPage() {
       {/* Habits */}
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-serif text-2xl">Daily habits</h2>
+          <h2 className="font-serif text-lg">Daily habits</h2>
         </div>
         <div className="card-soft p-4 md:p-6">
           {!mounted ? (
@@ -232,7 +232,7 @@ function PersonalPage() {
       {/* Goals */}
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-serif text-2xl">Goals</h2>
+          <h2 className="font-serif text-lg">Goals</h2>
           <AddGoalDialog
             area="personal"
             trigger={
@@ -265,7 +265,7 @@ function PersonalPage() {
       {/* Projects */}
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-serif text-2xl">Projects</h2>
+          <h2 className="font-serif text-lg">Projects</h2>
           <AddProjectDialog
             area="personal"
             trigger={
@@ -303,7 +303,7 @@ function PersonalPage() {
       {/* Loose tasks — anything not filed under a project. */}
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-serif text-2xl">Other tasks</h2>
+          <h2 className="font-serif text-lg">Other tasks</h2>
           <AddTaskDialog
             area="personal"
             trigger={
@@ -333,7 +333,7 @@ function PersonalPage() {
       {/* Progress chart */}
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-serif text-2xl">Consistency, over time</h2>
+          <h2 className="font-serif text-lg">Consistency, over time</h2>
         </div>
         <div className="card-soft p-4 md:p-6 h-64">
           <ResponsiveContainer>

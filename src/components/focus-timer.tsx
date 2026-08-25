@@ -177,7 +177,7 @@ export function FocusTimer({
   return (
     <section>
       <div className="flex items-baseline justify-between mb-3">
-        <h2 className="font-serif text-2xl">Focus timer</h2>
+        <h2 className="font-serif text-lg">Focus timer</h2>
         <span className="text-xs text-ink-soft italic">One block at a time.</span>
       </div>
       <div

@@ -171,7 +171,7 @@ function Portal() {
           <ArrowLeft className="h-4 w-4" />
           Back to profile
         </Link>
-        <h1 className="font-serif text-4xl md:text-5xl">HQ</h1>
+        <h1 className="font-serif text-2xl md:text-3xl">HQ</h1>
         <p className="mt-2 max-w-xl text-ink-soft">
           The pilot at a glance — last {WINDOW_DAYS} days. Counts of feature
           names and timestamps only; nothing anyone wrote is collected or shown
@@ -283,7 +283,7 @@ function PulsePanel({
 
   return (
     <section>
-      <h2 className="mb-3 font-serif text-2xl">Pulse</h2>
+      <h2 className="mb-3 font-serif text-lg">Pulse</h2>
       {!stats ? (
         <div className="card-soft h-24 animate-pulse rounded-2xl bg-secondary/60" />
       ) : (
@@ -339,7 +339,7 @@ function UsagePanel({ events, loading }: { events?: UsageRow[]; loading: boolean
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">Usage</h2>
+        <h2 className="font-serif text-lg">Usage</h2>
         {most && least && most.visits > 0 && (
           <span className="text-xs text-ink-soft">
             most: {most.label} · least: {least.label}
@@ -418,7 +418,7 @@ function FrictionPanel({
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-2xl">Friction</h2>
+        <h2 className="font-serif text-lg">Friction</h2>
         {errorRate !== null && (
           <span className="text-xs text-ink-soft">{errorRate} errors per 1k events</span>
         )}
@@ -472,7 +472,7 @@ function AccountsPanel({
 }) {
   return (
     <section>
-      <h2 className="mb-3 font-serif text-2xl">Accounts</h2>
+      <h2 className="mb-3 font-serif text-lg">Accounts</h2>
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
         <div className="card-soft overflow-x-auto p-4 md:p-6">
           {loading ? (
@@ -595,7 +595,7 @@ function PilotChecklist() {
   ];
   return (
     <section>
-      <h2 className="mb-3 font-serif text-2xl">Running the pilot</h2>
+      <h2 className="mb-3 font-serif text-lg">Running the pilot</h2>
       <div className="card-soft p-4 md:p-6">
         <ul className="space-y-2 text-sm">
           {items.map((item) => (
