@@ -53,6 +53,7 @@ export function TaskGrid({
   emptyText = "Nothing due here. A clear stretch is allowed.",
   showAdd = true,
   includeOverdue = false,
+  showGroupLabels = true,
 }: {
   tasks: Task[];
   /** Omit for a tasks-only grid. */
@@ -75,6 +76,15 @@ export function TaskGrid({
    * says "gently overdue" rather than shouting a number of days.
    */
   includeOverdue?: boolean;
+  /**
+   * Day headings and the "Still waiting" heading.
+   *
+   * Off where the surrounding section already names the day — "A look at today"
+   * followed by a row reading TODAY is the same word twice. The overdue rows keep
+   * their own "gently overdue · Aug 5" line, so dropping the heading loses the
+   * label and not the information.
+   */
+  showGroupLabels?: boolean;
 }) {
   const overdue = useMemo(() => {
     if (!includeOverdue) return [];
@@ -141,9 +151,11 @@ export function TaskGrid({
 
       {overdue.length > 0 && (
         <div className="space-y-2">
-          <p className="px-1 text-[11px] uppercase tracking-[0.08em] text-[color:var(--clay)]">
-            Still waiting
-          </p>
+          {showGroupLabels && (
+            <p className="px-1 text-[11px] uppercase tracking-[0.08em] text-[color:var(--clay)]">
+              Still waiting
+            </p>
+          )}
           {overdue.map((task) => (
             <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
           ))}
@@ -157,12 +169,14 @@ export function TaskGrid({
       ) : (
         groups.map((group) => (
           <div key={group.date} className="space-y-2">
-            <p
-              suppressHydrationWarning
-              className="px-1 text-[11px] uppercase tracking-[0.08em] text-ink-soft"
-            >
-              {dayLabel(group.date)}
-            </p>
+            {showGroupLabels && (
+              <p
+                suppressHydrationWarning
+                className="px-1 text-[11px] uppercase tracking-[0.08em] text-ink-soft"
+              >
+                {dayLabel(group.date)}
+              </p>
+            )}
 
             {group.events.map((event) => (
               <EventRow key={event.id} event={event} />

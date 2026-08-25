@@ -43,7 +43,7 @@ const NAV = [
   { to: "/education", label: "Education", icon: GraduationCap, group: "areas" },
   { to: "/calendar", label: "Calendar", icon: CalendarDays, group: "tools" },
   { to: "/assistant", label: "Assistant", icon: Sparkles, group: "tools" },
-  { to: "/profile", label: "Profile", icon: User, group: "settings" },
+  { to: "/profile", label: "Profile", icon: User, group: "tools" },
 ] as const;
 
 /**
@@ -52,8 +52,8 @@ const NAV = [
  * daily screens, the three life areas, then the tools that serve them.
  *
  * Derived from NAV rather than restating it, so the order stays defined once.
- * "settings" is absent deliberately: Profile pins to the bottom by the account
- * box, because it is where you change things rather than somewhere you work.
+ * Profile sits in Tools: it is a place you go, and pinning it away from the other
+ * destinations made it the one nav item in its own private section.
  */
 const RAIL_GROUPS = [
   { key: "daily", label: "Day to day" },
@@ -261,17 +261,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </nav>
 
+            {/* Collapsed used to hide this whole block, which took Lock and Sign
+                out with it — a rail you collapsed could not be signed out of.
+                Collapsed now gets the same two controls as icons. */}
             <div className="mt-4 border-t border-border px-3 pb-4 pt-3">
-              {NAV.filter((n) => n.group === "settings").map((n) => (
-                <RailLink key={n.to} item={n} active={pathname === n.to} collapsed={railCollapsed} />
-              ))}
-
-              {/* Collapsed used to hide this whole block, which took Lock and
-                  Sign out with it — a rail you collapsed could not be signed out
-                  of. Collapsed now gets the same two controls as icons. */}
-              <div className={railCollapsed ? "mt-2" : "mt-3"}>
-                <AccountBox compact={railCollapsed} iconsOnly={railCollapsed} />
-              </div>
+              <AccountBox compact={railCollapsed} iconsOnly={railCollapsed} />
             </div>
           </aside>
 

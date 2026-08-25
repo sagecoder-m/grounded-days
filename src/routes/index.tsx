@@ -5,6 +5,7 @@ import { useAppState } from "@/lib/store";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
+import { FocusTimer } from "@/components/focus-timer";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
 import {
@@ -199,6 +200,15 @@ function Overview() {
             <span className="text-xs text-ink-soft">Just today&rsquo;s scope</span>
           </div>
           <TodayGlance />
+        </section>
+      );
+
+    if (key === "focus" && w("focus"))
+      return (
+        <section key={key}>
+          {/* Medium, like Education's. At full size the dial outweighed every
+              other section on the page. */}
+          <FocusTimer size="medium" />
         </section>
       );
 

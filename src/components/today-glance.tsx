@@ -60,7 +60,15 @@ export function TodayGlance() {
      * grid out of the card puts both at the same left edge and width, and also
      * stops task rows being cards drawn inside another card.
      */
-    <div className="space-y-4">
+    /*
+      Two columns: what the day looks like, and what there is to do in it.
+      
+      Stacked, the tasks sat below the event timeline and read as a footnote to
+      it. Side by side they are two answers to the same question — the schedule
+      you cannot change and the work you can — and neither is subordinate.
+      One column on narrow screens, where two would leave both too thin.
+    */
+    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
       <div className="card-soft space-y-4 p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="font-serif text-lg">{format(today, "EEEE, MMMM d")}</div>
@@ -136,7 +144,25 @@ export function TodayGlance() {
         Skipped on a genuinely empty day: the "a clear day" line above says it,
         and the grid's own empty state would say it again a few lines lower.
       */}
-      {!nothing && <TaskGrid tasks={state.tasks} from={iso} to={iso} showAdd={false} includeOverdue />}
+      {/*
+        Group headings are off here. The section is already called "A look at
+        today", so a row reading TODAY said it twice, and "Still waiting"
+        labelled a group whose rows each already read "gently overdue · Aug 5" —
+        the heading was the only thing lost, not the information.
+
+        Rendered even on an empty day now that it is a column rather than a
+        footnote: an empty right-hand column reads as broken, so the grid's own
+        empty line fills it.
+      */}
+      <TaskGrid
+        tasks={state.tasks}
+        from={iso}
+        to={iso}
+        showAdd={false}
+        includeOverdue
+        showGroupLabels={false}
+        emptyText="Nothing to tick off today."
+      />
     </div>
   );
 }
