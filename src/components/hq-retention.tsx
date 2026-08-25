@@ -121,7 +121,19 @@ export function RetentionHeatmap({
                       <span className="ml-1.5 text-ink-soft">(n={c.size})</span>
                     </th>
                     {c.cells.slice(0, columns).map((cell, i) =>
-                      cell.pct === null ? (
+                      cell.state === "unmeasured" ? (
+                        // Visually distinct from "not yet": this week happened,
+                        // we just were not watching. Solid muted fill rather
+                        // than an outline, so it reads as blocked-out history
+                        // instead of an empty future.
+                        <td
+                          key={i}
+                          className="h-8 w-12 rounded-md bg-secondary/60 text-center text-ink-soft/50"
+                          title={`Week ${i} finished before usage was being recorded`}
+                        >
+                          &middot;
+                        </td>
+                      ) : cell.state === "future" ? (
                         <td
                           key={i}
                           className="h-8 w-12 rounded-md border border-dashed border-border text-center text-ink-soft/60"
@@ -164,7 +176,11 @@ export function RetentionHeatmap({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="grid h-3 w-4 place-items-center rounded border border-dashed border-border" />
-              &mdash; not yet reached this week
+              &mdash; not yet reached
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-3 w-4 rounded bg-secondary/60" />
+              &middot; not recorded then
             </span>
             <span>Active = any deliberate action, not just opening the app.</span>
           </div>

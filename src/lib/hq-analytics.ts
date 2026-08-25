@@ -9,7 +9,7 @@
  * numbers. Pure functions over plain arrays can be tested directly against those
  * exact cases, which is not true of anything holding JSX.
  */
-import { differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
+import { addWeeks, differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
 
 export interface RetentionAccount {
   id: string;
@@ -22,11 +22,25 @@ export interface UsageFact {
   created_at: string;
 }
 
-export interface Cell {
-  /** null when the week has not elapsed for this cohort yet. */
-  pct: number | null;
-  active: number;
-}
+/**
+ * One cell of the retention grid.
+ *
+ * A discriminated union rather than a nullable percentage, so the compiler will
+ * not let a caller read pct without first establishing that the week was
+ * actually measured. The three states are the point of the chart as much as the
+ * numbers are:
+ *
+ * "measured"   — the week happened and we were recording. pct means something.
+ * "future"     — the week has not arrived for this cohort.
+ * "unmeasured" — the week finished before telemetry existed, so nobody could
+ *                have been recorded active in it. Printing 0% there says "they
+ *                all churned" about a week we were not watching, which is the
+ *                same lie as printing 0% for next week.
+ */
+export type Cell =
+  | { state: "measured"; pct: number; active: number }
+  | { state: "future"; pct: null; active: 0 }
+  | { state: "unmeasured"; pct: null; active: 0 };
 
 export interface Cohort {
   weekStart: Date;
@@ -57,6 +71,21 @@ export const MAX_WEEKS = 12;
 export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) {
   const now = new Date();
   const thisWeek = startOfWeek(now, WEEK_OPTS);
+
+  /**
+   * When the record begins — the earliest event we hold.
+   *
+   * Derived from the data rather than hardcoded to the migration date, so it
+   * stays correct as old rows age out of the query window and needs no upkeep.
+   * Signup dates come from auth and reach back further than telemetry does, so
+   * without this a cohort that joined before instrumentation shows a wall of 0%
+   * that reads as total churn.
+   */
+  const firstRecordAt = events.reduce<number | null>((min, e) => {
+    const t = new Date(e.created_at).getTime();
+    if (Number.isNaN(t)) return min;
+    return min === null || t < min ? t : min;
+  }, null);
 
   /** user -> the set of week offsets in which they did something deliberate. */
   const activeWeeks = new Map<string, Set<number>>();
@@ -104,11 +133,18 @@ export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) 
       const cells: Cell[] = [];
       for (let offset = 0; offset < MAX_WEEKS; offset++) {
         if (offset >= elapsed) {
-          cells.push({ pct: null, active: 0 });
+          cells.push({ pct: null, active: 0, state: "future" });
+          continue;
+        }
+        // The week ran its course before anything was being recorded, so a zero
+        // here would be an absence of measurement, not an absence of people.
+        const weekEnd = addWeeks(weekStart, offset + 1).getTime();
+        if (firstRecordAt === null || weekEnd <= firstRecordAt) {
+          cells.push({ pct: null, active: 0, state: "unmeasured" });
           continue;
         }
         const active = members.filter((m) => activeWeeks.get(m.id)?.has(offset)).length;
-        cells.push({ pct: (active / members.length) * 100, active });
+        cells.push({ pct: (active / members.length) * 100, active, state: "measured" });
       }
       return {
         weekStart,
@@ -118,8 +154,11 @@ export function buildCohorts(accounts: RetentionAccount[], events: UsageFact[]) 
       };
     });
 
+  // Counts anything that is not "future": an unmeasured week is part of the
+  // pilot's history and has to stay visible, or the gap it represents is hidden
+  // rather than shown.
   const widest = cohorts.reduce((max, c) => {
-    const last = c.cells.reduce((n, cell, i) => (cell.pct === null ? n : i + 1), 0);
+    const last = c.cells.reduce((n, cell, i) => (cell.state === "future" ? n : i + 1), 0);
     return Math.max(max, last);
   }, 1);
 
