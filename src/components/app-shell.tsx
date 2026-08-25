@@ -23,14 +23,25 @@ import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
 import { installErrorReporting, track } from "@/lib/telemetry";
 
+/**
+ * One order, used by all three layouts — the side rail, the desktop top tabs and
+ * the mobile icon row — so the tabs never sit in a different sequence depending
+ * on the screen.
+ *
+ * Personal sits with the other two areas rather than where the requested order
+ * put it, because that order named seven tabs for eight pages and left Personal
+ * out. This is the only link to it anywhere in the app, so dropping it would
+ * have left habits and personal goals reachable only by typing the URL.
+ * Personal / Professional / Education is also the sequence used everywhere else.
+ */
 const NAV = [
   { to: "/", label: "Overview", icon: Home },
-  { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/assistant", label: "Assistant", icon: Sparkles },
   { to: "/journal", label: "Journal", icon: NotebookPen },
   { to: "/personal", label: "Personal", icon: Sprout },
   { to: "/professional", label: "Professional", icon: Briefcase },
   { to: "/education", label: "Education", icon: GraduationCap },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/assistant", label: "Assistant", icon: Sparkles },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
@@ -210,21 +221,34 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * The narrow-screen tab row: icons only.
+ *
+ * With labels these eight chips wrapped onto three lines and pushed the page
+ * itself below the fold. Eight 36px targets plus gaps fit one row at 375px, and
+ * 36px is a comfortable touch target.
+ *
+ * The label survives as aria-label and title rather than being thrown away, so
+ * the row still reads correctly to a screen reader and a hover or long-press
+ * names each icon.
+ */
 function NavChips({ pathname }: { pathname: string }) {
   return (
-    <nav className="flex flex-wrap items-center gap-1 px-2 pb-2">
+    <nav className="flex items-center justify-between gap-1 px-3 pb-2" aria-label="Sections">
       {NAV.map((n) => {
         const active = pathname === n.to;
         return (
           <Link
             key={n.to}
             to={n.to}
-            className={`chip whitespace-nowrap ${
-              active ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"
+            aria-label={n.label}
+            title={n.label}
+            aria-current={active ? "page" : undefined}
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
+              active ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary"
             }`}
           >
-            <n.icon className="h-3.5 w-3.5" />
-            {n.label}
+            <n.icon className="h-[18px] w-[18px]" />
           </Link>
         );
       })}
