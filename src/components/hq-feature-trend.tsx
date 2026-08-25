@@ -129,9 +129,13 @@ export function FeatureTrendChart({
           ) : (
             <>
               {bars.length > 0 && (
-                <div style={{ height: Math.max(180, bars.length * 34 + 40) }}>
+                <div style={{ height: Math.max(200, bars.length * 34 + 64) }}>
                   <ResponsiveContainer>
-                    <BarChart data={bars} layout="vertical" margin={{ left: 24, right: 16 }}>
+                    <BarChart
+                      data={bars}
+                      layout="vertical"
+                      margin={{ left: 24, right: 16, bottom: 18 }}
+                    >
                       <CartesianGrid
                         stroke="var(--border)"
                         strokeDasharray="3 3"
@@ -145,6 +149,16 @@ export function FeatureTrendChart({
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={(v: number) => `${v > 0 ? "+" : ""}${v}%`}
+                        // Names the comparison on the chart itself. Without it a
+                        // reader has to trust that "%" means what they assume,
+                        // and the assumption is usually raw usage.
+                        label={{
+                          value: "% change in use per active person, first half to second half",
+                          position: "insideBottom",
+                          offset: -4,
+                          fill: "var(--ink-soft)",
+                          fontSize: 10,
+                        }}
                       />
                       <YAxis
                         type="category"
@@ -155,7 +169,12 @@ export function FeatureTrendChart({
                         tickLine={false}
                         axisLine={false}
                       />
-                      <Tooltip content={<TrendTooltip />} />
+                      <Tooltip
+                        content={<TrendTooltip />}
+                        // Recharts' default hover cursor is a hard #ccc block,
+                        // which is the one grey left on an otherwise warm page.
+                        cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
+                      />
                       {/* The zero axis the bars diverge from. */}
                       <ReferenceLine x={0} stroke="var(--ink-soft)" strokeWidth={1} />
                       <Bar dataKey="change" radius={4}>

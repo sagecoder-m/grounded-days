@@ -91,39 +91,48 @@ export function RetentionHeatmap({
 
           {/* Scrolls on its own rather than pushing the page sideways. */}
           <div className="-mx-1 overflow-x-auto px-1">
-            <table className="w-full border-separate border-spacing-1 text-xs">
+            <table className="w-auto border-separate border-spacing-1 text-xs">
               <thead>
                 <tr>
                   <th className="sticky left-0 z-10 bg-[color:var(--card)] pr-2 text-left font-normal text-ink-soft">
                     Cohort
                   </th>
                   {Array.from({ length: columns }, (_, i) => (
-                    <th key={i} className="min-w-9 px-1 pb-1 text-center font-normal text-ink-soft">
-                      {i}
+                    <th
+                      key={i}
+                      className="w-12 px-1 pb-1 text-center text-[10px] font-normal uppercase tracking-[0.08em] text-ink-soft"
+                    >
+                      Wk {i}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {cohorts.map((c) => (
+                {cohorts.map((c, i) => (
                   <tr key={c.weekStart.toISOString()}>
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-[color:var(--card)] pr-2 text-left font-normal">
-                      <span className="text-ink">{c.label}</span>
+                      {/* Which onboarding wave, not just a date. The pilot
+                          arrives in waves, and "Wave 2" is how you actually
+                          think about them; the date says which one that was. */}
+                      <span className="text-ink">Wave {i + 1}</span>
+                      <span className="ml-1.5 text-ink-soft">{c.label}</span>
                       {/* The denominator, always. One person is 10-33 points at
                           this scale. */}
-                      <span className="ml-1.5 text-ink-soft">n={c.size}</span>
+                      <span className="ml-1.5 text-ink-soft">(n={c.size})</span>
                     </th>
                     {c.cells.slice(0, columns).map((cell, i) =>
                       cell.pct === null ? (
                         <td
                           key={i}
-                          className="rounded-md border border-dashed border-border"
-                          aria-label="Not yet"
-                        />
+                          className="h-8 w-12 rounded-md border border-dashed border-border text-center text-ink-soft/60"
+                          title={`Week ${i} has not arrived for this cohort yet`}
+                        >
+                          &mdash;
+                        </td>
                       ) : (
                         <td
                           key={i}
-                          className="rounded-md px-1 py-1.5 text-center tabular-nums"
+                          className="h-8 w-12 rounded-md text-center tabular-nums"
                           style={cellStyle(cell.pct)}
                           title={`${c.label} cohort, week ${i}: ${cell.active} of ${c.size} active`}
                         >
@@ -139,7 +148,7 @@ export function RetentionHeatmap({
 
           <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-ink-soft">
             <span className="flex items-center gap-1.5">
-              % of the cohort active that week
+              0%
               <span className="flex overflow-hidden rounded">
                 {[0, 25, 50, 75, 100].map((p) => (
                   <span
@@ -151,11 +160,11 @@ export function RetentionHeatmap({
                   />
                 ))}
               </span>
-              0 to 100
+              100% of the cohort active that week
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-3 w-4 rounded border border-dashed border-border" />
-              week not reached yet
+              <span className="grid h-3 w-4 place-items-center rounded border border-dashed border-border" />
+              &mdash; not yet reached this week
             </span>
             <span>Active = any deliberate action, not just opening the app.</span>
           </div>

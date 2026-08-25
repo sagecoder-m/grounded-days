@@ -212,9 +212,13 @@ export function analyseFeatureTrend(events: UsageFact[], windowDays: number) {
     });
   }
 
-  // Strongest growth at the top, steepest decline at the bottom, so the two ends
-  // of the list are the two ends of the decision.
-  bars.sort((a, b) => b.change - a.change);
+  // Steepest decline at the top, strongest growth at the bottom.
+  //
+  // Ordered for the "cut what nobody used" half of the Month 3 decision, which is
+  // the harder and more consequential half — you read down from the things to
+  // question into the things to keep, rather than having to hunt for the bottom
+  // of the list.
+  bars.sort((a, b) => a.change - b.change);
   return {
     bars,
     brandNew,
