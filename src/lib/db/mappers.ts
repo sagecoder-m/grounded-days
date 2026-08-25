@@ -10,6 +10,7 @@
 import type { Json, Tables, TablesUpdate } from "@/integrations/supabase/types";
 import type {
   Area,
+  Course,
   CalendarConnection,
   CalendarProvider,
   CalEvent,
@@ -90,6 +91,18 @@ export function rowToTask(row: Tables<"tasks">): Task {
     createdAt: toEpoch(row.created_at),
     projectId: row.project_id ?? undefined,
     subprojectId: row.subproject_id ?? undefined,
+    courseId: row.course_id ?? undefined,
+  };
+}
+
+export function rowToCourse(row: Tables<"courses">): Course {
+  return {
+    id: row.id,
+    name: row.name,
+    code: row.code ?? undefined,
+    term: row.term ?? undefined,
+    position: row.position,
+    createdAt: toEpoch(row.created_at),
   };
 }
 
@@ -100,6 +113,7 @@ export function rowToGoal(row: Tables<"goals">): GoalBase {
     name: row.name,
     description: row.description ?? undefined,
     progress: row.progress,
+    position: row.position,
     projectId: row.project_id ?? undefined,
     subprojectId: row.subproject_id ?? undefined,
   };
@@ -110,7 +124,7 @@ export function rowToGoalStep(row: Tables<"goal_steps">): GoalStepWithParent {
 }
 
 export function rowToHabit(row: Tables<"habits">): HabitBase {
-  return { id: row.id, name: row.name, createdAt: toEpoch(row.created_at) };
+  return { id: row.id, name: row.name, position: row.position, createdAt: toEpoch(row.created_at) };
 }
 
 export function rowToHabitLog(row: Tables<"habit_logs">): HabitLogEntry {
@@ -127,6 +141,7 @@ export function rowToProject(row: Tables<"projects">): ProjectBase {
     description: row.description ?? undefined,
     status,
     area: toProjectArea(row.area),
+    position: row.position,
   };
 }
 
@@ -295,6 +310,7 @@ export function taskPatchToRow(patch: Partial<Task>): TablesUpdate<"tasks"> {
   if (patch.area !== undefined) row.area = patch.area;
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.description !== undefined) row.description = patch.description ?? null;
+  if (patch.courseId !== undefined) row.course_id = patch.courseId ?? null;
   if (patch.date !== undefined) row.date = patch.date ?? null;
   if (patch.done !== undefined) row.done = patch.done;
   if (patch.projectId !== undefined) row.project_id = patch.projectId ?? null;

@@ -1,100 +1,189 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { differenceInDays, format, parseISO } from "date-fns";
-import { toast } from "sonner";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { format, parseISO } from "date-fns";
+import { CalendarDays, ChevronRight, Plus, Trash2 } from "lucide-react";
+
 import { actions, useAppState } from "@/lib/store";
+import type { Course, Task } from "@/lib/store-types";
 import { TaskRow } from "@/components/task-row";
+import { TaskGrid, dateKey } from "@/components/task-grid";
 import { GoalCard } from "@/components/goal-card";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
+import { AddCourseDialog } from "@/components/add-course-dialog";
+import { InlineText } from "@/components/inline-text";
+import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Play, Pause, RotateCcw, Plus } from "lucide-react";
+import { FocusTimer } from "@/components/focus-timer";
 
 export const Route = createFileRoute("/education")({
   component: EducationPage,
 });
 
-const GEORGETOWN_DATE = "2026-08-03";
-
 function EducationPage() {
   const state = useAppState();
   const goals = state.goals.filter((g) => g.area === "education");
   const tasks = state.tasks.filter((t) => t.area === "education");
-  const active = tasks.filter((t) => !t.done).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  const history = tasks.filter((t) => t.done).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const courses = state.courses;
 
-  const daysToStart = differenceInDays(parseISO(GEORGETOWN_DATE), new Date());
+  const today = dateKey(new Date());
+  const history = tasks
+    .filter((t) => t.done)
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+  const courseDrag = useCardDrag();
+  const goalDrag = useCardDrag();
 
   return (
     <div className="space-y-10">
       <header>
         <p className="chip" style={{ backgroundColor: "var(--clay-soft)", color: "var(--clay)" }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--clay)" }} /> Education
+          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "var(--clay)" }} />{" "}
+          Education
         </p>
         <h1 className="mt-3 font-serif text-4xl">Learn at your own pace</h1>
-        {daysToStart >= 0 && (
-          <div className="mt-4 card-soft p-4 md:p-5 flex flex-wrap items-center justify-between gap-3" style={{ borderColor: "var(--clay-soft)" }}>
-            <div>
-              <div className="text-xs uppercase tracking-widest text-ink-soft">MSBA · Georgetown</div>
-              <div className="font-serif text-2xl mt-1">Begins {format(parseISO(GEORGETOWN_DATE), "MMMM d, yyyy")}</div>
-            </div>
-            <div className="text-right">
-              <div className="font-serif text-4xl tabular-nums" style={{ color: "var(--clay)" }}>{daysToStart}</div>
-              <div className="text-xs text-ink-soft">days to go — no rush</div>
-            </div>
+        <p className="mt-2 max-w-lg text-ink-soft">
+          Courses hold your assignments. Everything with a date also lands on your
+          calendar.
+        </p>
+      </header>
+
+      {/* Replaces the old "To do" list. Assignments are tasks, so this is the
+          same grid the Overview uses — one component, one behaviour, and a
+          course's work shows up here automatically because it carries a date. */}
+      <section>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-serif text-2xl">Due today</h2>
+          <Link
+            to="/calendar"
+            className="inline-flex items-center gap-1.5 text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            See the whole timeline
+          </Link>
+        </div>
+        <TaskGrid
+          tasks={tasks}
+          from={today}
+          to={today}
+          emptyText="Nothing due today. Use the timeline to look further ahead."
+          showAdd={false}
+        />
+      </section>
+
+      <section onPointerUp={courseDrag.endDrag} onPointerLeave={courseDrag.endDrag}>
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-serif text-2xl">Courses</h2>
+          <AddCourseDialog
+            trigger={
+              <Button variant="outline" size="sm" className="rounded-full border-tan">
+                <Plus className="h-3.5 w-3.5" /> Course
+              </Button>
+            }
+          />
+        </div>
+
+        {courses.length === 0 ? (
+          <div className="card-soft p-6 text-center text-sm italic text-ink-soft">
+            No courses yet. Add one and its assignments live inside it.
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {courses.map((course) => (
+              <ReorderableCard
+                key={course.id}
+                id={course.id}
+                collection="courses"
+                orderedIds={courses.map((c) => c.id)}
+                drag={courseDrag.drag}
+                setDrag={courseDrag.setDrag}
+              >
+                <CourseCard course={course} tasks={tasks} />
+              </ReorderableCard>
+            ))}
           </div>
         )}
-      </header>
+      </section>
+
+      <section onPointerUp={goalDrag.endDrag} onPointerLeave={goalDrag.endDrag}>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="font-serif text-2xl">Goals</h2>
+          <AddGoalDialog
+            area="education"
+            trigger={
+              <Button variant="outline" size="sm" className="rounded-full border-tan">
+                <Plus className="h-3.5 w-3.5" /> Goal
+              </Button>
+            }
+          />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {goals.map((g) => (
+            <ReorderableCard
+              key={g.id}
+              id={g.id}
+              collection="goals"
+              orderedIds={goals.map((x) => x.id)}
+              drag={goalDrag.drag}
+              setDrag={goalDrag.setDrag}
+            >
+              <GoalCard goal={g} tint="clay" />
+            </ReorderableCard>
+          ))}
+        </div>
+      </section>
 
       <FocusTimer />
 
       <section>
-        <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-serif text-2xl">Goals</h2>
-          <AddGoalDialog area="education" trigger={<Button variant="outline" size="sm" className="rounded-full border-tan"><Plus className="h-3.5 w-3.5" /> Goal</Button>} />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {goals.map((g) => <GoalCard key={g.id} goal={g} tint="clay" />)}
-        </div>
-      </section>
-
-      <section>
-        <div className="flex items-baseline justify-between mb-3">
-          <h2 className="font-serif text-2xl">To do</h2>
-          <AddTaskDialog area="education" trigger={<Button variant="outline" size="sm" className="rounded-full border-tan"><Plus className="h-3.5 w-3.5" /> Task</Button>} />
-        </div>
-        <div className="space-y-2">
-          {active.length === 0 && <div className="card-soft p-6 text-center text-ink-soft italic">All caught up. Nice.</div>}
-          {active.map((t) => <TaskRow key={t.id} task={t} showArea={false} onDelete={() => actions.deleteTask(t.id)} />)}
-        </div>
-      </section>
-
-      <section>
-        <div className="flex items-baseline justify-between mb-3">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-serif text-2xl">History</h2>
-          <span className="text-xs text-ink-soft">{history.length} completed · {state.focusSessions.length} focus sessions</span>
+          <span className="text-xs text-ink-soft">
+            {history.length} completed · {state.focusSessions.length} focus sessions
+          </span>
         </div>
+        {/* The point of this section, said plainly. Everything above is what is
+            left to do; this is the only place that looks backwards. */}
+        <p className="mb-3 text-sm italic text-ink-soft">
+          I want to show you how far you&rsquo;ve come.
+        </p>
         <div className="space-y-2">
           {history.length === 0 && state.focusSessions.length === 0 && (
-            <div className="card-soft p-6 text-center text-ink-soft italic">Your completed work will collect here.</div>
+            <div className="card-soft p-6 text-center text-sm italic text-ink-soft">
+              Your completed work will collect here.
+            </div>
           )}
           {history.map((t) => (
-            <div key={t.id} className="rounded-2xl border border-border bg-card px-4 py-3 flex items-center justify-between opacity-80">
+            <div
+              key={t.id}
+              className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 opacity-80"
+            >
               <div>
                 <div className="text-sm line-through decoration-1">{t.title}</div>
                 {t.description && <div className="text-xs text-ink-soft">{t.description}</div>}
               </div>
-              <div className="text-[11px] text-ink-soft">{t.date && format(parseISO(t.date), "MMM d")}</div>
+              <div className="text-[11px] text-ink-soft">
+                {t.date && format(parseISO(t.date), "MMM d")}
+              </div>
             </div>
           ))}
           {state.focusSessions.map((s) => (
-            <div key={s.id} className="rounded-2xl border border-border bg-card px-4 py-3 flex items-center justify-between">
+            <div
+              key={s.id}
+              className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3"
+            >
               <div className="flex items-center gap-3">
-                <div className="chip" style={{ backgroundColor: "var(--clay-soft)", color: "var(--clay)" }}>Focus</div>
+                <div
+                  className="chip"
+                  style={{ backgroundColor: "var(--clay-soft)", color: "var(--clay)" }}
+                >
+                  Focus
+                </div>
                 <div className="text-sm">{s.label}</div>
               </div>
-              <div className="text-[11px] text-ink-soft">{s.minutes} min · {format(new Date(s.completedAt), "MMM d")}</div>
+              <div className="text-[11px] text-ink-soft">
+                {s.minutes} min · {format(new Date(s.completedAt), "MMM d")}
+              </div>
             </div>
           ))}
         </div>
@@ -103,134 +192,100 @@ function EducationPage() {
   );
 }
 
-function FocusTimer() {
-  const [focusMin, setFocusMin] = useState(25);
-  const [breakMin, setBreakMin] = useState(5);
-  const [label, setLabel] = useState("Study session");
-  const [phase, setPhase] = useState<"focus" | "break">("focus");
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const loggedRef = useRef<string | null>(null);
-
-  /**
-   * Writes one focus session, guarded against a repeat for the same completion.
-   * The guard key includes the minute so back-to-back identical sessions still
-   * each get logged.
-   */
-  const logSession = (sessionLabel: string, minutes: number) => {
-    const key = `${sessionLabel}|${minutes}|${Math.floor(Date.now() / 1000)}`;
-    if (loggedRef.current === key) return;
-    loggedRef.current = key;
-    actions.logFocus(sessionLabel, minutes);
-  };
-
-  useEffect(() => {
-    if (!running) return;
-    intRef.current = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(intRef.current!);
-          setRunning(false);
-          if (phase === "focus") {
-            // Logged outside this updater: React may invoke a state updater
-            // twice (StrictMode), which would double-write the session.
-            queueMicrotask(() => logSession(label || "Focus session", focusMin));
-            try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              const o = ctx.createOscillator();
-              const g = ctx.createGain();
-              o.type = "sine"; o.frequency.value = 528; o.connect(g); g.connect(ctx.destination);
-              g.gain.setValueAtTime(0.001, ctx.currentTime);
-              g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.05);
-              g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-              o.start(); o.stop(ctx.currentTime + 1.5);
-            } catch {}
-            toast("Nicely done. Take a soft pause.", { description: `${focusMin} minutes of focus, logged.` });
-            setPhase("break");
-            setSecondsLeft(breakMin * 60);
-          } else {
-            toast("Break's up whenever you're ready.");
-            setPhase("focus");
-            setSecondsLeft(focusMin * 60);
-          }
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(intRef.current!);
-  }, [running, phase, focusMin, breakMin, label]);
-
-  useEffect(() => {
-    if (!running) setSecondsLeft((phase === "focus" ? focusMin : breakMin) * 60);
-  }, [focusMin, breakMin, phase, running]);
-
-  const total = (phase === "focus" ? focusMin : breakMin) * 60;
-  const pct = 1 - secondsLeft / total;
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const ss = String(secondsLeft % 60).padStart(2, "0");
-
-  const size = 240;
-  const stroke = 14;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
+/**
+ * One course and the assignments filed under it.
+ *
+ * Assignments are education tasks carrying this course's id, so they are the
+ * same TaskRow used everywhere else — check off, rename, re-date, delete — and
+ * they appear on the calendar and in "Due today" without this card doing
+ * anything to put them there.
+ */
+function CourseCard({ course, tasks }: { course: Course; tasks: Task[] }) {
+  const [open, setOpen] = useState(true);
+  const mine = tasks.filter((t) => t.courseId === course.id);
+  const outstanding = mine.filter((t) => !t.done);
+  const done = mine.filter((t) => t.done);
 
   return (
-    <section>
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="font-serif text-2xl">Focus timer</h2>
-        <span className="text-xs text-ink-soft italic">One block at a time.</span>
+    <div className="card-soft space-y-3 p-5 pr-10">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <InlineText
+          value={course.name}
+          onSave={(v) => v && actions.updateCourse(course.id, { name: v })}
+          showIcon
+          className="font-serif text-lg"
+        />
+        {course.code && <span className="text-xs text-ink-soft">{course.code}</span>}
+        {course.term && (
+          <span className="chip bg-secondary text-[10px] text-ink-soft">{course.term}</span>
+        )}
       </div>
-      <div className="card-soft p-6 md:p-8 grid md:grid-cols-[auto_1fr] gap-8 items-center">
-        <div className="relative mx-auto" style={{ width: size, height: size }}>
-          <svg width={size} height={size} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
-            <circle
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              stroke={phase === "focus" ? "var(--clay)" : "var(--sage)"}
-              strokeWidth={stroke}
-              fill="none"
-              strokeDasharray={c}
-              strokeDashoffset={c * (1 - pct)}
-              strokeLinecap="round"
-              style={{ transition: "stroke-dashoffset 0.9s linear" }}
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
-            <div className="font-serif text-5xl tabular-nums mt-1">{mm}:{ss}</div>
-            <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-widest text-ink-soft">What are you working on?</label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Session label" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-widest text-ink-soft">Focus (min)</label>
-              <Input type="number" min={5} max={90} value={focusMin} onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-widest text-ink-soft">Break (min)</label>
-              <Input type="number" min={1} max={30} value={breakMin} onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))} />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button className="rounded-full" onClick={() => setRunning((r) => !r)}>
-              {running ? <><Pause className="h-4 w-4" /> Pause</> : <><Play className="h-4 w-4" /> Start</>}
-            </Button>
-            <Button variant="outline" className="rounded-full border-tan" onClick={() => { setRunning(false); setPhase("focus"); setSecondsLeft(focusMin * 60); }}>
-              <RotateCcw className="h-4 w-4" /> Reset
-            </Button>
-          </div>
-        </div>
+      <div className="flex items-center justify-between text-xs text-ink-soft">
+        <span>
+          {outstanding.length === 0
+            ? mine.length === 0
+              ? "No assignments yet"
+              : "All assignments done"
+            : `${outstanding.length} outstanding`}
+        </span>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex items-center gap-1 underline underline-offset-4 transition-colors hover:text-ink"
+          aria-expanded={open}
+        >
+          {open ? "Hide" : "Show"}
+          <ChevronRight className={`h-3 w-3 transition-transform ${open ? "rotate-90" : ""}`} />
+        </button>
       </div>
-    </section>
+
+      {open && (
+        <div className="space-y-2">
+          {outstanding.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              showArea={false}
+              onDelete={() => actions.deleteTask(t.id)}
+            />
+          ))}
+          {done.length > 0 && (
+            <p className="px-1 pt-1 text-[11px] uppercase tracking-[0.08em] text-ink-soft">
+              Done
+            </p>
+          )}
+          {done.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              showArea={false}
+              onDelete={() => actions.deleteTask(t.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-1">
+        <AddTaskDialog
+          area="education"
+          courseId={course.id}
+          trigger={
+            <button className="inline-flex items-center gap-1.5 text-xs text-ink-soft transition-colors hover:text-ink">
+              <Plus className="h-3.5 w-3.5" /> Assignment
+            </button>
+          }
+        />
+        {/* Deleting a course keeps its assignments — the foreign key sets their
+            course_id to null rather than cascading. */}
+        <button
+          onClick={() => actions.deleteCourse(course.id)}
+          className="text-ink-soft transition-colors hover:text-[color:var(--clay)]"
+          aria-label={`Remove ${course.name}. Its assignments stay.`}
+          title="Remove course — assignments stay"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }

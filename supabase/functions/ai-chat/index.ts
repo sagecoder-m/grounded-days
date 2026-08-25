@@ -164,7 +164,7 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const horizon = new Date(today.getTime() + 21 * 86_400_000);
 
-  const [settings, goals, steps, tasks, projects, subprojects, habits, logs, events] =
+  const [settings, goals, steps, tasks, projects, subprojects, habits, courses, logs, events] =
     await Promise.all([
       db
         .from("user_settings")
@@ -175,11 +175,12 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
       db.from("goal_steps").select("goal_id, title, done").eq("user_id", userId),
       db
         .from("tasks")
-        .select("title, area, date, done, project_id, subproject_id")
+        .select("title, area, date, done, project_id, subproject_id, course_id")
         .eq("user_id", userId),
       db.from("projects").select("id, name, area, status").eq("user_id", userId),
       db.from("subprojects").select("id, project_id, name").eq("user_id", userId),
       db.from("habits").select("id, name").eq("user_id", userId),
+      db.from("courses").select("id, name, code, term").eq("user_id", userId),
       db
         .from("habit_logs")
         .select("habit_id, date")
@@ -226,15 +227,27 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
     }
   }
 
+  const courseName = new Map((courses.data ?? []).map((c) => [c.id, c.name]));
+
+  if (courses.data?.length) {
+    lines.push("\nCOURSES");
+    for (const c of courses.data) {
+      const label = [c.code, c.term].filter(Boolean).join(" · ");
+      lines.push(`- ${c.name}${label ? ` (${label})` : ""} [id: ${c.id}]`);
+    }
+  }
+
   const open = (tasks.data ?? []).filter((t) => !t.done);
   if (open.length) {
     lines.push("\nOPEN TASKS");
     for (const t of open.slice(0, 40)) {
-      const where = t.project_id
-        ? ` [in ${projectName.get(t.project_id) ?? "a project"}${
-            t.subproject_id ? ` / ${subName.get(t.subproject_id) ?? ""}` : ""
-          }]`
-        : "";
+      const where = t.course_id
+        ? ` [assignment for ${courseName.get(t.course_id) ?? "a course"}]`
+        : t.project_id
+          ? ` [in ${projectName.get(t.project_id) ?? "a project"}${
+              t.subproject_id ? ` / ${subName.get(t.subproject_id) ?? ""}` : ""
+            }]`
+          : "";
       const when = t.date
         ? t.date < iso(today)
           ? ` (overdue since ${t.date})`
@@ -378,6 +391,12 @@ const TOOLS = [
               "Optional due date as YYYY-MM-DD. Omit entirely if they did not give one — " +
               "do not invent a deadline.",
           },
+          courseId: {
+            type: "string",
+            description:
+              "For an education assignment only. Must be an id listed under COURSES in " +
+              "their state; never invent one. Omit if the work is not for a course.",
+          },
         },
         required: ["title", "area"],
       },
@@ -391,6 +410,7 @@ interface CreatedTask {
   title: string;
   area: string;
   date: string | null;
+  course: string | null;
 }
 
 /**
@@ -404,7 +424,7 @@ async function runCreateTask(
   userId: string,
   rawArgs: string,
 ): Promise<{ ok: true; task: CreatedTask } | { ok: false; error: string }> {
-  let args: { title?: unknown; area?: unknown; date?: unknown };
+  let args: { title?: unknown; area?: unknown; date?: unknown; courseId?: unknown };
   try {
     args = JSON.parse(rawArgs || "{}");
   } catch {
@@ -423,15 +443,34 @@ async function runCreateTask(
     date = args.date.trim();
   }
 
+  /**
+   * A course id is only accepted if it really belongs to this user.
+   *
+   * The model produces this argument, so an id it hallucinated — or one copied
+   * from another account — must not be written. RLS would not catch it: the
+   * insert runs with the service role, and course_id is a plain foreign key.
+   * Checking ownership here is what makes the argument safe.
+   */
+  let courseId: string | null = null;
+  if (typeof args.courseId === "string" && args.courseId.trim()) {
+    const { data: owned } = await serviceClient()
+      .from("courses")
+      .select("id")
+      .eq("id", args.courseId.trim())
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (owned) courseId = owned.id;
+  }
+
   const { error } = await serviceClient()
     .from("tasks")
-    .insert({ user_id: userId, title, area, date, done: false });
+    .insert({ user_id: userId, title, area, date, done: false, course_id: courseId });
 
   if (error) {
     console.error("create_task insert failed", error.message);
     return { ok: false, error: "The task could not be saved." };
   }
-  return { ok: true, task: { title, area, date } };
+  return { ok: true, task: { title, area, date, course: courseId } };
 }
 
 Deno.serve(async (req) => {

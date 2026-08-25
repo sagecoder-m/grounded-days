@@ -268,6 +268,36 @@ export type Database = {
           },
         ]
       }
+      courses: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+          term: string | null
+          user_id: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          term?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          term?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           all_day: boolean
@@ -368,6 +398,7 @@ export type Database = {
           project_id: string | null
           subproject_id: string | null
           updated_at: string
+          position: number
           user_id: string
         }
         Insert: {
@@ -380,10 +411,12 @@ export type Database = {
           project_id?: string | null
           subproject_id?: string | null
           updated_at?: string
+          position?: number
           user_id: string
         }
         Update: {
           area?: string
+          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -392,6 +425,7 @@ export type Database = {
           project_id?: string | null
           subproject_id?: string | null
           updated_at?: string
+          position?: number
           user_id?: string
         }
         Relationships: [
@@ -473,6 +507,7 @@ export type Database = {
           id: string
           name: string
           updated_at: string
+          position: number
           user_id: string
         }
         Insert: {
@@ -480,6 +515,7 @@ export type Database = {
           id?: string
           name: string
           updated_at?: string
+          position?: number
           user_id: string
         }
         Update: {
@@ -487,6 +523,7 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          position?: number
           user_id?: string
         }
         Relationships: []
@@ -500,16 +537,19 @@ export type Database = {
           name: string
           status: string
           updated_at: string
+          position: number
           user_id: string
         }
         Insert: {
           area?: string
+          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name: string
           status?: string
           updated_at?: string
+          position?: number
           user_id: string
         }
         Update: {
@@ -520,6 +560,7 @@ export type Database = {
           name?: string
           status?: string
           updated_at?: string
+          position?: number
           user_id?: string
         }
         Relationships: []
@@ -565,6 +606,7 @@ export type Database = {
       tasks: {
         Row: {
           area: string
+          course_id: string | null
           created_at: string
           date: string | null
           description: string | null
@@ -578,6 +620,7 @@ export type Database = {
         }
         Insert: {
           area: string
+          course_id?: string | null
           created_at?: string
           date?: string | null
           description?: string | null
@@ -591,6 +634,7 @@ export type Database = {
         }
         Update: {
           area?: string
+          course_id?: string | null
           created_at?: string
           date?: string | null
           description?: string | null

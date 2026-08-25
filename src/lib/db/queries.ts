@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { qk } from "./keys";
 import {
   rowToCalendarConnection,
+  rowToCourse,
   rowToEvent,
   rowToFocusSession,
   rowToGoal,
@@ -47,6 +48,7 @@ export function habitsQuery(userId: string) {
       const res = await supabase
         .from("habits")
         .select("*")
+        .order("position", { ascending: true })
         .order("created_at", { ascending: true });
       return unwrap(res).map(rowToHabit);
     },
@@ -67,7 +69,11 @@ export function goalsQuery(userId: string) {
   return queryOptions({
     queryKey: qk.goals(userId),
     queryFn: async () => {
-      const res = await supabase.from("goals").select("*").order("created_at", { ascending: true });
+      const res = await supabase
+        .from("goals")
+        .select("*")
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true });
       return unwrap(res).map(rowToGoal);
     },
   });
@@ -93,6 +99,7 @@ export function projectsQuery(userId: string) {
       const res = await supabase
         .from("projects")
         .select("*")
+        .order("position", { ascending: true })
         .order("created_at", { ascending: true });
       return unwrap(res).map(rowToProject);
     },
@@ -110,6 +117,21 @@ export function subprojectsQuery(userId: string) {
       return unwrap(res).map(rowToSubproject);
     },
   });
+}
+
+export function coursesQuery(userId: string) {
+  return {
+    queryKey: qk.courses(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("user_id", userId)
+        .order("position", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map(rowToCourse);
+    },
+  };
 }
 
 export function eventsQuery(userId: string) {

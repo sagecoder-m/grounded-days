@@ -21,6 +21,7 @@ import { useStoreContext } from "./db/context";
 import { qk } from "./db/keys";
 import { DEFAULT_SETTINGS } from "./db/mappers";
 import {
+  coursesQuery,
   eventsQuery,
   focusSessionsQuery,
   goalsQuery,
@@ -39,6 +40,7 @@ import type { AppState, Area, Goal, Habit, Project, SyncStatus } from "./store-t
 export type {
   AccentVariant,
   AssistantLength,
+  Course,
   AssistantTone,
   AppState,
   Area,
@@ -68,6 +70,7 @@ const EMPTY_STATE: AppState = {
   goals: [],
   projects: [],
   events: [],
+  courses: [],
   journal: [],
   focusSessions: [],
   settings: DEFAULT_SETTINGS,
@@ -94,6 +97,7 @@ export function useAppState(): AppState {
   const projects = useQuery({ ...projectsQuery(userId), enabled });
   const subprojects = useQuery({ ...subprojectsQuery(userId), enabled });
   const events = useQuery({ ...eventsQuery(userId), enabled });
+  const courses = useQuery({ ...coursesQuery(userId), enabled });
   const journal = useQuery({ ...journalQuery(userId), enabled });
   const focusSessions = useQuery({ ...focusSessionsQuery(userId), enabled });
   const settings = useQuery({ ...settingsQuery(userId), enabled });
@@ -153,6 +157,7 @@ export function useAppState(): AppState {
       goals: composedGoals,
       projects: composedProjects,
       events: events.data ?? [],
+      courses: courses.data ?? [],
       journal: journal.data ?? [],
       focusSessions: focusSessions.data ?? [],
       settings: settings.data ?? DEFAULT_SETTINGS,
@@ -167,6 +172,7 @@ export function useAppState(): AppState {
     projects.data,
     subprojects.data,
     events.data,
+    courses.data,
     journal.data,
     focusSessions.data,
     settings.data,

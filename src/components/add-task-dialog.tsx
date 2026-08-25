@@ -10,11 +10,13 @@ interface Props {
   area: Area;
   trigger: ReactNode;
   projectId?: string;
+  /** Set when adding an assignment from inside a course. */
+  courseId?: string;
   subprojectId?: string;
   defaultDate?: string;
 }
 
-export function AddTaskDialog({ area, trigger, projectId, subprojectId, defaultDate }: Props) {
+export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId, defaultDate }: Props) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -23,7 +25,7 @@ export function AddTaskDialog({ area, trigger, projectId, subprojectId, defaultD
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    actions.addTask({ area, title: title.trim(), description: description.trim() || undefined, date, projectId, subprojectId });
+    actions.addTask({ area, title: title.trim(), description: description.trim() || undefined, date, projectId, subprojectId, courseId });
     setTitle("");
     setDescription("");
     setOpen(false);

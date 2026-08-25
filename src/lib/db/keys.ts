@@ -17,6 +17,7 @@ export const qk = {
   goalSteps: (userId: string) => [ROOT, userId, "goalSteps"] as const,
   projects: (userId: string) => [ROOT, userId, "projects"] as const,
   subprojects: (userId: string) => [ROOT, userId, "subprojects"] as const,
+  courses: (userId: string) => ["courses", userId] as const,
   events: (userId: string) => [ROOT, userId, "events"] as const,
   journal: (userId: string) => [ROOT, userId, "journal"] as const,
   calendarConnections: (userId: string) => [ROOT, userId, "calendarConnections"] as const,

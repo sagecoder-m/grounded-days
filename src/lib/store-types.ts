@@ -23,11 +23,25 @@ export interface Task {
   // Optional linkage for professional tasks
   projectId?: string;
   subprojectId?: string;
+  /** Set when this task is an assignment for a course. */
+  courseId?: string;
+}
+
+/** A course in the Education area. Assignments are tasks carrying its id. */
+export interface Course {
+  id: string;
+  name: string;
+  /** Optional — "Statistics" is a complete answer. */
+  code?: string;
+  term?: string;
+  position: number;
+  createdAt: number;
 }
 
 export interface Habit {
   id: string;
   name: string;
+  position: number;
   createdAt: number;
   log: Record<string, boolean>; // date -> completed
 }
@@ -49,6 +63,8 @@ export interface Goal {
    * is only a fallback for goals created before steps existed.
    */
   progress: number;
+  /** Drag order within its area. */
+  position: number;
   steps: GoalStep[];
   projectId?: string;
   subprojectId?: string;
@@ -67,6 +83,7 @@ export interface Project {
   status: "active" | "paused" | "done";
   /** Projects predate areas; existing ones are all professional. */
   area: Area;
+  position: number;
   subprojects: Subproject[];
 }
 
@@ -167,6 +184,7 @@ export interface AppState {
   goals: Goal[];
   projects: Project[];
   events: CalEvent[];
+  courses: Course[];
   focusSessions: FocusSession[];
   settings: Settings;
 }

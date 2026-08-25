@@ -5,6 +5,7 @@ import { actions, useAppState } from "@/lib/store";
 import { dateKey } from "@/components/task-grid";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
+import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { SoftProgress } from "@/components/soft-progress";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
@@ -56,6 +57,8 @@ function PersonalPage() {
   }, [state.settings.weekStartsOn, dateKey(today)]);
 
   const [newHabit, setNewHabit] = useState("");
+  const goalDrag = useCardDrag();
+  const projectDrag = useCardDrag();
   // The habit grid keys off today's date, so it stays a skeleton until mount.
   const mounted = useMounted();
 
@@ -239,9 +242,22 @@ function PersonalPage() {
             }
           />
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div
+          className="grid gap-4 md:grid-cols-2"
+          onPointerUp={goalDrag.endDrag}
+          onPointerLeave={goalDrag.endDrag}
+        >
           {personalGoals.map((g) => (
-            <GoalCard key={g.id} goal={g} tint="sage" />
+            <ReorderableCard
+              key={g.id}
+              id={g.id}
+              collection="goals"
+              orderedIds={personalGoals.map((x) => x.id)}
+              drag={goalDrag.drag}
+              setDrag={goalDrag.setDrag}
+            >
+              <GoalCard goal={g} tint="sage" />
+            </ReorderableCard>
           ))}
         </div>
       </section>
@@ -259,14 +275,27 @@ function PersonalPage() {
             }
           />
         </div>
-        <div className="space-y-3">
+        <div
+          className="space-y-3"
+          onPointerUp={projectDrag.endDrag}
+          onPointerLeave={projectDrag.endDrag}
+        >
           {personalProjects.length === 0 && (
             <div className="card-soft p-6 text-center italic text-ink-soft">
               No projects yet — a project is just a few tasks that belong together.
             </div>
           )}
           {personalProjects.map((project) => (
-            <PersonalProject key={project.id} projectId={project.id} name={project.name} />
+            <ReorderableCard
+              key={project.id}
+              id={project.id}
+              collection="projects"
+              orderedIds={personalProjects.map((x) => x.id)}
+              drag={projectDrag.drag}
+              setDrag={projectDrag.setDrag}
+            >
+              <PersonalProject projectId={project.id} name={project.name} />
+            </ReorderableCard>
           ))}
         </div>
       </section>

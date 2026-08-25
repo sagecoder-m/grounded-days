@@ -4,6 +4,7 @@ import { actions, useAppState } from "@/lib/store";
 import { InlineText } from "@/components/inline-text";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
+import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { AddProjectDialog } from "@/components/add-project-dialog";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
@@ -29,6 +30,8 @@ export const Route = createFileRoute("/professional")({
 
 function ProfessionalPage() {
   const state = useAppState();
+  const workProjects = state.projects.filter((p) => p.area === "professional");
+  const projectDrag = useCardDrag();
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -51,14 +54,25 @@ function ProfessionalPage() {
         <AddProjectDialog area="professional" />
       </header>
 
-      <div className="space-y-4">
+      <div
+        className="space-y-4"
+        onPointerUp={projectDrag.endDrag}
+        onPointerLeave={projectDrag.endDrag}
+      >
         {/* Projects gained an area; without this filter personal ones would
             surface here, since this page predates the column. */}
-        {state.projects
-          .filter((p) => p.area === "professional")
-          .map((p) => (
-            <ProjectCard key={p.id} project={p} />
-          ))}
+        {workProjects.map((p) => (
+          <ReorderableCard
+            key={p.id}
+            id={p.id}
+            collection="projects"
+            orderedIds={workProjects.map((x) => x.id)}
+            drag={projectDrag.drag}
+            setDrag={projectDrag.setDrag}
+          >
+            <ProjectCard project={p} />
+          </ReorderableCard>
+        ))}
       </div>
     </div>
   );

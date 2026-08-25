@@ -10,6 +10,7 @@
  * app's voice and the fact that no call site has error handling.
  */
 import type { QueryKey } from "@tanstack/react-query";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type {
@@ -17,6 +18,7 @@ import type {
   CalendarConnection,
   CalendarProvider,
   CalEvent,
+  Course,
   Goal,
   JournalEntry,
   Mood,
@@ -137,6 +139,18 @@ const listPatch =
   (prev: T[] | undefined) =>
     (prev ?? []).map((row) => (row.id === id ? { ...row, ...patch } : row));
 
+/**
+ * Where a newly created card lands: after everything already there.
+ *
+ * Read from the cache rather than the database — the write is fire-and-forget
+ * and the cache is already authoritative for what the user can see. Falling
+ * back to the list length keeps it sane on a cold cache.
+ */
+function nextPosition<T extends { position: number }>(rows: T[] | undefined): number {
+  const list = rows ?? [];
+  return list.reduce((max, r) => Math.max(max, r.position ?? 0), 0) + 1;
+}
+
 export const actions = {
   // ------------------------------------------------------------------- tasks
 
@@ -156,6 +170,7 @@ export const actions = {
         done: false,
         project_id: input.projectId ?? null,
         subproject_id: input.subprojectId ?? null,
+        course_id: input.courseId ?? null,
       }),
     );
   },
@@ -190,11 +205,14 @@ export const actions = {
 
   addHabit(name: string) {
     track("habit_add");
-    const { userId } = requireStoreContext();
+    const { userId, queryClient } = requireStoreContext();
     const id = uuid();
-    const optimistic: HabitBase = { id, name, createdAt: Date.now() };
+    const position = nextPosition(
+      queryClient.getQueryData(qk.habits(userId)) as HabitBase[] | undefined,
+    );
+    const optimistic: HabitBase = { id, name, position, createdAt: Date.now() };
     void write([{ key: qk.habits(userId), update: listAdd(optimistic) }], () =>
-      supabase.from("habits").insert({ id, user_id: userId, name }),
+      supabase.from("habits").insert({ id, user_id: userId, name, position }),
     );
   },
 
@@ -210,9 +228,12 @@ export const actions = {
    * this is a faithful restore rather than a true reversal.
    */
   restoreHabit(name: string, dates: string[]) {
-    const { userId } = requireStoreContext();
+    const { userId, queryClient } = requireStoreContext();
     const id = uuid();
-    const optimistic: HabitBase = { id, name, createdAt: Date.now() };
+    const position = nextPosition(
+      queryClient.getQueryData(qk.habits(userId)) as HabitBase[] | undefined,
+    );
+    const optimistic: HabitBase = { id, name, position, createdAt: Date.now() };
     void write(
       [
         { key: qk.habits(userId), update: listAdd(optimistic) },
@@ -300,14 +321,110 @@ export const actions = {
     );
   },
 
+  // ----------------------------------------------------------------- courses
+
+  addCourse(name: string, code?: string, term?: string) {
+    track("course_add");
+    const { userId, queryClient } = requireStoreContext();
+    const id = uuid();
+    const position = nextPosition(
+      queryClient.getQueryData(qk.courses(userId)) as Course[] | undefined,
+    );
+    const optimistic: Course = { id, name, code, term, position, createdAt: Date.now() };
+    void write([{ key: qk.courses(userId), update: listAdd(optimistic) }], () =>
+      supabase
+        .from("courses")
+        .insert({ id, user_id: userId, name, code: code ?? null, term: term ?? null, position }),
+    );
+  },
+
+  updateCourse(id: string, patch: Partial<Course>) {
+    const { userId } = requireStoreContext();
+    const row: TablesUpdate<"courses"> = {};
+    if (patch.name !== undefined) row.name = patch.name;
+    if (patch.code !== undefined) row.code = patch.code ?? null;
+    if (patch.term !== undefined) row.term = patch.term ?? null;
+    if (patch.position !== undefined) row.position = patch.position;
+    void write([{ key: qk.courses(userId), update: listPatch<Course>(id, patch) }], () =>
+      supabase.from("courses").update(row).eq("id", id),
+    );
+  },
+
+  /**
+   * Removing a course leaves its assignments alone.
+   *
+   * The foreign key is ON DELETE SET NULL, so they become loose education tasks
+   * rather than disappearing — dropping a finished course must not delete a
+   * term's worth of completed work. The tasks cache is invalidated because their
+   * course_id changed in the database with nothing to patch locally.
+   */
+  deleteCourse(id: string) {
+    const { userId } = requireStoreContext();
+    void write(
+      [{ key: qk.courses(userId), update: listRemove<Course>(id) }],
+      () => supabase.from("courses").delete().eq("id", id),
+      { alsoInvalidate: [qk.tasks(userId)] },
+    );
+  },
+
+  // ---------------------------------------------------------------- ordering
+
+  /**
+   * Persist a dragged order for one collection.
+   *
+   * Writes every row's new position in a single request rather than one update
+   * per card: a five-card reorder should not be five round trips, and a partial
+   * failure would leave the list in an order nobody chose.
+   */
+  reorderCards(
+    collection: "goals" | "projects" | "habits" | "courses",
+    orderedIds: string[],
+  ) {
+    const { userId, queryClient } = requireStoreContext();
+    const key =
+      collection === "goals"
+        ? qk.goals(userId)
+        : collection === "projects"
+          ? qk.projects(userId)
+          : collection === "habits"
+            ? qk.habits(userId)
+            : qk.courses(userId);
+
+    const positionById = new Map(orderedIds.map((id, index) => [id, index + 1]));
+
+    void write(
+      [
+        {
+          key,
+          update: (prev: { id: string; position: number }[] | undefined) =>
+            [...(prev ?? [])]
+              .map((row) => ({ ...row, position: positionById.get(row.id) ?? row.position }))
+              .sort((a, b) => a.position - b.position),
+        },
+      ],
+      async () => {
+        for (const [id, position] of positionById) {
+          const { error } = await supabase.from(collection).update({ position }).eq("id", id);
+          if (error) return { error };
+        }
+        return { error: null };
+      },
+    );
+    // Keep the cache read consistent for anything reading a different key.
+    void queryClient.invalidateQueries({ queryKey: key });
+  },
+
   // ------------------------------------------------------------------- goals
 
-  addGoal(input: Omit<Goal, "id" | "progress" | "steps"> & { progress?: number }) {
+  addGoal(input: Omit<Goal, "id" | "progress" | "steps" | "position"> & { progress?: number }) {
     track("goal_add");
-    const { userId } = requireStoreContext();
+    const { userId, queryClient } = requireStoreContext();
     const id = uuid();
     const progress = input.progress ?? 0;
-    const optimistic: Goal = { ...input, id, progress, steps: [] };
+    const position = nextPosition(
+      queryClient.getQueryData(qk.goals(userId)) as Goal[] | undefined,
+    );
+    const optimistic: Goal = { ...input, id, progress, position, steps: [] };
     void write([{ key: qk.goals(userId), update: listAdd(optimistic) }], () =>
       supabase.from("goals").insert({
         id,
@@ -318,6 +435,7 @@ export const actions = {
         progress,
         project_id: input.projectId ?? null,
         subproject_id: input.subprojectId ?? null,
+        position,
       }),
     );
   },
@@ -339,9 +457,12 @@ export const actions = {
   // ---------------------------------------------------------------- projects
 
   addProject(name: string, description?: string, area: Area = "professional") {
-    const { userId } = requireStoreContext();
+    const { userId, queryClient } = requireStoreContext();
     const id = uuid();
-    const optimistic: ProjectBase = { id, name, description, status: "active", area };
+    const position = nextPosition(
+      queryClient.getQueryData(qk.projects(userId)) as ProjectBase[] | undefined,
+    );
+    const optimistic: ProjectBase = { id, name, description, status: "active", area, position };
     void write([{ key: qk.projects(userId), update: listAdd(optimistic) }], () =>
       supabase.from("projects").insert({
         id,
@@ -350,6 +471,7 @@ export const actions = {
         description: description ?? null,
         status: "active",
         area,
+        position,
       }),
     );
   },

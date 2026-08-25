@@ -26,6 +26,7 @@ const EVENTS = [
   "habit_add",
   "habit_toggle",
   "goal_add",
+  "course_add",
   "journal_entry_add",
   "assistant_message",
   "focus_session",
