@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
 import { useAppState } from "@/lib/store";
 import { TaskGrid, dayRange } from "@/components/task-grid";
+import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { SoftProgress } from "@/components/soft-progress";
 import { AreaChip } from "@/components/area-chip";
@@ -118,208 +119,220 @@ function Overview() {
   const w = (k: string) => settings.widgets.find((x) => x.key === k)?.enabled ?? true;
   const orderedWidgets = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
 
+  // Which section is being dragged and what it is hovering over. Held here
+  // rather than per-section so one section can react to another being dragged
+  // across it.
+  const [drag, setDrag] = useState<DragState | null>(null);
+
+  /** Ends a drag that finished outside any section, so nothing gets stuck. */
+  const endDrag = () => setDrag(null);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" onPointerUp={endDrag} onPointerLeave={endDrag}>
       {orderedWidgets.map((key) => {
-        if (key === "greeting")
-          return (
-            <section key={key}>
-              <p suppressHydrationWarning className="text-sm text-ink-soft">
-                {format(today, "EEEE, MMMM d, yyyy")}
-              </p>
-              <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">
-                {greeting(settings.displayName || "friend")}
-              </h1>
-              <p className="mt-2 text-ink-soft max-w-lg">
-                Take a breath. Here's your gentle rundown for today — one small thing at a time.
-              </p>
-            </section>
-          );
-
-        if (key === "goals" && w("goals"))
-          return (
-            <section key={key}>
-              <div className="flex items-baseline justify-between mb-3">
-                <h2 className="font-serif text-2xl">How your areas are moving</h2>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                {areaProgress.map((a) => (
-                  <div key={a.area} className="card-soft density-p p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <AreaChip area={a.area} />
-                      <span className="tabular-nums text-2xl font-serif">{a.value}%</span>
-                    </div>
-                    <SoftProgress
-                      value={a.value}
-                      tint={
-                        a.area === "personal"
-                          ? "sage"
-                          : a.area === "professional"
-                            ? "brown"
-                            : "clay"
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-          );
-
-        if (key === "day" && w("day"))
-          return (
-            <section key={key}>
-              <div className="mb-3 flex items-baseline justify-between">
-                <h2 className="font-serif text-2xl">A look at today</h2>
-                {/* HTML entity, not a unicode escape: in a JSX text child a
-                    backslash-u sequence is not an escape at all, just six
-                    literal characters, and it was rendering as written. */}
-                <span className="text-xs text-ink-soft">Just today&rsquo;s scope</span>
-              </div>
-              <TodayGlance />
-            </section>
-          );
-
-        if (key === "chart" && w("chart"))
-          return (
-            <section key={key}>
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-serif text-2xl">{encouragement.headline}</h2>
-                <span className="text-xs text-ink-soft">{encouragement.sub}</span>
-              </div>
-              <div className="card-soft p-4 md:p-6">
-                <div className="grid md:grid-cols-[2fr_1fr] gap-6">
-                  <div className="h-56">
-                    <ResponsiveContainer>
-                      <AreaChart
-                        data={chartData}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                      >
-                        <defs>
-                          <linearGradient id="gs" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="var(--sage)" stopOpacity={0.5} />
-                            <stop offset="100%" stopColor="var(--sage)" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="gb" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="var(--brown)" stopOpacity={0.5} />
-                            <stop offset="100%" stopColor="var(--brown)" stopOpacity={0} />
-                          </linearGradient>
-                          <linearGradient id="gc" x1="0" x2="0" y1="0" y2="1">
-                            <stop offset="0%" stopColor="var(--clay)" stopOpacity={0.5} />
-                            <stop offset="100%" stopColor="var(--clay)" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid
-                          stroke="var(--border)"
-                          strokeDasharray="3 3"
-                          vertical={false}
-                        />
-                        <XAxis
-                          dataKey="day"
-                          fontSize={10}
-                          stroke="var(--ink-soft)"
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis
-                          fontSize={10}
-                          stroke="var(--ink-soft)"
-                          tickLine={false}
-                          axisLine={false}
-                          allowDecimals={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            background: "var(--card)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 12,
-                            fontSize: 12,
-                          }}
-                        />
-                        <RArea
-                          type="monotone"
-                          dataKey="personal"
-                          stroke="var(--sage)"
-                          fill="url(#gs)"
-                          strokeWidth={2}
-                        />
-                        <RArea
-                          type="monotone"
-                          dataKey="professional"
-                          stroke="var(--brown)"
-                          fill="url(#gb)"
-                          strokeWidth={2}
-                        />
-                        <RArea
-                          type="monotone"
-                          dataKey="education"
-                          stroke="var(--clay)"
-                          fill="url(#gc)"
-                          strokeWidth={2}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="h-56">
-                    <ResponsiveContainer>
-                      <PieChart>
-                        <Pie
-                          data={areaProgress.map((a) => ({
-                            name: a.area,
-                            value: Math.max(a.value, 5),
-                          }))}
-                          dataKey="value"
-                          innerRadius={45}
-                          outerRadius={75}
-                          paddingAngle={4}
-                          stroke="var(--card)"
-                          strokeWidth={3}
-                        >
-                          <Cell fill="var(--sage)" />
-                          <Cell fill="var(--brown)" />
-                          <Cell fill="var(--clay)" />
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            background: "var(--card)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 12,
-                            fontSize: 12,
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </section>
-          );
-
-        if (key === "upcoming" && w("upcoming"))
-          return (
-            <section key={key}>
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-serif text-2xl">Upcoming</h2>
-                <span suppressHydrationWarning className="text-xs text-ink-soft">
-                  {upcomingLabel}
-                </span>
-              </div>
-              {/* The three days after today — today has its own section above,
-                  and repeating it here read as twice the work. Same grid, so
-                  the two sections are one list split by time rather than two
-                  designs. */}
-              <TaskGrid
-                tasks={state.tasks}
-                events={state.events}
-                from={upcomingRange.from}
-                to={upcomingRange.to}
-                emptyText="Nothing in the next few days."
-              />
-            </section>
-          );
-
-        return null;
+        const section = renderSection(key);
+        if (!section) return null;
+        return (
+          <ReorderableSection
+            key={key}
+            sectionKey={key}
+            widgets={settings.widgets}
+            drag={drag}
+            setDrag={setDrag}
+          >
+            {section}
+          </ReorderableSection>
+        );
       })}
     </div>
   );
-}
 
+  function renderSection(key: string) {
+    if (key === "greeting")
+      return (
+        <section key={key}>
+          <p suppressHydrationWarning className="text-sm text-ink-soft">
+            {format(today, "EEEE, MMMM d, yyyy")}
+          </p>
+          <h1 suppressHydrationWarning className="mt-1 font-serif text-4xl md:text-5xl">
+            {greeting(settings.displayName || "friend")}
+          </h1>
+          <p className="mt-2 text-ink-soft max-w-lg">
+            Take a breath. Here's your gentle rundown for today — one small thing at a time.
+          </p>
+        </section>
+      );
+
+    if (key === "goals" && w("goals"))
+      return (
+        <section key={key}>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-serif text-2xl">How your areas are moving</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {areaProgress.map((a) => (
+              <div key={a.area} className="card-soft density-p p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <AreaChip area={a.area} />
+                  <span className="tabular-nums text-2xl font-serif">{a.value}%</span>
+                </div>
+                <SoftProgress
+                  value={a.value}
+                  tint={
+                    a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+
+    if (key === "day" && w("day"))
+      return (
+        <section key={key}>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-serif text-2xl">A look at today</h2>
+            {/* HTML entity, not a unicode escape: in a JSX text child a
+                    backslash-u sequence is not an escape at all, just six
+                    literal characters, and it was rendering as written. */}
+            <span className="text-xs text-ink-soft">Just today&rsquo;s scope</span>
+          </div>
+          <TodayGlance />
+        </section>
+      );
+
+    if (key === "chart" && w("chart"))
+      return (
+        <section key={key}>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-2xl">{encouragement.headline}</h2>
+            <span className="text-xs text-ink-soft">{encouragement.sub}</span>
+          </div>
+          <div className="card-soft p-4 md:p-6">
+            <div className="grid md:grid-cols-[2fr_1fr] gap-6">
+              <div className="h-56">
+                <ResponsiveContainer>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gs" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--sage)" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="var(--sage)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gb" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--brown)" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="var(--brown)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gc" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="var(--clay)" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="var(--clay)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="day"
+                      fontSize={10}
+                      stroke="var(--ink-soft)"
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      fontSize={10}
+                      stroke="var(--ink-soft)"
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        fontSize: 12,
+                      }}
+                    />
+                    <RArea
+                      type="monotone"
+                      dataKey="personal"
+                      stroke="var(--sage)"
+                      fill="url(#gs)"
+                      strokeWidth={2}
+                    />
+                    <RArea
+                      type="monotone"
+                      dataKey="professional"
+                      stroke="var(--brown)"
+                      fill="url(#gb)"
+                      strokeWidth={2}
+                    />
+                    <RArea
+                      type="monotone"
+                      dataKey="education"
+                      stroke="var(--clay)"
+                      fill="url(#gc)"
+                      strokeWidth={2}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="h-56">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={areaProgress.map((a) => ({
+                        name: a.area,
+                        value: Math.max(a.value, 5),
+                      }))}
+                      dataKey="value"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={4}
+                      stroke="var(--card)"
+                      strokeWidth={3}
+                    >
+                      <Cell fill="var(--sage)" />
+                      <Cell fill="var(--brown)" />
+                      <Cell fill="var(--clay)" />
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        fontSize: 12,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+
+    if (key === "upcoming" && w("upcoming"))
+      return (
+        <section key={key}>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-serif text-2xl">Upcoming</h2>
+            <span suppressHydrationWarning className="text-xs text-ink-soft">
+              {upcomingLabel}
+            </span>
+          </div>
+          {/* The three days after today — today has its own section above,
+                  and repeating it here read as twice the work. Same grid, so
+                  the two sections are one list split by time rather than two
+                  designs. */}
+          <TaskGrid
+            tasks={state.tasks}
+            events={state.events}
+            from={upcomingRange.from}
+            to={upcomingRange.to}
+            emptyText="Nothing in the next few days."
+          />
+        </section>
+      );
+
+    return null;
+  }
+}

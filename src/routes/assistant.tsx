@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { supabase } from "@/integrations/supabase/client";
+import { queryKeys } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/use-session";
 
@@ -23,10 +26,12 @@ const STARTERS = [
   "Break my next goal into smaller steps",
   "Is my week too full?",
   "I have 30 minutes — what is worth doing?",
+  "Add a task to draft my assignment",
 ];
 
 function AssistantPage() {
   const { user } = useSession();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState("");
@@ -120,6 +125,20 @@ function AssistantPage() {
       }
       setMessages([...next, { role: "assistant", content: data.content }]);
       persist("assistant", data.content);
+
+      // The assistant can create tasks now, and those rows are written by the
+      // edge function — outside React Query's knowledge. Without this the task
+      // exists in the database but the list on every other page keeps showing
+      // the stale cache until a reload, which reads exactly like the write
+      // silently failing.
+      const created = Array.isArray(data.createdTasks) ? data.createdTasks : [];
+      if (created.length > 0 && user) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.tasks(user.id) });
+        toast.success(
+          created.length === 1 ? "Task added" : `${created.length} tasks added`,
+          { description: created.map((t: { title: string }) => t.title).join(", ") },
+        );
+      }
     } catch {
       setError("Could not reach the assistant. Check your connection.");
     } finally {
@@ -133,7 +152,8 @@ function AssistantPage() {
         <p className="chip bg-secondary text-ink-soft">Assistant</p>
         <h1 className="mt-3 font-serif text-4xl">Think it through with me</h1>
         <p className="mt-2 max-w-lg text-ink-soft">
-          It can see your goals, tasks, projects, habits and schedule. It cannot see your journal.
+          It can see your goals, tasks, projects, habits and schedule, and it can add tasks for
+          you. It cannot see your journal.
         </p>
       </header>
 

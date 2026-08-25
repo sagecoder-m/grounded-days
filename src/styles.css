@@ -332,6 +332,7 @@
   .group:hover .reveal-control,
   .group\/step:hover .reveal-control,
   .group\/inline:hover .reveal-control,
+  .group\/section:hover .reveal-control,
   .reveal-control:focus-visible {
     opacity: 1;
     pointer-events: auto;

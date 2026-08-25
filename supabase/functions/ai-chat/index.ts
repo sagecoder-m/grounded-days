@@ -125,6 +125,8 @@ const SYSTEM_PROMPT = `You are the assistant inside grounded, a calm personal pl
 How to be useful here:
 - Suggest the next small concrete step, not a system to adopt. One clear thing beats a complete plan.
 - Break big things down when asked. Name specific steps that could be ticked off.
+- When they ask you to add, create, remember or track something, call create_task. Do not
+  just describe the task in prose — actually create it. One call per task.
 - Be brief. Two or three short paragraphs at most unless asked for more.
 - Refer to their actual goals, tasks and schedule by name. You have them below.
 
@@ -132,6 +134,10 @@ How not to be:
 - Never shame, guilt, or imply they are behind. No streak language, no "you should have".
 - Do not moralise about productivity. A slow week is not a failure to diagnose.
 - Do not invent tasks, events or goals they did not mention. If you are unsure what they have, ask.
+- Never claim you did something you did not do. You can add a task ONLY by calling the
+  create_task tool. If you did not call it, or the call failed, say plainly that you have
+  not added anything and show them what to add instead. Saying "I've added it" when you
+  have not is the worst thing you can do here — they will trust it and lose the task.
 - You are not a therapist or doctor. If something sounds like it needs real support, say so plainly and briefly, once, without alarm.
 
 You cannot see their journal and should not ask them to paste it. If they volunteer how they are feeling, take it into account for planning and move on.`;
@@ -314,6 +320,102 @@ function briefPrompt(brief: ClientBrief): string {
   return lines.join("\n");
 }
 
+
+/**
+ * The one thing the assistant may change.
+ *
+ * It was read-only until now, which produced the failure this fixes: asked to
+ * add an assignment it replied "I've added the assignment to your open tasks"
+ * and nothing was written, because nothing could be. The model had no tool and
+ * no instruction saying it lacked one, so it said the helpful-sounding thing.
+ *
+ * Writes stay narrow on purpose — create a task, nothing else. No deleting, no
+ * editing, no touching goals or events. A planning assistant that can only add
+ * a line to a list has a small blast radius, and everything it creates is
+ * removable in one tap.
+ */
+const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "create_task",
+      description:
+        "Add one task to the person's list. Call this whenever they ask you to add, " +
+        "create, track or remember something. Call it once per task.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Short imperative title, e.g. 'Draft the 2-page assignment'.",
+          },
+          area: {
+            type: "string",
+            enum: ["personal", "professional", "education"],
+            description: "Which part of their life this belongs to.",
+          },
+          date: {
+            type: "string",
+            description:
+              "Optional due date as YYYY-MM-DD. Omit entirely if they did not give one — " +
+              "do not invent a deadline.",
+          },
+        },
+        required: ["title", "area"],
+      },
+    },
+  },
+];
+
+const AREAS = ["personal", "professional", "education"];
+
+interface CreatedTask {
+  title: string;
+  area: string;
+  date: string | null;
+}
+
+/**
+ * Runs one create_task call and reports the outcome back to the model.
+ *
+ * Validated here rather than trusted: the arguments are model output, and the
+ * row is written with the user id from the verified JWT, never one the model
+ * could name.
+ */
+async function runCreateTask(
+  userId: string,
+  rawArgs: string,
+): Promise<{ ok: true; task: CreatedTask } | { ok: false; error: string }> {
+  let args: { title?: unknown; area?: unknown; date?: unknown };
+  try {
+    args = JSON.parse(rawArgs || "{}");
+  } catch {
+    return { ok: false, error: "Arguments were not valid JSON." };
+  }
+
+  const title = typeof args.title === "string" ? args.title.trim().slice(0, 200) : "";
+  if (!title) return { ok: false, error: "A title is required." };
+
+  const area = typeof args.area === "string" && AREAS.includes(args.area) ? args.area : "personal";
+
+  // A bad date is dropped rather than rejected — an undated task is still a
+  // useful task, and failing the whole call over a malformed date would lose it.
+  let date: string | null = null;
+  if (typeof args.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(args.date.trim())) {
+    date = args.date.trim();
+  }
+
+  const { error } = await serviceClient()
+    .from("tasks")
+    .insert({ user_id: userId, title, area, date, done: false });
+
+  if (error) {
+    console.error("create_task insert failed", error.message);
+    return { ok: false, error: "The task could not be saved." };
+  }
+  return { ok: true, task: { title, area, date } };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -332,30 +434,86 @@ Deno.serve(async (req) => {
     const { context, brief } = await buildContext(user.id);
     const { primary, fallbacks } = await resolveModelChain();
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${requireEnv("OPENROUTER_API_KEY")}`,
-        "Content-Type": "application/json",
-        // OpenRouter asks for these to attribute traffic; they are not secret.
-        "HTTP-Referer": Deno.env.get("APP_BASE_URL") ?? "https://grounded-days.vercel.app",
-        "X-Title": "grounded",
-      },
-      body: JSON.stringify({
-        model: primary,
-        // Covers rate-limits and downtime; the id-existence problem is already
-        // handled by resolveModelChain above.
-        ...(fallbacks.length > 0 ? { models: fallbacks } : {}),
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "system", content: briefPrompt(brief) },
-          { role: "system", content: `Here is their current state:\n\n${context}` },
-          ...recent,
-        ],
-        max_tokens: 800,
-        temperature: 0.6,
-      }),
-    });
+    // deno-lint-ignore no-explicit-any
+    const convo: any[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: briefPrompt(brief) },
+      { role: "system", content: `Here is their current state:\n\n${context}` },
+      ...recent,
+    ];
+
+    const callModel = (withTools: boolean) =>
+      fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${requireEnv("OPENROUTER_API_KEY")}`,
+          "Content-Type": "application/json",
+          // OpenRouter asks for these to attribute traffic; they are not secret.
+          "HTTP-Referer": Deno.env.get("APP_BASE_URL") ?? "https://grounded-days.vercel.app",
+          "X-Title": "grounded",
+        },
+        body: JSON.stringify({
+          model: primary,
+          // Covers rate-limits and downtime; the id-existence problem is already
+          // handled by resolveModelChain above.
+          ...(fallbacks.length > 0 ? { models: fallbacks } : {}),
+          messages: convo,
+          ...(withTools ? { tools: TOOLS } : {}),
+          max_tokens: 800,
+          temperature: 0.6,
+        }),
+      });
+
+    let res = await callModel(true);
+
+    /**
+     * One round of tool calls, then a final answer.
+     *
+     * A single round is deliberate: create_task cannot fail in a way a second
+     * round would fix, and an unbounded loop on a free tier is a way to burn
+     * the daily quota on one message. The second call omits the tools so the
+     * model has to produce prose rather than calling again.
+     */
+    const createdTasks: CreatedTask[] = [];
+    if (res.ok) {
+      const firstText = await res.text();
+      let first: any;
+      try {
+        first = JSON.parse(firstText);
+      } catch {
+        first = null;
+      }
+      const choice = first?.choices?.[0]?.message;
+      const toolCalls = choice?.tool_calls;
+
+      if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+        convo.push(choice);
+        for (const call of toolCalls.slice(0, 8)) {
+          const name = call?.function?.name;
+          const outcome =
+            name === "create_task"
+              ? await runCreateTask(user.id, call?.function?.arguments ?? "{}")
+              : ({ ok: false, error: `Unknown tool "${name}".` } as const);
+
+          if (outcome.ok) createdTasks.push(outcome.task);
+
+          convo.push({
+            role: "tool",
+            tool_call_id: call.id,
+            // The model writes its reply from this, so the wording decides
+            // whether it tells the truth about what happened.
+            content: outcome.ok
+              ? `Created: "${outcome.task.title}" in ${outcome.task.area}` +
+                (outcome.task.date ? ` due ${outcome.task.date}.` : ", no date set.")
+              : `FAILED — nothing was saved. ${outcome.error} Tell them it was not added.`,
+          });
+        }
+        res = await callModel(false);
+      } else {
+        // No tools wanted; reuse the first response rather than paying for another.
+        res = new Response(firstText, { status: 200 });
+      }
+    }
 
     const text = await res.text();
     if (!res.ok) {
@@ -392,6 +550,9 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       content,
+      // The client refetches its task list when this is non-empty — otherwise a
+      // task really was created but would not appear until the next reload.
+      createdTasks,
       model: data.model ?? primary,
       usage: {
         inputTokens: data.usage?.prompt_tokens ?? null,
