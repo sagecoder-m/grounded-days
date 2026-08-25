@@ -119,16 +119,38 @@ export function AppShell({ children }: { children: ReactNode }) {
       {topLayout ? (
         <>
           <header className="sticky top-0 z-30 hidden border-b border-border bg-card/80 backdrop-blur md:block">
-            <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-8 py-3">
+            {/*
+              Icons, not labels.
+              
+              Measured at 1280px: eight labelled tabs come to 910px, plus a 134px
+              brand, a 140px account box and 76px of gaps — 1260px of content in
+              a container max-w-6xl caps at 1152. The overflow pushed the account
+              box 76px off-screen and squeezed "Sign out" onto two lines. Widening
+              the container was the alternative, but it would have left the brand
+              hanging 64px outside the page content below it.
+              
+              min-w-0 on the nav and shrink-0 on the account box are the
+              structural half of the fix: without them a flex-1 nav claims its
+              full content width and shoves its siblings out of the container
+              rather than yielding, which is what happened here and would happen
+              again the next time a tab is added.
+            */}
+            <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-8 py-3">
               <Brand />
-              <nav className="flex flex-1 items-center gap-1">
+              <nav
+                aria-label="Sections"
+                className="flex min-w-0 flex-1 items-center justify-center gap-1"
+              >
                 {NAV.map((n) => {
                   const active = pathname === n.to;
                   return (
                     <Link
                       key={n.to}
                       to={n.to}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors ${
+                      aria-label={n.label}
+                      title={n.label}
+                      aria-current={active ? "page" : undefined}
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors ${
                         active ? "text-ink" : "text-ink-soft hover:bg-secondary"
                       }`}
                       style={
@@ -140,13 +162,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                           : undefined
                       }
                     >
-                      <n.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
-                      {n.label}
+                      <n.icon className={`h-[18px] w-[18px] ${active ? "text-primary" : ""}`} />
                     </Link>
                   );
                 })}
               </nav>
-              <AccountBox compact />
+              <div className="shrink-0">
+                <AccountBox compact />
+              </div>
             </div>
           </header>
           <main className="min-w-0">
@@ -274,10 +297,10 @@ function AccountBox({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="flex items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5">
         <button
           onClick={lockNow}
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11px] text-ink-soft"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 py-1.5 text-[11px] text-ink-soft"
           aria-label="Lock"
         >
           <Lock className="h-3 w-3" />
@@ -285,7 +308,7 @@ function AccountBox({ compact = false }: { compact?: boolean }) {
         </button>
         <button
           onClick={signOut}
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11px] text-ink-soft"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 py-1.5 text-[11px] text-ink-soft"
         >
           {syncIcon}
           Sign out
