@@ -33,7 +33,14 @@ import type { Area, CalEvent, CalView } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
-import { buildCalendarTypes, fromDayFlowEvent, toDayFlowEvent } from "@/lib/dayflow-adapter";
+import {
+  buildCalendarTypes,
+  fromDayFlowEvent,
+  isTaskEventId,
+  taskIdFromEventId,
+  taskToDayFlowEvent,
+  toDayFlowEvent,
+} from "@/lib/dayflow-adapter";
 import { useDayFlowEventSync } from "@/lib/use-dayflow-sync";
 import { dateKey } from "@/components/task-grid";
 import { AddEventDialog, EditEventDialog, SyncedHint } from "@/components/calendar-dialogs";
@@ -158,7 +165,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
    * rarely enough that paying it here is the right trade.
    */
   const connectionSignature = useMemo(
-    () => (connections.data ?? []).map((c) => c.id).sort().join(","),
+    () =>
+      (connections.data ?? [])
+        .map((c) => c.id)
+        .sort()
+        .join(","),
     [connections.data],
   );
   const events = useMemo(() => {
@@ -173,8 +184,24 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
             // schedule you do not control stays put.
             (e) => e.source !== "local" || (e.area && areaFilter.has(e.area)),
           );
-    return visible.map(toDayFlowEvent);
-  }, [state.events, areaFilter]);
+    /**
+     * Dated tasks, drawn alongside events.
+     *
+     * Only dated ones: a task with no due date is not on any day, and putting it
+     * on today because it has to go somewhere would invent a deadline nobody
+     * set — in an app built to avoid manufactured pressure, that is the wrong
+     * kind of wrong.
+     *
+     * Tasks always carry an area, so unlike imported events they answer the area
+     * filter directly and are narrowed by it.
+     */
+    const tasks = state.tasks.filter(
+      (t): t is typeof t & { date: string } =>
+        Boolean(t.date) && (areaFilter.size === 0 || areaFilter.has(t.area)),
+    );
+
+    return [...visible.map(toDayFlowEvent), ...tasks.map(taskToDayFlowEvent)];
+  }, [state.events, state.tasks, areaFilter]);
 
   /**
    * Writes a drag or resize back through the same actions.updateEvent the old
@@ -187,6 +214,15 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
    * round trip.
    */
   const persistMove = useCallback((updated: DayFlowEvent) => {
+    // Dragging a task re-dates it. This is the one edit the calendar is better
+    // at than the task list: "not today, Thursday" is a gesture here and a date
+    // picker there.
+    if (isTaskEventId(updated.id)) {
+      actions.updateTask(taskIdFromEventId(updated.id), {
+        date: fromDayFlowEvent(updated).date,
+      });
+      return;
+    }
     if ((updated.meta as { source?: string } | undefined)?.source !== "local") return;
     actions.updateEvent(updated.id, fromDayFlowEvent(updated));
   }, []);
@@ -196,6 +232,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
    *  DayFlow's, to keep one editing surface across the app. */
   const onEventClick = useCallback(
     (clicked: DayFlowEvent) => {
+      // Tasks open nothing. Ticking one is a single irreversible-feeling click
+      // with no undo, and a calendar grid is dense enough that a mis-click is
+      // routine — so the box is shown here and ticked where there is a real
+      // checkbox. Rescheduling, which a drag makes unambiguous, is offered.
+      if (isTaskEventId(clicked.id)) return;
       const match = state.events.find((e) => e.id === clicked.id);
       if (match && match.source === "local") setEditing(match);
     },
@@ -235,7 +276,13 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
 
     return narrow
       ? [createDayView({ scrollToCurrentTime: true }), week, month, createAgendaView({})]
-      : [createDayView({ scrollToCurrentTime: true }), week, month, createYearView({}), createAgendaView({})];
+      : [
+          createDayView({ scrollToCurrentTime: true }),
+          week,
+          month,
+          createYearView({}),
+          createAgendaView({}),
+        ];
   }, [narrow, state.settings.weekStartsOn]);
 
   const plugins = useMemo(

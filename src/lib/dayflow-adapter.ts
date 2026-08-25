@@ -18,10 +18,19 @@
  *    joins the same read-only bucket, which affects only the calendar's label,
  *    never whether the event is locked.
  *
- * 2. Tasks are not represented as DayFlow events. DayFlow has no concept of
- *    "done", and forcing a checklist item into an event model to get it drawn
- *    on a grid is the wrong direction — tasks render in their own list beside
- *    the calendar, the same split the Overview day view already uses.
+ * 2. Tasks ARE drawn on the grid, as all-day items on their due date.
+ *
+ *    This used to be the opposite, on the reasoning that DayFlow has no concept
+ *    of "done" and tasks had their own list beside the calendar. The second half
+ *    of that stopped being true when the task list moved to the Overview: the
+ *    calendar page kept the rule and lost the list, so a task due Thursday was
+ *    nowhere on the one screen whose whole job is telling you what Thursday
+ *    holds. A due date is a commitment on a specific day, which is the only
+ *    thing a calendar is for.
+ *
+ *    "Done" is carried in the title as a box glyph rather than modelled, since
+ *    DayFlow genuinely has no field for it. Tasks reuse the area calendars, so
+ *    the area filter narrows them exactly as it narrows events.
  */
 import {
   dateToPlainDate,
@@ -32,18 +41,30 @@ import {
 } from "@dayflow/react";
 import type { CalendarType, Event as DayFlowEvent } from "@dayflow/core";
 
-import type { Area, CalEvent } from "@/lib/store-types";
+import type { Area, CalEvent, Task } from "@/lib/store-types";
 import type { CalendarConnection } from "@/lib/store-types";
 
 const AREA_COLORS: Record<Area, { eventColor: string; lineColor: string; textColor: string }> = {
-  personal: { eventColor: "var(--sage-soft)", lineColor: "var(--sage)", textColor: "var(--sage-deep)" },
-  professional: { eventColor: "var(--brown-soft)", lineColor: "var(--brown)", textColor: "var(--brown)" },
+  personal: {
+    eventColor: "var(--sage-soft)",
+    lineColor: "var(--sage)",
+    textColor: "var(--sage-deep)",
+  },
+  professional: {
+    eventColor: "var(--brown-soft)",
+    lineColor: "var(--brown)",
+    textColor: "var(--brown)",
+  },
   education: { eventColor: "var(--clay-soft)", lineColor: "var(--clay)", textColor: "var(--clay)" },
 };
 
 /** Areas with no goal/task/habit relevance in a calendar sense, but events can
  *  lack an area entirely (a synced event with no mapped default). */
-const UNASSIGNED_COLOR = { eventColor: "var(--tan)", lineColor: "var(--ink-soft)", textColor: "var(--ink)" };
+const UNASSIGNED_COLOR = {
+  eventColor: "var(--tan)",
+  lineColor: "var(--ink-soft)",
+  textColor: "var(--ink)",
+};
 
 export function calendarIdFor(event: CalEvent): string {
   if (event.source === "local") return event.area ?? "unassigned";
@@ -191,4 +212,50 @@ export function fromDayFlowEvent(event: DayFlowEvent): {
     return { date, endDate: last !== date ? last : undefined };
   }
   return { date, startsAt: start.toISOString(), endsAt: toDate(event.end).toISOString() };
+}
+
+/**
+ * Namespace for task ids on the grid.
+ *
+ * Tasks and events share one id space once they are both DayFlow events, and a
+ * uuid gives no hint which table it came from. The prefix is what lets a drag or
+ * a click route to the right action instead of asking the events list and
+ * silently doing nothing when it is not there.
+ */
+export const TASK_EVENT_PREFIX = "task:";
+
+export function isTaskEventId(id: string): boolean {
+  return id.startsWith(TASK_EVENT_PREFIX);
+}
+
+export function taskIdFromEventId(id: string): string {
+  return id.slice(TASK_EVENT_PREFIX.length);
+}
+
+/**
+ * A dated task as an all-day DayFlow event.
+ *
+ * All-day rather than timed because a due date says which day, not which hour —
+ * inventing 9am would be inventing information, and it would push the task into
+ * the time grid where it would collide with real appointments.
+ *
+ * Completed tasks stay visible but faded. Hiding them would make a day look
+ * emptier the more of it you got through, which is both wrong and, on a page
+ * meant to feel calm, discouraging in precisely the way this app avoids.
+ */
+export function taskToDayFlowEvent(task: Task & { date: string }): DayFlowEvent {
+  // Parsed with an explicit local midnight, never new Date("yyyy-mm-dd"), which
+  // is UTC midnight and lands on the previous day west of Greenwich.
+  const day = dateToPlainDate(new Date(`${task.date}T00:00:00`));
+  return {
+    id: `${TASK_EVENT_PREFIX}${task.id}`,
+    // A box rather than a colour, so "done" survives being read in greyscale and
+    // does not need a legend.
+    title: `${task.done ? "\u2611" : "\u2610"} ${task.title}`,
+    start: day,
+    end: day,
+    allDay: true,
+    calendarId: task.area,
+    meta: { groundedId: task.id, source: "task", done: task.done },
+  };
 }
