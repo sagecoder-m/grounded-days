@@ -102,6 +102,14 @@ export interface CalEvent {
   endDate?: string;
   area?: Area;
   source: EventSource;
+  /**
+   * Which connection mirrored this event. Undefined for local events.
+   *
+   * Needed because one person can connect several accounts with the same
+   * provider — two Google calendars, a work and a personal Outlook — and the
+   * calendar has to keep them apart. The provider alone cannot do that.
+   */
+  connectionId?: string;
   /** Null for all-day events, which have no meaningful instant. */
   startsAt?: string;
   endsAt?: string;

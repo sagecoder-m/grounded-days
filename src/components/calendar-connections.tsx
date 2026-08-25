@@ -97,7 +97,18 @@ export function CalendarConnectionsSection() {
   }
 
   const rows = connections.data ?? [];
-  const connectedProviders = new Set(rows.map((c) => c.provider));
+  /**
+   * How many of each kind are already connected.
+   *
+   * Used only to word the button, never to hide it. The buttons used to be
+   * filtered out once a provider appeared, which quietly capped everyone at one
+   * Google and one Outlook — and plenty of people have a personal and a work
+   * calendar of the same kind, or three feeds and nothing else.
+   */
+  const countByProvider = rows.reduce<Record<string, number>>((acc, c) => {
+    acc[c.provider] = (acc[c.provider] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <section className="card-soft p-6 space-y-4">
@@ -118,8 +129,10 @@ export function CalendarConnectionsSection() {
       </div>
 
       <p className="text-sm text-ink-soft max-w-lg">
-        Bring your real schedule alongside your tasks. Events come in read-only — grounded never
-        changes anything in Google or Outlook.
+        Bring your real schedule alongside your tasks. Connect as many accounts as
+        you like — several Google calendars, a work and a personal Outlook, any
+        mix of the three. Everything comes in read-only; grounded never changes
+        anything at the source.
       </p>
 
       {rows.length > 0 && (
@@ -136,9 +149,7 @@ export function CalendarConnectionsSection() {
       )}
 
       <div className="flex flex-wrap gap-3 pt-1">
-        {(OAUTH_PROVIDERS as readonly CalendarProvider[])
-          .filter((provider) => !connectedProviders.has(provider))
-          .map((provider) => (
+        {(OAUTH_PROVIDERS as readonly CalendarProvider[]).map((provider) => (
             <Button
               key={provider}
               variant="outline"
@@ -147,7 +158,8 @@ export function CalendarConnectionsSection() {
               className="gap-2 rounded-full"
             >
               <CalendarCheck className="h-4 w-4" />
-              Connect {PROVIDER_LABELS[provider]}
+              {countByProvider[provider] ? "Add another" : "Connect"}{" "}
+              {PROVIDER_LABELS[provider]}
             </Button>
           ))}
       </div>

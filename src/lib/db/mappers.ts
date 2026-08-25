@@ -162,6 +162,7 @@ export function rowToEvent(row: Tables<"events">): CalEvent {
     endDate: row.end_date ?? undefined,
     area: toOptionalArea(row.area),
     source: toEventSource(row.source),
+    connectionId: row.connection_id ?? undefined,
     startsAt: row.starts_at ?? undefined,
     endsAt: row.ends_at ?? undefined,
     allDay: row.all_day,

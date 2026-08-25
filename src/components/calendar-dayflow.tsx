@@ -63,6 +63,28 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
   const narrow = useMediaQuery("(max-width: 767px)");
 
   const calendars = useMemo(() => buildCalendarTypes(connections.data ?? []), [connections.data]);
+
+  /**
+   * Part of the version key below, and the fix for a real bug.
+   *
+   * useCalendarApp builds its CalendarApp in a useMemo keyed only on `version`,
+   * and the calendars registry is captured at that moment. Connections arrive
+   * from a query a tick after mount, so the registry was always built empty —
+   * and DayFlow does not render an event whose calendarId it has never been
+   * told about. Synced events were therefore in the database, inside the visible
+   * range, mapped to a calendar id, and invisible: "Summer Bank Holiday" existed
+   * on Aug 31 and simply did not draw.
+   *
+   * Keying on the connection ids means the app is rebuilt when the set changes —
+   * once shortly after load, then only when a calendar is connected or removed.
+   * Rebuilding discards the current view and date, which is why events are
+   * reconciled imperatively instead (see use-dayflow-sync); connections change
+   * rarely enough that paying it here is the right trade.
+   */
+  const connectionSignature = useMemo(
+    () => (connections.data ?? []).map((c) => c.id).sort().join(","),
+    [connections.data],
+  );
   const events = useMemo(() => state.events.map(toDayFlowEvent), [state.events]);
 
   /**
@@ -151,7 +173,7 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     // version, so a changed view set is otherwise ignored. Rebuilding on the
     // breakpoint is the point — it is the one case where losing the current
     // view is correct, since that view may no longer exist.
-    `${narrow ? "narrow" : "wide"}:${state.settings.weekStartsOn}`,
+    `${narrow ? "narrow" : "wide"}:${state.settings.weekStartsOn}:${connectionSignature}`,
   );
 
   // The events passed above are only the first-render snapshot as far as

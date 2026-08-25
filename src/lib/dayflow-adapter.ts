@@ -47,13 +47,36 @@ const UNASSIGNED_COLOR = { eventColor: "var(--tan)", lineColor: "var(--ink-soft)
 
 export function calendarIdFor(event: CalEvent): string {
   if (event.source === "local") return event.area ?? "unassigned";
-  return event.source;
+  /**
+   * One calendar per connection, keyed by its id.
+   *
+   * This used to return the provider alone, which merged every account of the
+   * same kind into one bucket: connect two Google calendars and the second was
+   * indistinguishable from the first, with the registry naming only one of them.
+   * The connection id is the only thing that separates them.
+   *
+   * The provider stays in the key as a readable prefix; the id is what makes it
+   * unique. An older row with no connection_id falls back to the provider so it
+   * still resolves to a calendar rather than disappearing.
+   */
+  return event.connectionId ? `${event.source}:${event.connectionId}` : event.source;
 }
 
 /**
  * Build the full CalendarType[] DayFlow needs, from the areas that always
  * exist plus whichever calendar connections are actually connected.
  */
+/** A feed has no account name, so its host stands in — enough to tell two
+ *  subscriptions apart without printing a whole URL into the calendar list. */
+function feedLabel(feedUrl?: string): string | undefined {
+  if (!feedUrl) return undefined;
+  try {
+    return new URL(feedUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildCalendarTypes(connections: CalendarConnection[]): CalendarType[] {
   const areaCalendars: CalendarType[] = (Object.keys(AREA_COLORS) as Area[]).map((area) => ({
     id: area,
@@ -68,35 +91,35 @@ export function buildCalendarTypes(connections: CalendarConnection[]): CalendarT
     colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
   };
 
-  // Deduplicated by provider, because calendarIdFor() resolves a synced event
-  // to its provider. Mapping connections straight through would emit two
-  // calendars sharing the id "google" the moment a second Google account is
-  // connected, and a registry with duplicate ids has no defined winner.
-  const providers = [...new Set(connections.map((conn) => conn.provider))];
-
-  const syncedCalendars: CalendarType[] = providers.map((provider) => {
-    // A feed is read-only for the same reason the OAuth providers are, so it
-    // needs a label here or it would fall through to "Outlook Calendar".
+  /**
+   * One calendar per connection.
+   *
+   * Previously deduplicated by provider, which was the right call while
+   * calendarIdFor() keyed on the provider — but it capped a person at one
+   * account per kind. Keying on the connection id lets someone hold two Google
+   * calendars, or a Google and two feeds, and see which is which.
+   */
+  const syncedCalendars: CalendarType[] = connections.map((conn) => {
+    const provider = conn.provider;
     const label =
       provider === "google"
         ? "Google Calendar"
         : provider === "microsoft"
           ? "Outlook Calendar"
           : "Calendar feed";
-    const forProvider = connections.filter((conn) => conn.provider === provider);
-    // The account email is only informative while it is unambiguous; with two
-    // accounts in one bucket, naming one of them would be actively misleading.
-    const single = forProvider.length === 1 ? forProvider[0].accountEmail : undefined;
+    // With several accounts of one kind the name is the only way to tell them
+    // apart, so it carries the account: "Google Calendar (me@gmail.com)".
+    const who = conn.accountEmail ?? feedLabel(conn.feedUrl);
 
     return {
-      id: provider,
-      name: single ? `${label} (${single})` : label,
+      id: `${provider}:${conn.id}`,
+      name: who ? `${label} (${who})` : label,
       colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
       // This is the actual lockdown: DayFlow's permission resolver checks this
       // per-calendar flag before allowing a drag, so a synced event cannot be
       // moved even though rendering treats it like any other event.
       readOnly: true,
-      source: label,
+      source: who ? `${label} · ${who}` : label,
     };
   });
 
