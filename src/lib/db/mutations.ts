@@ -729,6 +729,55 @@ export const actions = {
     return data.authorizeUrl as string;
   },
 
+  /**
+   * Subscribe to an .ics feed.
+   *
+   * No edge function needed to create it: unlike the OAuth providers there is no
+   * secret to exchange, so the row is written directly under RLS. account_id
+   * holds the feed URL, which makes the existing (user_id, provider, account_id)
+   * unique index reject the same feed twice without a duplicate check here.
+   *
+   * The sync runs immediately and rethrows, so a wrong address fails in front of
+   * the person who typed it instead of leaving a connection that quietly returns
+   * nothing. If it fails the connection is removed again rather than left behind
+   * in an error state nobody asked for.
+   */
+  async addCalendarFeed(feedUrl: string) {
+    const { userId, queryClient } = requireStoreContext();
+    const { data, error } = await supabase
+      .from("calendar_connections")
+      .insert({
+        user_id: userId,
+        provider: "ical",
+        account_id: feedUrl,
+        feed_url: feedUrl,
+        status: "connected",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      throw new Error(
+        error.code === "23505"
+          ? "You are already subscribed to that feed."
+          : error.message,
+      );
+    }
+
+    try {
+      const { error: syncError } = await supabase.functions.invoke("calendar-sync", { body: {} });
+      if (syncError) throw new Error(syncError.message);
+    } catch (err) {
+      await supabase.from("calendar_connections").delete().eq("id", data.id);
+      throw err;
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: qk.events(userId) }),
+      queryClient.invalidateQueries({ queryKey: qk.calendarConnections(userId) }),
+    ]);
+  },
+
   /** Pull now. Events land via the sync job, so refetch both collections. */
   async syncCalendarsNow() {
     const { userId, queryClient } = requireStoreContext();

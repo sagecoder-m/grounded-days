@@ -89,6 +89,7 @@ export type Database = {
           account_id: string
           created_at: string
           default_area: string | null
+          feed_url: string | null
           id: string
           last_synced_at: string | null
           provider: string
@@ -103,6 +104,7 @@ export type Database = {
           account_id: string
           created_at?: string
           default_area?: string | null
+          feed_url?: string | null
           id?: string
           last_synced_at?: string | null
           provider: string
@@ -117,6 +119,7 @@ export type Database = {
           account_id?: string
           created_at?: string
           default_area?: string | null
+          feed_url?: string | null
           id?: string
           last_synced_at?: string | null
           provider?: string

@@ -13,7 +13,11 @@ import { useSession } from "@/lib/use-session";
 const PROVIDER_LABELS: Record<CalendarProvider, string> = {
   google: "Google Calendar",
   microsoft: "Outlook Calendar",
+  ical: "Calendar feed",
 };
+
+/** The two providers reached through OAuth. A feed is subscribed to instead. */
+const OAUTH_PROVIDERS = ["microsoft", "google"] as const;
 
 /** Reasons the OAuth callback can bounce back, in the app's voice. */
 const CONNECT_ERRORS: Record<string, string> = {
@@ -132,7 +136,7 @@ export function CalendarConnectionsSection() {
       )}
 
       <div className="flex flex-wrap gap-3 pt-1">
-        {(["microsoft", "google"] as CalendarProvider[])
+        {(OAUTH_PROVIDERS as readonly CalendarProvider[])
           .filter((provider) => !connectedProviders.has(provider))
           .map((provider) => (
             <Button
@@ -147,7 +151,79 @@ export function CalendarConnectionsSection() {
             </Button>
           ))}
       </div>
+
+      <AddFeedForm />
     </section>
+  );
+}
+
+/**
+ * Subscribe to a published .ics feed.
+ *
+ * Deliberately not an OAuth button. There is no consent screen and no token, so
+ * nothing expires and nothing needs re-authorising weekly — which makes a feed
+ * the most durable of the three sources, and the only one that works for a
+ * university timetable or a fixtures list that was never going to hand out API
+ * access.
+ *
+ * The URL is written straight to calendar_connections under the caller's own id
+ * (RLS enforces that), then a sync is kicked off so a wrong URL fails here and
+ * now rather than silently producing an empty calendar.
+ */
+function AddFeedForm() {
+  const { user } = useSession();
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function subscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    // webcal:// is the same feed over https and is how most sites publish it.
+    const normalised = url.trim().replace(/^webcal:\/\//i, "https://");
+    if (!/^https:\/\/\S+$/i.test(normalised)) {
+      toast.error("That doesn't look like a feed address", {
+        description: "It should start with https:// or webcal:// and end in .ics.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await actions.addCalendarFeed(normalised);
+      setUrl("");
+      toast.success("Feed subscribed", { description: "Pulling in events now." });
+    } catch (err) {
+      toast.error("Couldn't subscribe to that feed", {
+        description: err instanceof Error ? err.message : "Check the address and try again.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={subscribe} className="space-y-2 border-t border-border pt-4">
+      <label htmlFor="feed-url" className="text-sm font-medium">
+        Or subscribe to a calendar feed
+      </label>
+      <p className="text-xs text-ink-soft">
+        A published .ics address — a course timetable, a fixtures list, a shared
+        family calendar. Read-only, and it never needs reconnecting.
+      </p>
+      <div className="flex flex-wrap gap-2 pt-1">
+        <input
+          id="feed-url"
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.edu/timetable.ics"
+          className="min-w-0 flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+        />
+        <Button type="submit" disabled={busy || !url.trim()} className="rounded-full">
+          {busy ? "Subscribing…" : "Subscribe"}
+        </Button>
+      </div>
+    </form>
   );
 }
 

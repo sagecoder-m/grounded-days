@@ -89,7 +89,7 @@ export interface Project {
 
 /** Where an event came from. Anything other than "local" is mirrored from a
  *  provider and is read-only in Grounded — enforced by RLS, not just the UI. */
-export type EventSource = "local" | "google" | "microsoft";
+export type EventSource = "local" | "google" | "microsoft" | "ical";
 
 export interface CalEvent {
   id: string;
@@ -123,7 +123,7 @@ export interface JournalEntry {
   gratitude?: string;
 }
 
-export type CalendarProvider = "google" | "microsoft";
+export type CalendarProvider = "google" | "microsoft" | "ical";
 
 /** 'needs_reauth' is routine rather than exceptional: Google refresh tokens for
  *  an unverified app expire weekly, so the UI must surface it plainly. */
@@ -133,6 +133,8 @@ export interface CalendarConnection {
   id: string;
   provider: CalendarProvider;
   accountEmail?: string;
+  /** The subscribed URL, for an ical connection. Its own credential. */
+  feedUrl?: string;
   defaultArea?: Area;
   status: ConnectionStatus;
   statusDetail?: string;

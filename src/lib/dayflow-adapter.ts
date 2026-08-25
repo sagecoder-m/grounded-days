@@ -7,7 +7,7 @@
  *    `professional`, `education`), so DayFlow's own area-colour rendering
  *    replaces the dotColor() lookup the hand-rolled board used to do by hand.
  *    Each synced *provider* becomes one read-only calendar (`google`,
- *    `microsoft`), which is what DayFlow's own permission resolver reads to
+ *    `microsoft`, `ical`), which is what DayFlow's own permission resolver reads to
  *    disable dragging — no per-item isSynced() check needed at render time,
  *    the library enforces it.
  *
@@ -75,7 +75,14 @@ export function buildCalendarTypes(connections: CalendarConnection[]): CalendarT
   const providers = [...new Set(connections.map((conn) => conn.provider))];
 
   const syncedCalendars: CalendarType[] = providers.map((provider) => {
-    const label = provider === "google" ? "Google Calendar" : "Outlook Calendar";
+    // A feed is read-only for the same reason the OAuth providers are, so it
+    // needs a label here or it would fall through to "Outlook Calendar".
+    const label =
+      provider === "google"
+        ? "Google Calendar"
+        : provider === "microsoft"
+          ? "Outlook Calendar"
+          : "Calendar feed";
     const forProvider = connections.filter((conn) => conn.provider === provider);
     // The account email is only informative while it is unambiguous; with two
     // accounts in one bucket, naming one of them would be actively misleading.

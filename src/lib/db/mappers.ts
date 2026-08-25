@@ -170,7 +170,7 @@ export function rowToEvent(row: Tables<"events">): CalEvent {
   };
 }
 
-const EVENT_SOURCES = ["local", "google", "microsoft"] as const;
+const EVENT_SOURCES = ["local", "google", "microsoft", "ical"] as const;
 
 /** Unknown values fall back to "local" only for reads; nothing writes them. */
 function toEventSource(value: string | null): EventSource {
@@ -184,6 +184,7 @@ export function rowToCalendarConnection(row: Tables<"calendar_connections">): Ca
     id: row.id,
     provider: row.provider as CalendarProvider,
     accountEmail: row.account_email ?? undefined,
+    feedUrl: row.feed_url ?? undefined,
     defaultArea: toOptionalArea(row.default_area),
     status: row.status as ConnectionStatus,
     statusDetail: row.status_detail ?? undefined,

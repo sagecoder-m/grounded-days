@@ -12,6 +12,7 @@ import {
   ReauthRequiredError,
   refreshAccessToken,
 } from "../_shared/providers.ts";
+import { parseIcs } from "../_shared/ics.ts";
 import { corsHeaders, jsonResponse, serviceClient } from "../_shared/supabase.ts";
 
 // How much calendar to mirror. Past days are kept small — Grounded shows what
@@ -26,8 +27,11 @@ const EXPIRY_SKEW_MS = 60_000;
 interface ConnectionRow {
   id: string;
   user_id: string;
-  provider: ProviderId;
+  /** ProviderId covers the two OAuth providers; feeds are their own kind. */
+  provider: ProviderId | "ical";
   default_area: string | null;
+  /** Only ever set for an ical connection. */
+  feed_url: string | null;
 }
 
 interface CredentialRow {
@@ -39,7 +43,9 @@ interface CredentialRow {
 /** Reuse a live access token; refresh only when it is missing or near expiry. */
 async function accessTokenFor(
   db: ReturnType<typeof serviceClient>,
-  connection: ConnectionRow,
+  // Narrowed deliberately: there is no token to refresh for a feed, and taking
+  // the wider type here would let an ical connection reach providerConfig().
+  connection: ConnectionRow & { provider: ProviderId },
   credential: CredentialRow,
 ): Promise<string> {
   const expiresAt = credential.access_token_expires_at
@@ -68,26 +74,75 @@ async function accessTokenFor(
   return tokens.access_token;
 }
 
+/**
+ * Fetch and parse an iCal feed.
+ *
+ * No OAuth, no token, no refresh: the feed URL is the credential, which is why
+ * an ical connection has no calendar_credentials row at all. It is also the only
+ * provider where recurrence has to be expanded here rather than by the provider
+ * — see _shared/ics.ts.
+ */
+async function fetchIcsEvents(
+  feedUrl: string,
+  windowStart: Date,
+  windowEnd: Date,
+): Promise<NormalizedEvent[]> {
+  // webcal:// is the same thing over https; feeds are commonly published with it.
+  const url = feedUrl.replace(/^webcal:\/\//i, "https://");
+  const res = await fetch(url, {
+    headers: { Accept: "text/calendar, text/plain, */*" },
+    redirect: "follow",
+  });
+  if (!res.ok) {
+    throw new Error(`feed returned ${res.status}`);
+  }
+
+  const body = await res.text();
+  if (!/BEGIN:VCALENDAR/i.test(body)) {
+    // A wrong URL usually returns an HTML page, and parsing that yields zero
+    // events — which would look like an empty calendar rather than a mistake.
+    throw new Error("that URL did not return a calendar feed");
+  }
+
+  const { events, unsupportedRules, skipped } = parseIcs(body, windowStart, windowEnd);
+  if (unsupportedRules > 0 || skipped > 0) {
+    console.warn(
+      `ics feed: ${unsupportedRules} unsupported recurrence rule(s), ${skipped} unparseable event(s)`,
+    );
+  }
+  return events;
+}
+
 async function syncConnection(
   db: ReturnType<typeof serviceClient>,
   connection: ConnectionRow,
 ): Promise<{ imported: number; removed: number }> {
-  const { data: credential, error: credError } = await db
-    .from("calendar_credentials")
-    .select("refresh_token, access_token, access_token_expires_at")
-    .eq("connection_id", connection.id)
-    .single();
-  if (credError || !credential) {
-    throw new Error(`no credentials stored for connection ${connection.id}`);
-  }
-
-  const accessToken = await accessTokenFor(db, connection, credential);
-
   const now = Date.now();
   const windowStart = new Date(now - WINDOW_DAYS_PAST * 86_400_000);
   const windowEnd = new Date(now + WINDOW_DAYS_FUTURE * 86_400_000);
 
-  const events = await fetchEvents(connection.provider, accessToken, windowStart, windowEnd);
+  let events: NormalizedEvent[];
+
+  if (connection.provider === "ical") {
+    if (!connection.feed_url) throw new Error("this feed has no URL stored");
+    events = await fetchIcsEvents(connection.feed_url, windowStart, windowEnd);
+  } else {
+    const { data: credential, error: credError } = await db
+      .from("calendar_credentials")
+      .select("refresh_token, access_token, access_token_expires_at")
+      .eq("connection_id", connection.id)
+      .single();
+    if (credError || !credential) {
+      throw new Error(`no credentials stored for connection ${connection.id}`);
+    }
+
+    const accessToken = await accessTokenFor(
+      db,
+      connection as ConnectionRow & { provider: ProviderId },
+      credential,
+    );
+    events = await fetchEvents(connection.provider, accessToken, windowStart, windowEnd);
+  }
 
   const live = events.filter((e) => !e.cancelled);
   const cancelled = events.filter((e) => e.cancelled);
@@ -177,7 +232,7 @@ Deno.serve(async (req) => {
       userId = data.user.id;
     }
 
-    let query = db.from("calendar_connections").select("id, user_id, provider, default_area");
+    let query = db.from("calendar_connections").select("id, user_id, provider, default_area, feed_url");
     if (userId) query = query.eq("user_id", userId);
 
     const { data: connections, error } = await query;
