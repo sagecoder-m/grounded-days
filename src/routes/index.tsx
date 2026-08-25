@@ -170,21 +170,39 @@ function Overview() {
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="font-serif text-2xl">How your areas are moving</h2>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {areaProgress.map((a) => (
-              <div key={a.area} className="card-soft density-p p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <AreaChip area={a.area} />
-                  <span className="tabular-nums text-2xl font-serif">{a.value}%</span>
+          {/*
+            The timer sits at the end of this row rather than in a section of its
+            own, and everything in the row shares one height.
+            
+            items-stretch plus h-full on the cards is what puts them in scale: the
+            square sets the row's height and the progress cards grow to meet it,
+            instead of three short cards sitting beside something twice their
+            size. 13rem is the largest square that still reads as a sibling of a
+            progress card rather than the point of the row.
+          */}
+          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+            <div className="grid gap-4 sm:grid-cols-3">
+              {areaProgress.map((a) => (
+                <div key={a.area} className="card-soft density-p flex h-full flex-col justify-between p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <AreaChip area={a.area} />
+                    <span className="font-serif text-2xl tabular-nums">{a.value}%</span>
+                  </div>
+                  <SoftProgress
+                    value={a.value}
+                    tint={
+                      a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"
+                    }
+                  />
                 </div>
-                <SoftProgress
-                  value={a.value}
-                  tint={
-                    a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"
-                  }
-                />
-              </div>
-            ))}
+              ))}
+            </div>
+            {/* Not gated on a widget key. It was one for a day, but a key in the
+                reorder list whose position does nothing and whose switch does
+                is a half-working control — worse than no control. The timer is
+                part of this row now, and hiding it is a one-line change if it
+                turns out nobody wants it here. */}
+            <FocusTimer size="square" />
           </div>
         </section>
       );
@@ -200,15 +218,6 @@ function Overview() {
             <span className="text-xs text-ink-soft">Just today&rsquo;s scope</span>
           </div>
           <TodayGlance />
-        </section>
-      );
-
-    if (key === "focus" && w("focus"))
-      return (
-        <section key={key}>
-          {/* Medium, like Education's. At full size the dial outweighed every
-              other section on the page. */}
-          <FocusTimer size="medium" />
         </section>
       );
 

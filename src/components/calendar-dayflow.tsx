@@ -52,9 +52,10 @@ const FILTER_AREAS: { key: Area; label: string; dot: string }[] = [
  * touched should not be hiding your calendar. Selecting an area narrows to it;
  * selecting it again clears back to all.
  *
- * Synced events carry no area, so they are hidden whenever a filter is active.
- * That is the honest reading of "show me only Education": an imported meeting
- * belongs to no area and cannot claim to be in one.
+ * Imported events are never filtered out. They belong to no area, so there is
+ * nothing to match, and hiding them would mean narrowing to Education removed
+ * the very lecture you were filtering around. The filter narrows what you wrote
+ * down; the schedule you do not control stays.
  */
 function AreaFilter({
   selected,
@@ -164,7 +165,14 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     const visible =
       areaFilter.size === 0
         ? state.events
-        : state.events.filter((e) => e.area && areaFilter.has(e.area));
+        : state.events.filter(
+            // Imported events always show. They carry no area, so an area filter
+            // has nothing to match them against — and hiding them would mean
+            // narrowing to Education quietly removed the lecture you are
+            // filtering around. The filter narrows your own events; the
+            // schedule you do not control stays put.
+            (e) => e.source !== "local" || (e.area && areaFilter.has(e.area)),
+          );
     return visible.map(toDayFlowEvent);
   }, [state.events, areaFilter]);
 

@@ -12,12 +12,23 @@ import { Input } from "@/components/ui/input";
  * courses and assignments rather than also carrying a timer.
  */
 /**
- * `medium` shrinks the dial and tightens the padding so the timer can lead a
- * page without dominating it. At 240px the dial was the largest thing on
- * Education and pulled the eye before the assignments did — which is the wrong
- * order when it sits at the top.
+ * Three sizes, each for a position rather than for variety.
+ *
+ * `large` is the original, for a page of its own. `medium` shrinks the dial and
+ * tightens the padding so the timer can lead a page without dominating it — at
+ * 240px it was the largest thing on Education and pulled the eye before the
+ * assignments did.
+ *
+ * `square` is for sitting in a row beside other cards: no section heading, a
+ * stacked layout instead of side-by-side, and the two duration inputs dropped.
+ * Those are configuration, and a square that has to match the height of a
+ * progress card has no room for configuration — the full controls are a click
+ * away on Education. What survives is what the square is for: name the session,
+ * start it.
  */
-export function FocusTimer({ size: variant = "large" }: { size?: "large" | "medium" } = {}) {
+export function FocusTimer({
+  size: variant = "large",
+}: { size?: "large" | "medium" | "square" } = {}) {
   const [focusMin, setFocusMin] = useState(25);
   const [breakMin, setBreakMin] = useState(5);
   const [label, setLabel] = useState("Study session");
@@ -85,10 +96,83 @@ export function FocusTimer({ size: variant = "large" }: { size?: "large" | "medi
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  const size = variant === "medium" ? 168 : 240;
+  const size = variant === "square" ? 104 : variant === "medium" ? 168 : 240;
   const stroke = 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
+
+  if (variant === "square") {
+    return (
+      <div className="card-soft flex aspect-square h-full flex-col items-center justify-between gap-2 p-4">
+        <span className="self-start text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
+          Focus
+        </span>
+
+        <div className="relative" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="-rotate-90">
+            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke={phase === "focus" ? "var(--clay)" : "var(--sage)"}
+              strokeWidth={stroke}
+              fill="none"
+              strokeDasharray={c}
+              strokeDashoffset={c * (1 - pct)}
+              strokeLinecap="round"
+              style={{ transition: "stroke-dashoffset 0.9s linear" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
+            <div className={`mt-1 font-serif tabular-nums text-xl`}>{mm}:{ss}</div>
+            <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <Input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Session label"
+            aria-label="What are you working on?"
+            className="h-8 text-xs"
+          />
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="h-8 flex-1 rounded-full px-2 text-xs"
+              onClick={() => setRunning((r) => !r)}
+            >
+              {running ? (
+                <>
+                  <Pause className="h-3.5 w-3.5" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-3.5 w-3.5" /> Start
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label="Reset"
+              className="h-8 w-8 shrink-0 rounded-full border-tan p-0"
+              onClick={() => {
+                setRunning(false);
+                setPhase("focus");
+                setSecondsLeft(focusMin * 60);
+              }}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section>
