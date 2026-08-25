@@ -58,22 +58,33 @@ const HOLD_MS = 450;
 const HOLD_SLOP_PX = 10;
 
 /**
- * Where the press belongs to something else, not to the frame.
+ * Where a right-click belongs to the browser rather than to us.
  *
- * The frame covers the whole widget, which is what makes the tile feel like one
- * object — but covering everything means intercepting presses that already
- * meant something. Two kinds:
+ * Only links and text fields. Right-clicking a link should still offer "open in
+ * new tab", and a text field should still offer cut/paste — those menus are the
+ * ones people actually need, and taking them to offer a resize control is a bad
+ * trade. Everywhere else on the tile, including its own buttons and the drag
+ * handle, right-click resizes.
  *
- * Links and text fields, where the browser's own menu is the one people need —
- * "open in new tab", cut/paste. Trading those away for a resize control is a bad
- * deal, and resizing is still available everywhere else on the tile.
- *
- * Buttons and other controls, because a press on them is already a gesture. The
- * drag handle is the case that matters: on touch it has no right-click path, so
- * pressing it started a drag AND a hold at the same time and the size menu
- * appeared in the middle of dragging the widget. A control's own press wins.
+ * Buttons used to be exempt here too, which meant right-clicking the drag handle
+ * — the one part of a widget that visibly says "this tile can be rearranged", and
+ * so the first place anyone would try — did nothing at all.
  */
-function isPressClaimedElsewhere(target: EventTarget | null) {
+function isBrowserMenuWanted(target: EventTarget | null) {
+  const el = target instanceof Element ? target : null;
+  return Boolean(el?.closest("a[href], input, textarea, select, [contenteditable='true']"));
+}
+
+/**
+ * Controls whose own press gesture must not be hijacked by the hold.
+ *
+ * Wider than the right-click exemption, because touch has no separate button to
+ * press: a hold anywhere is the only way in, so it collides with anything that
+ * already responds to being pressed. The drag handle is the case that matters —
+ * pressing it started a drag AND a hold at once, and the size menu appeared in
+ * the middle of dragging the widget.
+ */
+function isControl(target: EventTarget | null) {
   const el = target instanceof Element ? target : null;
   return Boolean(
     el?.closest(
@@ -127,14 +138,14 @@ export function WidgetFrame({
       onContextMenu={(e) => {
         // The app's own menu instead of the browser's. Right-click is the
         // desktop half of the same gesture the hold covers on touch.
-        if (isPressClaimedElsewhere(e.target)) return;
+        if (isBrowserMenuWanted(e.target)) return;
         e.preventDefault();
         setMenuOpen(true);
       }}
       onPointerDown={(e) => {
         // Mouse right-clicks are handled above; only a touch or pen press starts
         // a hold, so a left-click-and-drag on a chart never opens a menu.
-        if (e.pointerType === "mouse" || isPressClaimedElsewhere(e.target)) return;
+        if (e.pointerType === "mouse" || isControl(e.target)) return;
         holdOrigin.current = { x: e.clientX, y: e.clientY };
         holdTimer.current = window.setTimeout(() => setMenuOpen(true), HOLD_MS);
       }}

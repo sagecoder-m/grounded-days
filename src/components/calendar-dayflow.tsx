@@ -306,12 +306,19 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
           the Overview now, so the calendar is not competing with a list for
           horizontal room and the day columns get all of it. */}
       {/*
-        Sized to the window rather than a fixed height, so the calendar is whole
-        on arrival instead of running past the fold and asking to be scrolled to.
-        The subtraction is the chrome above it — header, page title, section
-        heading — and the min-height keeps it usable on a short laptop screen.
+        A fixed height, not a slice of the viewport.
+
+        This was calc(100vh - 19rem) for a while, to get the whole calendar on
+        screen without scrolling. It did that, but at the cost of the grid never
+        being the same size twice: stretched rows on a tall monitor, squashed
+        ones on a short laptop, and the hour heights drifting with the window.
+        That inconsistency is what read as odd.
+
+        A set height keeps an hour the same height everywhere, and the smaller
+        page headings recovered enough room that 42rem still lands within a
+        normal laptop window — so it fits on arrival without being tied to it.
       */}
-      <div className="h-[calc(100vh-19rem)] min-h-[26rem]">
+      <div className="h-[32rem] md:h-[42rem]">
         <DayFlowCalendar calendar={calendar} />
       </div>
 
