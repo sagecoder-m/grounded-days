@@ -29,7 +29,7 @@ import {
 import { ViewType, type Event as DayFlowEvent } from "@dayflow/core";
 
 import { actions, useAppState } from "@/lib/store";
-import type { CalEvent, CalView } from "@/lib/store-types";
+import type { Area, CalEvent, CalView } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
@@ -38,6 +38,71 @@ import { useDayFlowEventSync } from "@/lib/use-dayflow-sync";
 import { dateKey } from "@/components/task-grid";
 import { AddEventDialog, EditEventDialog, SyncedHint } from "@/components/calendar-dialogs";
 import { useMediaQuery } from "@/lib/use-media-query";
+
+const FILTER_AREAS: { key: Area; label: string; dot: string }[] = [
+  { key: "personal", label: "Personal", dot: "var(--sage)" },
+  { key: "professional", label: "Professional", dot: "var(--brown)" },
+  { key: "education", label: "Education", dot: "var(--clay)" },
+];
+
+/**
+ * Show only some areas.
+ *
+ * Nothing selected means everything, rather than nothing — a filter you have not
+ * touched should not be hiding your calendar. Selecting an area narrows to it;
+ * selecting it again clears back to all.
+ *
+ * Synced events carry no area, so they are hidden whenever a filter is active.
+ * That is the honest reading of "show me only Education": an imported meeting
+ * belongs to no area and cannot claim to be in one.
+ */
+function AreaFilter({
+  selected,
+  onChange,
+}: {
+  selected: Set<Area>;
+  onChange: (next: Set<Area>) => void;
+}) {
+  const toggle = (area: Area) => {
+    const next = new Set(selected);
+    if (next.has(area)) next.delete(area);
+    else next.add(area);
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {FILTER_AREAS.map((a) => {
+        const on = selected.has(a.key);
+        return (
+          <button
+            key={a.key}
+            onClick={() => toggle(a.key)}
+            aria-pressed={on}
+            title={on ? `Stop filtering by ${a.label}` : `Show only ${a.label}`}
+            className={`chip transition-colors ${
+              on ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"
+            }`}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: on ? "currentColor" : a.dot }}
+            />
+            {a.label}
+          </button>
+        );
+      })}
+      {selected.size > 0 && (
+        <button
+          onClick={() => onChange(new Set())}
+          className="text-[11px] text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+        >
+          Show all
+        </button>
+      )}
+    </div>
+  );
+}
 
 /** The saved preference is week/month/year; DayFlow names the same three. */
 const VIEW_FOR_SETTING: Record<CalView, ViewType> = {
@@ -54,6 +119,16 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     enabled: Boolean(user),
   });
 
+  /**
+   * Which areas are shown. Empty means all — a filter nobody has touched should
+   * not be hiding anything.
+   *
+   * Applied to the events handed to DayFlow rather than by toggling calendar
+   * visibility in the registry: the events array is already reconciled on every
+   * change by use-dayflow-sync, so filtering it needs no new machinery and
+   * cannot fall out of step with what is drawn.
+   */
+  const [areaFilter, setAreaFilter] = useState<Set<Area>>(new Set());
   const [editing, setEditing] = useState<CalEvent | null>(null);
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
 
@@ -85,7 +160,13 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     () => (connections.data ?? []).map((c) => c.id).sort().join(","),
     [connections.data],
   );
-  const events = useMemo(() => state.events.map(toDayFlowEvent), [state.events]);
+  const events = useMemo(() => {
+    const visible =
+      areaFilter.size === 0
+        ? state.events
+        : state.events.filter((e) => e.area && areaFilter.has(e.area));
+    return visible.map(toDayFlowEvent);
+  }, [state.events, areaFilter]);
 
   /**
    * Writes a drag or resize back through the same actions.updateEvent the old
@@ -139,12 +220,14 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     // The same preference that sets the habit grid's first column, so a week
     // does not start on different days on two pages of one app.
     const startOfWeek = state.settings.weekStartsOn;
-    const week = createWeekView({ startOfWeek });
+    // Without this both time grids open at midnight, so the first thing you see
+    // is eight empty hours and you have to scroll to find your own day.
+    const week = createWeekView({ startOfWeek, scrollToCurrentTime: true });
     const month = createMonthView({ showEventDots: true, startOfWeek });
 
     return narrow
-      ? [createDayView({}), week, month, createAgendaView({})]
-      : [createDayView({}), week, month, createYearView({}), createAgendaView({})];
+      ? [createDayView({ scrollToCurrentTime: true }), week, month, createAgendaView({})]
+      : [createDayView({ scrollToCurrentTime: true }), week, month, createYearView({}), createAgendaView({})];
   }, [narrow, state.settings.weekStartsOn]);
 
   const plugins = useMemo(
@@ -202,7 +285,8 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-2xl">{heading}</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <AreaFilter selected={areaFilter} onChange={setAreaFilter} />
           <SyncedHint />
           <AddEventDialog defaultDate={range ? dateKey(range.start) : undefined} />
         </div>
@@ -213,7 +297,13 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
       {/* Full width. Tasks used to sit in a panel beside the grid; they live on
           the Overview now, so the calendar is not competing with a list for
           horizontal room and the day columns get all of it. */}
-      <div className="h-[32rem] md:h-[42rem]">
+      {/*
+        Sized to the window rather than a fixed height, so the calendar is whole
+        on arrival instead of running past the fold and asking to be scrolled to.
+        The subtraction is the chrome above it — header, page title, section
+        heading — and the min-height keeps it usable on a short laptop screen.
+      */}
+      <div className="h-[calc(100vh-19rem)] min-h-[26rem]">
         <DayFlowCalendar calendar={calendar} />
       </div>
 

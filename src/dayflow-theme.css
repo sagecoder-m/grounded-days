@@ -92,6 +92,25 @@
     height: 100%;
   }
 
+  /*
+   * The calendar was in the wrong typeface entirely.
+   *
+   * .df-calendar-container declares `font-family: Arial` — not a var, a literal
+   * — so every part of the calendar except the heading I had themed explicitly
+   * was rendering in Arial while the rest of the app used Karla. It reads as a
+   * component borrowed from somewhere else, which is exactly what it was.
+   */
+  .df-calendar-container,
+  .df-calendar-container * {
+    font-family: var(--font-app-sans);
+  }
+
+  /* Except the headings, which stay on the serif. */
+  .df-view-header-title,
+  .df-agenda-day-number {
+    font-family: var(--font-serif);
+  }
+
   /* The calendar becomes a panel like any other, matching card-soft. */
   .df-calendar-container {
     border: 1px solid var(--border);
@@ -176,6 +195,16 @@
   .df-today-button,
   .df-mini-calendar-month-label {
     color: var(--ink);
+  }
+
+  /* A 55px numeral in the accent colour shouted louder than anything else on
+     the page. Smaller, on the serif, in ink — the date is a label, not a
+     headline. */
+  .df-agenda-day-number {
+    font-size: 2.25rem;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
   }
 
   /*

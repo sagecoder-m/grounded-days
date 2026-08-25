@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
-import { useAppState } from "@/lib/store";
-import { TaskGrid } from "@/components/task-grid";
+import { actions, useAppState } from "@/lib/store";
+import { dateKey } from "@/components/task-grid";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
-import type { Area } from "@/lib/store-types";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { Area, Task } from "@/lib/store-types";
 
 const AREA_VAR: Record<Area, string> = {
   personal: "var(--sage)",
@@ -14,14 +15,21 @@ const AREA_VAR: Record<Area, string> = {
 };
 
 /**
- * The shape of today, and only today.
+ * Today, as an agenda.
  *
- * A month grid answers "what is coming?", which is a different and heavier
- * question — thirty-five cells of things not yet due is precisely the kind of
- * pile this app exists to avoid. This answers "what does today look like?"
+ * It was two columns — an event timeline beside a grid of task cards — and the
+ * halves did not read as one day. The calendar's own Agenda view already answers
+ * "what does a day look like?" in a single column: a date rail, then rows in the
+ * order they happen. This mirrors that structure, so the two match by following
+ * the same shape rather than by resembling each other by accident.
  *
- * Tasks appear as bare one-liners rather than repeating the tiles above: seeing
- * the same task twice in one screen reads as twice the work.
+ * Not DayFlow's actual agenda view, though. Mounting a calendar app here to draw
+ * one day would pull the whole engine onto a page that otherwise never loads it,
+ * for a list this component renders in fifty lines.
+ *
+ * Tasks share the list with events, after them, because a task has a date but no
+ * time. They keep their checkboxes: an event happens to you, a task is something
+ * you do.
  */
 export function TodayGlance() {
   const state = useAppState();
@@ -34,134 +42,150 @@ export function TodayGlance() {
   }
 
   const today = new Date();
-  const iso = format(today, "yyyy-MM-dd");
+  const iso = dateKey(today);
 
   const events = state.events.filter((e) => e.date === iso);
   const timed = events
     .filter((e) => !e.allDay && e.startsAt)
     .sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""));
   const allDay = events.filter((e) => e.allDay || !e.startsAt);
-
-  // Same helper the calendar board uses, so a clash reads identically in both.
   const conflicts = conflictingEventIds(events);
 
-  const tasks = state.tasks.filter((t) => t.date === iso);
-  const remaining = tasks.filter((t) => !t.done).length;
+  // Today's work, plus anything still outstanding from before it. Those rows
+  // carry their own date, so they need no separate heading.
+  const todays = state.tasks.filter((t) => t.date === iso);
+  const overdue = state.tasks.filter((t) => !t.done && t.date && t.date < iso);
+  const tasks = [...overdue, ...todays.filter((t) => !t.done), ...todays.filter((t) => t.done)];
 
+  const remaining = tasks.filter((t) => !t.done).length;
   const nothing = events.length === 0 && tasks.length === 0;
 
   return (
-    /*
-     * The card holds the day's events; the task grid sits outside it.
-     *
-     * Nesting the grid inside meant today's task rows started 21px further in
-     * and ran 42px narrower than the identical rows under "Upcoming" directly
-     * below — two lists of the same thing, stacked, not lining up. Keeping the
-     * grid out of the card puts both at the same left edge and width, and also
-     * stops task rows being cards drawn inside another card.
-     */
-    /*
-      Two columns: what the day looks like, and what there is to do in it.
-      
-      Stacked, the tasks sat below the event timeline and read as a footnote to
-      it. Side by side they are two answers to the same question — the schedule
-      you cannot change and the work you can — and neither is subordinate.
-      One column on narrow screens, where two would leave both too thin.
-    */
-    <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-      <div className="card-soft space-y-4 p-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="font-serif text-lg">{format(today, "EEEE, MMMM d")}</div>
-          <div className="text-xs text-ink-soft">
-            {nothing
-              ? "nothing scheduled"
-              : [
-                  events.length > 0 &&
-                    `${events.length} ${events.length === 1 ? "event" : "events"}`,
-                  tasks.length > 0 && `${remaining} of ${tasks.length} to do`,
-                ]
-                  .filter(Boolean)
-                  .join(" \u00b7 ")}
-          </div>
+    <div className="card-soft overflow-hidden">
+      {/* The date rail, matching the calendar agenda's: a serif numeral with the
+          month and weekday beside it, and the day's shape on the right. */}
+      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-baseline gap-3">
+          <span className="font-serif text-4xl leading-none tracking-tight">
+            {format(today, "d")}
+          </span>
+          <span className="flex flex-col leading-tight">
+            <span className="text-sm">{format(today, "MMM yyyy")}</span>
+            <span className="text-sm text-ink-soft">{format(today, "EEEE")}</span>
+          </span>
         </div>
+        <span className="text-xs text-ink-soft">
+          {nothing
+            ? "nothing scheduled"
+            : [
+                events.length > 0 && `${events.length} ${events.length === 1 ? "event" : "events"}`,
+                tasks.length > 0 && `${remaining} to do`,
+              ]
+                .filter(Boolean)
+                .join(" \u00b7 ")}
+        </span>
+      </div>
 
+      <div className="divide-y divide-border">
         {nothing && (
-          <p className="py-2 text-center text-sm italic text-ink-soft">
+          <p className="px-5 py-8 text-center text-sm italic text-ink-soft">
             A clear day. That counts as a good one.
           </p>
         )}
 
-        {timed.length > 0 && (
-          <ul className="space-y-2">
-            {timed.map((event) => (
-              <li key={event.id} className="flex items-baseline gap-3">
-                <span className="w-16 shrink-0 text-right text-xs tabular-nums text-ink-soft">
-                  {format(new Date(event.startsAt!), "h:mm a")}
-                </span>
-                <span
-                  className="h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full"
-                  style={{ backgroundColor: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
-                />
-                <span className="min-w-0 flex-1 truncate text-sm">
-                  {event.title}
-                  {conflicts.has(event.id) && (
-                    <span className="ml-1.5 text-[11px] text-[color:var(--clay)]">overlaps</span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {timed.map((event) => (
+          <AgendaRow
+            key={event.id}
+            time={format(new Date(event.startsAt!), "h:mm a")}
+            dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
+            title={event.title}
+            note={conflicts.has(event.id) ? "overlaps" : undefined}
+            synced={event.source !== "local"}
+          />
+        ))}
 
-        {allDay.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {allDay.map((event) => (
-              <span key={event.id} className="chip bg-secondary text-ink-soft">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
-                />
-                {event.title}
-              </span>
-            ))}
-          </div>
-        )}
+        {allDay.map((event) => (
+          <AgendaRow
+            key={event.id}
+            time="all day"
+            dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
+            title={event.title}
+            synced={event.source !== "local"}
+          />
+        ))}
 
-        <Link
-          to="/calendar"
-          className="block text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
-        >
-          See the whole calendar
-        </Link>
+        {tasks.map((task) => (
+          <TaskAgendaRow key={task.id} task={task} today={iso} />
+        ))}
       </div>
 
-      {/*
-        Today's tasks, in the same grid "Upcoming" uses below. They were bare
-        one-liners while a separate "Today" section carried the real checkboxes;
-        with that section gone this is the only place they are actionable, so
-        they get the full row. No add button - the grid below already has one.
+      <Link
+        to="/calendar"
+        className="block border-t border-border px-5 py-3 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+      >
+        See the whole calendar
+      </Link>
+    </div>
+  );
+}
 
-        Skipped on a genuinely empty day: the "a clear day" line above says it,
-        and the grid's own empty state would say it again a few lines lower.
-      */}
-      {/*
-        Group headings are off here. The section is already called "A look at
-        today", so a row reading TODAY said it twice, and "Still waiting"
-        labelled a group whose rows each already read "gently overdue · Aug 5" —
-        the heading was the only thing lost, not the information.
+/** One scheduled thing. The time sits in a fixed-width column so times line up
+ *  down the list instead of drifting with each title's length. */
+function AgendaRow({
+  time,
+  dot,
+  title,
+  note,
+  synced,
+}: {
+  time: string;
+  dot: string;
+  title: string;
+  note?: string;
+  synced?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline gap-3 px-5 py-2.5">
+      <span className="w-16 shrink-0 text-right text-xs tabular-nums text-ink-soft">{time}</span>
+      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dot }} />
+      <span className="min-w-0 flex-1 truncate text-sm">
+        {title}
+        {note && <span className="ml-1.5 text-[11px] text-[color:var(--clay)]">{note}</span>}
+        {synced && <span className="ml-1.5 text-[11px] text-ink-soft">synced</span>}
+      </span>
+    </div>
+  );
+}
 
-        Rendered even on an empty day now that it is a column rather than a
-        footnote: an empty right-hand column reads as broken, so the grid's own
-        empty line fills it.
-      */}
-      <TaskGrid
-        tasks={state.tasks}
-        from={iso}
-        to={iso}
-        showAdd={false}
-        includeOverdue
-        showGroupLabels={false}
-        emptyText="Nothing to tick off today."
+/** A task in the agenda. There is no time to show, so the left column carries
+ *  whether it is due today or has been waiting — the useful thing about a task. */
+function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
+  const late = Boolean(task.date && task.date < today);
+  return (
+    <div className="flex items-baseline gap-3 px-5 py-2.5">
+      <span
+        className={`w-16 shrink-0 text-right text-xs ${
+          late ? "text-[color:var(--clay)]" : "text-ink-soft"
+        }`}
+      >
+        {late ? format(new Date(`${task.date}T12:00:00`), "MMM d") : "to do"}
+      </span>
+      <Checkbox
+        checked={task.done}
+        onCheckedChange={() => actions.toggleTask(task.id)}
+        className="mt-0.5 h-4 w-4 shrink-0 rounded border-tan data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+      />
+      <span
+        className={`min-w-0 flex-1 truncate text-sm ${
+          task.done ? "text-ink-soft line-through decoration-1" : ""
+        }`}
+      >
+        {task.title}
+      </span>
+      <span
+        className="ml-2 h-1.5 w-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: AREA_VAR[task.area] }}
+        title={task.area}
       />
     </div>
   );
