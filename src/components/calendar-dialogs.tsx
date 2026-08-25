@@ -42,41 +42,152 @@ import { useSession } from "@/lib/use-session";
 
 export const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
+/** What the calendar can create. Goals carry no date, which is why the date
+ *  fields disappear when one is selected. */
+type AddKind = "event" | "task" | "goal";
+
+const KINDS: { key: AddKind; label: string; hint: string }[] = [
+  { key: "event", label: "Event", hint: "Something happening on the calendar" },
+  { key: "task", label: "Task", hint: "Something to do, with a due date" },
+  { key: "goal", label: "Goal", hint: "Something to work towards" },
+];
+
+/**
+ * One dialog for everything the calendar can add.
+ *
+ * It used to make events only, so planning from the calendar meant leaving it
+ * for an area page to write down the task the event implied. Events, tasks and
+ * goals all belong to an area, so the area picker is shared and the only thing
+ * that changes per kind is the dates: an event has a start and an end, a task
+ * has a due date, and a goal has neither.
+ */
 export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
   const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<AddKind>("event");
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(defaultDate ?? iso(new Date()));
+  /**
+   * Never defaults into the past.
+   *
+   * defaultDate is the start of whatever period the calendar is showing, which
+   * is useful when looking at a future month but wrong when looking at the
+   * current one: the visible week began on Monday, so a task added on Wednesday
+   * was born with a Monday due date and appeared immediately under "Still
+   * waiting". Today wins unless the visible period starts later than today.
+   */
+  const todayKey = iso(new Date());
+  const [startDate, setStartDate] = useState(
+    defaultDate && defaultDate > todayKey ? defaultDate : todayKey,
+  );
+  const [endDate, setEndDate] = useState("");
   const [area, setArea] = useState<string>("personal");
+
+  function reset() {
+    setTitle("");
+    setEndDate("");
+    setOpen(false);
+  }
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const name = title.trim();
+    if (!name) return;
+
+    if (kind === "event") {
+      actions.addEvent({
+        title: name,
+        date: startDate,
+        // Only stored when it differs — a one-day event should not carry a
+        // redundant end that could drift out of step with its start.
+        endDate: endDate && endDate !== startDate ? endDate : undefined,
+        area: area as Area,
+      });
+    } else if (kind === "task") {
+      actions.addTask({ area: area as Area, title: name, date: startDate });
+    } else {
+      actions.addGoal({ area: area as Area, name });
+    }
+    reset();
+  }
+
+  // An end before the start is the one input the database rejects outright, so
+  // it is caught here rather than surfaced as a failed save.
+  const endBeforeStart = Boolean(endDate) && endDate < startDate;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" className="rounded-full border-tan" size="sm">
-          <Plus className="h-3.5 w-3.5" /> Event
+          <Plus className="h-3.5 w-3.5" /> Add
         </Button>
       </DialogTrigger>
       <DialogContent className="bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Add an event</DialogTitle>
+          <DialogTitle className="font-serif text-2xl">Add to your calendar</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!title.trim()) return;
-            actions.addEvent({ title: title.trim(), date, area: area as Area });
-            setTitle("");
-            setOpen(false);
-          }}
-          className="space-y-4"
-        >
+        <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
+            <Label>What is it?</Label>
+            <div className="flex flex-wrap gap-2">
+              {KINDS.map((k) => (
+                <button
+                  key={k.key}
+                  type="button"
+                  title={k.hint}
+                  onClick={() => setKind(k.key)}
+                  className={`chip ${
+                    kind === k.key
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-ink-soft"
+                  }`}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{kind === "goal" ? "Goal" : "Title"}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
-          <div className="space-y-1.5">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
+
+          {kind === "event" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="ev-start">Start date</Label>
+                <Input
+                  id="ev-start"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="ev-end">End date</Label>
+                <Input
+                  id="ev-end"
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="same day"
+                />
+              </div>
+            </div>
+          )}
+
+          {kind === "task" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="task-due">Due date</Label>
+              <Input
+                id="task-due"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Label>Area</Label>
             <Select value={area} onValueChange={setArea}>
@@ -90,9 +201,16 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
               </SelectContent>
             </Select>
           </div>
+
+          {endBeforeStart && (
+            <p className="text-xs text-[color:var(--clay)]">
+              The end date is before the start date.
+            </p>
+          )}
+
           <DialogFooter>
-            <Button type="submit" className="rounded-full">
-              Add event
+            <Button type="submit" disabled={endBeforeStart} className="rounded-full">
+              Add {kind}
             </Button>
           </DialogFooter>
         </form>
@@ -115,6 +233,7 @@ export function EditEventDialog({
 }) {
   const [title, setTitle] = useState(event.title);
   const [date, setDate] = useState(event.date ?? iso(new Date()));
+  const [endDate, setEndDate] = useState(event.endDate ?? "");
 
   const save = () => {
     if (!title.trim()) return;
@@ -124,7 +243,12 @@ export function EditEventDialog({
     // while the calendar filters by date, so the event shows up twice or not at
     // all. The old dialog had this bug; the helper that prevents it already
     // existed and was going unused.
-    actions.updateEvent(event.id, { title: title.trim(), ...shiftToDate(event, date) });
+    actions.updateEvent(event.id, {
+      title: title.trim(),
+      ...shiftToDate(event, date),
+      // Cleared back to a single day when emptied or set equal to the start.
+      endDate: endDate && endDate !== date ? endDate : undefined,
+    });
     onClose();
   };
 
@@ -139,10 +263,32 @@ export function EditEventDialog({
             <Label>Title</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
-          <div className="space-y-1.5">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-start">Start date</Label>
+              <Input
+                id="edit-start"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-end">End date</Label>
+              <Input
+                id="edit-end"
+                type="date"
+                value={endDate}
+                min={date}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
           </div>
+          {endDate && endDate < date && (
+            <p className="text-xs text-[color:var(--clay)]">
+              The end date is before the start date.
+            </p>
+          )}
         </div>
         <DialogFooter className="gap-2 sm:justify-between">
           <Button
@@ -156,7 +302,11 @@ export function EditEventDialog({
           >
             <Trash2 className="h-4 w-4" /> Remove
           </Button>
-          <Button className="rounded-full" onClick={save}>
+          <Button
+            className="rounded-full"
+            disabled={Boolean(endDate) && endDate < date}
+            onClick={save}
+          >
             Save
           </Button>
         </DialogFooter>

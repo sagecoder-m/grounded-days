@@ -305,6 +305,7 @@ export type Database = {
           connection_id: string | null
           created_at: string
           date: string
+          end_date: string | null
           ends_at: string | null
           external_calendar_id: string | null
           external_id: string | null
@@ -323,6 +324,7 @@ export type Database = {
           connection_id?: string | null
           created_at?: string
           date: string
+          end_date?: string | null
           ends_at?: string | null
           external_calendar_id?: string | null
           external_id?: string | null
@@ -341,6 +343,7 @@ export type Database = {
           connection_id?: string | null
           created_at?: string
           date?: string
+          end_date?: string | null
           ends_at?: string | null
           external_calendar_id?: string | null
           external_id?: string | null

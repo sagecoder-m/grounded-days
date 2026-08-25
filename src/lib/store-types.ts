@@ -94,7 +94,12 @@ export type EventSource = "local" | "google" | "microsoft";
 export interface CalEvent {
   id: string;
   title: string;
-  date: string; // ISO yyyy-mm-dd
+  date: string; // ISO yyyy-mm-dd — the day it starts
+  /**
+   * Last day, for an event spanning several. Undefined means a single day.
+   * Inclusive: an event from the 1st to the 3rd covers all three days.
+   */
+  endDate?: string;
   area?: Area;
   source: EventSource;
   /** Null for all-day events, which have no meaningful instant. */

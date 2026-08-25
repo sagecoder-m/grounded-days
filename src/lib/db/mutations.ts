@@ -644,6 +644,7 @@ export const actions = {
         user_id: userId,
         title: input.title,
         date: input.date,
+        end_date: input.endDate ?? null,
         area: input.area ?? null,
         source: "local",
         all_day: true,

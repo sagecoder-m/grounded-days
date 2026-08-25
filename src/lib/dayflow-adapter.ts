@@ -98,11 +98,15 @@ export function buildCalendarTypes(connections: CalendarConnection[]): CalendarT
 
 export function toDayFlowEvent(event: CalEvent): DayFlowEvent {
   const start = event.startsAt ? new Date(event.startsAt) : new Date(`${event.date}T00:00:00`);
+  // A multi-day event ends on its last day, not the day it started. endDate is
+  // inclusive in this app's model, so an event from the 1st to the 3rd covers
+  // three days; DayFlow is given that last day directly.
+  const lastDay = event.endDate ?? event.date;
   const end = event.endsAt
     ? new Date(event.endsAt)
     : event.startsAt
       ? new Date(new Date(event.startsAt).getTime() + 30 * 60_000)
-      : new Date(`${event.date}T23:59:59`);
+      : new Date(`${lastDay}T23:59:59`);
 
   return {
     id: event.id,
@@ -125,6 +129,7 @@ export function toDayFlowEvent(event: CalEvent): DayFlowEvent {
  *  the patch shape actions.updateEvent expects. */
 export function fromDayFlowEvent(event: DayFlowEvent): {
   date: string;
+  endDate?: string;
   startsAt?: string;
   endsAt?: string;
 } {
@@ -140,6 +145,20 @@ export function fromDayFlowEvent(event: DayFlowEvent): {
     start.getDate(),
   ).padStart(2, "0")}`;
 
-  if (isPlainDate(event.start)) return { date };
+  const key = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  if (isPlainDate(event.start)) {
+    /**
+     * A dragged multi-day event has to carry its end with it.
+     *
+     * Returning only `date` would move the start and leave end_date on the old
+     * day — which the events_end_date_after_start constraint rejects outright,
+     * so the save would fail rather than degrade. Undefined when the event
+     * lands on a single day, which is how the column expresses "one day".
+     */
+    const last = key(toDate(event.end));
+    return { date, endDate: last !== date ? last : undefined };
+  }
   return { date, startsAt: start.toISOString(), endsAt: toDate(event.end).toISOString() };
 }

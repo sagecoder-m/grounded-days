@@ -159,6 +159,7 @@ export function rowToEvent(row: Tables<"events">): CalEvent {
     id: row.id,
     title: row.title,
     date: row.date,
+    endDate: row.end_date ?? undefined,
     area: toOptionalArea(row.area),
     source: toEventSource(row.source),
     startsAt: row.starts_at ?? undefined,
@@ -351,6 +352,7 @@ export function eventPatchToRow(patch: Partial<CalEvent>): TablesUpdate<"events"
   const row: TablesUpdate<"events"> = {};
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.date !== undefined) row.date = patch.date;
+  if (patch.endDate !== undefined) row.end_date = patch.endDate ?? null;
   if (patch.area !== undefined) row.area = patch.area ?? null;
   // Rescheduling moves the timestamps too. Without these a dragged event would
   // save its new date while starts_at still pointed at the old day, and the
