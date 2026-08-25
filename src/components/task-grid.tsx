@@ -52,6 +52,7 @@ export function TaskGrid({
   addDate,
   emptyText = "Nothing due here. A clear stretch is allowed.",
   showAdd = true,
+  includeOverdue = false,
 }: {
   tasks: Task[];
   /** Omit for a tasks-only grid. */
@@ -63,7 +64,25 @@ export function TaskGrid({
   addDate?: string;
   emptyText?: string;
   showAdd?: boolean;
+  /**
+   * Lead with unfinished work whose due date has passed.
+   *
+   * Nothing surfaced past-due tasks anywhere, so something forgotten simply
+   * disappeared — for a tool people are trusting with what they cannot hold in
+   * their head, that is the worst failure available. It is deliberately not a
+   * red badge or a count: the group is called "Still waiting", it sits in the
+   * clay used for attention rather than the destructive red, and each row already
+   * says "gently overdue" rather than shouting a number of days.
+   */
+  includeOverdue?: boolean;
 }) {
+  const overdue = useMemo(() => {
+    if (!includeOverdue) return [];
+    return tasks
+      .filter((t) => !t.done && t.date && t.date < from)
+      .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+  }, [tasks, from, includeOverdue]);
+
   const groups = useMemo(() => {
     // String comparison is safe and cheaper than parsing: yyyy-mm-dd sorts
     // lexicographically in the same order it sorts chronologically.
@@ -98,7 +117,8 @@ export function TaskGrid({
       }));
   }, [tasks, events, from, to]);
 
-  const total = groups.reduce((n, g) => n + g.tasks.length + g.events.length, 0);
+  const total =
+    groups.reduce((n, g) => n + g.tasks.length + g.events.length, 0) + overdue.length;
 
   return (
     <div className="space-y-4">
@@ -116,6 +136,17 @@ export function TaskGrid({
               </button>
             }
           />
+        </div>
+      )}
+
+      {overdue.length > 0 && (
+        <div className="space-y-2">
+          <p className="px-1 text-[11px] uppercase tracking-[0.08em] text-[color:var(--clay)]">
+            Still waiting
+          </p>
+          {overdue.map((task) => (
+            <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
+          ))}
         </div>
       )}
 

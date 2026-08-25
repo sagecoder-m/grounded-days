@@ -235,6 +235,21 @@ export const AREA_META: Record<
   },
 };
 
+/**
+ * Today as yyyy-mm-dd, in the person's own timezone.
+ *
+ * This used to be `toISOString().slice(0, 10)`, which converts to UTC first. West
+ * of Greenwich that means the date rolls over in the evening while it is still
+ * the same day locally — at 8pm in New York this returned tomorrow. Every task
+ * created after that hour was dated a day late, and habits ticked at night were
+ * logged against the wrong column.
+ *
+ * The same conversion is what dateKey() in task-grid.tsx does; this is the one
+ * for callers that only need today and should not import a component.
+ */
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+    now.getDate(),
+  ).padStart(2, "0")}`;
 }

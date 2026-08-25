@@ -68,6 +68,7 @@ function EducationPage() {
           to={today}
           emptyText="Nothing due today. Use the timeline to look further ahead."
           showAdd={false}
+          includeOverdue
         />
       </section>
 

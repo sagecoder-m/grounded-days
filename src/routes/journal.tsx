@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 
+import { dateKey } from "@/components/task-grid";
 import { actions, useAppState } from "@/lib/store";
 import type { Mood } from "@/lib/store-types";
 import { affirmationForDate } from "@/lib/affirmations";
@@ -269,7 +270,7 @@ function WeeklyReview() {
     );
     const stepsDone = state.goals.reduce((sum, g) => sum + g.steps.filter((s) => s.done).length, 0);
     const focusMinutes = state.focusSessions
-      .filter((f) => days.includes(new Date(f.completedAt).toISOString().slice(0, 10)))
+      .filter((f) => days.includes(dateKey(new Date(f.completedAt))))
       .reduce((sum, f) => sum + f.minutes, 0);
 
     const entries = state.journal.filter((e) => days.includes(e.date));

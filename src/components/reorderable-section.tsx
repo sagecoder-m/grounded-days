@@ -79,9 +79,20 @@ export function ReorderableSection({
         aria-label={`Reorder this section. Press and drag, or use arrow keys.`}
         onPointerDown={(e) => {
           e.preventDefault();
-          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
           setGrabbed(true);
           setDrag({ key: sectionKey, overKey: null });
+        }}
+        onPointerMove={(e) => {
+          // Pointer capture (set above) routes every subsequent pointer event to
+          // this button, so the sections underneath never fire onPointerEnter
+          // during a real drag — which is why dragging did nothing while a
+          // synthetic test that dispatched pointerenter straight at the target
+          // appeared to pass. The element under the cursor has to be looked up.
+          if (!drag) return;
+          const under = document.elementFromPoint(e.clientX, e.clientY);
+          const over = under?.closest("[data-section]")?.getAttribute("data-section") ?? null;
+          if (over && over !== drag.overKey) setDrag({ ...drag, overKey: over });
         }}
         onPointerUp={() => {
           if (drag?.overKey) commit(drag.key, drag.overKey);

@@ -136,7 +136,7 @@ export function TodayGlance() {
         Skipped on a genuinely empty day: the "a clear day" line above says it,
         and the grid's own empty state would say it again a few lines lower.
       */}
-      {!nothing && <TaskGrid tasks={state.tasks} from={iso} to={iso} showAdd={false} />}
+      {!nothing && <TaskGrid tasks={state.tasks} from={iso} to={iso} showAdd={false} includeOverdue />}
     </div>
   );
 }

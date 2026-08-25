@@ -77,9 +77,18 @@ export function ReorderableCard({
         aria-label="Reorder this card. Press and drag, or use arrow keys."
         onPointerDown={(e) => {
           e.preventDefault();
-          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
           setGrabbed(true);
           setDrag({ id, overId: null });
+        }}
+        onPointerMove={(e) => {
+          // See reorderable-section: pointer capture means the cards underneath
+          // never fire onPointerEnter mid-drag, so the drop target is resolved
+          // by hit-testing the cursor instead of waiting to be told.
+          if (!drag) return;
+          const under = document.elementFromPoint(e.clientX, e.clientY);
+          const over = under?.closest("[data-card]")?.getAttribute("data-card") ?? null;
+          if (over && over !== drag.overId) setDrag({ ...drag, overId: over });
         }}
         onPointerUp={() => {
           if (drag?.overId) commit(drag.id, drag.overId);

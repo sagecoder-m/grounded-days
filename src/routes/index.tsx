@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
 import { useAppState } from "@/lib/store";
-import { TaskGrid, dayRange } from "@/components/task-grid";
+import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { SoftProgress } from "@/components/soft-progress";
@@ -70,10 +70,10 @@ function Overview() {
 
   // Weekly area chart: aggregate completed tasks per day per area over last 14d
   const chartData = useMemo(() => {
-    const days = Array.from({ length: 14 }, (_, i) => {
-      const d = addDays(today, -13 + i);
-      return d.toISOString().slice(0, 10);
-    });
+    // dateKey, not toISOString: the latter converts to UTC first, so an evening
+    // in a western timezone produced tomorrow's key and the chart attributed
+    // completed work to the wrong bar.
+    const days = Array.from({ length: 14 }, (_, i) => dateKey(addDays(today, -13 + i)));
     return days.map((d) => {
       const dObj = parseISO(d);
       const personal =

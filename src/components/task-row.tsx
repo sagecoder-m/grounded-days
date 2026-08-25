@@ -98,14 +98,14 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
                   overdue ? "text-[color:var(--clay)]" : "text-ink-soft",
                 )}
               >
-                {task.date ? niceDate(task.date) : "add a date"}
+                {task.date ? niceDate(task.date) : "add a due date"}
               </span>
               <input
                 type="date"
                 value={task.date ?? ""}
                 onChange={(e) => actions.updateTask(task.id, { date: e.target.value || undefined })}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                aria-label="Task date"
+                aria-label="Due date"
               />
             </label>
           )}

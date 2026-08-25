@@ -48,7 +48,7 @@ export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId
             <Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional notes" rows={3} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="t-date">Date</Label>
+            <Label htmlFor="t-date">Due date</Label>
             <Input id="t-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <DialogFooter>
