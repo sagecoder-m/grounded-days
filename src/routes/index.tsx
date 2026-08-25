@@ -133,29 +133,38 @@ function Overview() {
       A two-column grid rather than a stack, so a widget's shape is the person's
       choice as well as its order. auto-rows-min keeps each row only as tall as
       it needs, and grid-flow-dense lets a half-width widget fill the gap beside
-      an earlier one instead of leaving a hole. One column below lg, where two
-      would make both too thin to read.
+      an earlier one instead of leaving a hole.
+
+      The columns are keyed to the board's own width, not the window's. This was
+      lg:grid-cols-2 — a 1024px *window* — which meant that on any narrower
+      window every size collapsed to one column and choosing "Half width" did
+      nothing at all: the menu took the choice and the layout ignored it. The
+      window is the wrong thing to measure anyway, since the side rail can be
+      expanded or collapsed and takes 280px when it is open. @3xl is 48rem of
+      actual board, where half a board is still wide enough to read.
     */
-    <div
-      className="grid grid-flow-row-dense auto-rows-min gap-6 lg:grid-cols-2"
-      onPointerUp={endDrag}
-      onPointerLeave={endDrag}
-    >
-      {orderedWidgets.map((key) => {
-        const section = renderSection(key);
-        if (!section) return null;
-        return (
-          <ReorderableSection
-            key={key}
-            sectionKey={key}
-            widgets={settings.widgets}
-            drag={drag}
-            setDrag={setDrag}
-          >
-            {section}
-          </ReorderableSection>
-        );
-      })}
+    <div className="@container/board">
+      <div
+        className="grid grid-flow-row-dense auto-rows-min gap-6 @3xl/board:grid-cols-2"
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+      >
+        {orderedWidgets.map((key) => {
+          const section = renderSection(key);
+          if (!section) return null;
+          return (
+            <ReorderableSection
+              key={key}
+              sectionKey={key}
+              widgets={settings.widgets}
+              drag={drag}
+              setDrag={setDrag}
+            >
+              {section}
+            </ReorderableSection>
+          );
+        })}
+      </div>
     </div>
   );
 
@@ -178,40 +187,45 @@ function Overview() {
     if (key === "goals" && w("goals"))
       return (
         <section key={key}>
-          <div className="flex items-baseline justify-between mb-3">
+          <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-serif text-lg">How your areas are moving</h2>
           </div>
           {/*
-            The timer sits at the end of this row rather than in a section of its
-            own, and everything in the row shares one height.
-            
-            items-stretch plus h-full on the cards is what puts them in scale: the
-            square sets the row's height and the progress cards grow to meet it,
-            instead of three short cards sitting beside something twice their
-            size. 13rem is the largest square that still reads as a sibling of a
-            progress card rather than the point of the row.
+            Three across when the widget is wide enough to read them, stacked
+            when it is not. @xl is 36rem — below that, three cards come out
+            around 110px each and the percentage collides with the area name.
+
+            The timer used to sit at the end of this row, which forced every card
+            to match its height. It is its own widget now, so these are back to
+            being as tall as their contents.
           */}
-          <div className="grid items-stretch gap-4 @3xl:grid-cols-[minmax(0,1fr)_13rem]">
-            <div className="grid gap-4 @lg:grid-cols-3">
-              {areaProgress.map((a) => (
-                <div key={a.area} className="card-soft density-p flex h-full flex-col justify-between p-5">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <AreaChip area={a.area} />
-                    <span className="font-serif text-2xl tabular-nums">{a.value}%</span>
-                  </div>
-                  <SoftProgress
-                    value={a.value}
-                    tint={
-                      a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"
-                    }
-                  />
+          <div className="grid gap-3 @xl:grid-cols-3">
+            {areaProgress.map((a) => (
+              <div key={a.area} className="card-soft density-p flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <AreaChip area={a.area} />
+                  <span className="font-serif text-xl tabular-nums">{a.value}%</span>
                 </div>
-              ))}
-            </div>
-            {/* A real setting rather than a widget key: it lives inside this
-                row, so it has a switch in Profile and no position of its own. */}
-            {settings.showFocusTimer && <FocusTimer size="square" />}
+                <SoftProgress
+                  value={a.value}
+                  tint={
+                    a.area === "personal" ? "sage" : a.area === "professional" ? "brown" : "clay"
+                  }
+                />
+              </div>
+            ))}
           </div>
+        </section>
+      );
+
+    if (key === "focus" && w("focus"))
+      return (
+        <section key={key}>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-serif text-lg">Focus</h2>
+            <span className="text-xs italic text-ink-soft">One block at a time.</span>
+          </div>
+          <FocusTimer size="widget" />
         </section>
       );
 

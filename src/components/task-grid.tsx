@@ -51,7 +51,7 @@ export function TaskGrid({
   to,
   addDate,
   emptyText = "Nothing due here. A clear stretch is allowed.",
-  showAdd = true,
+  showAdd = false,
   includeOverdue = false,
   showGroupLabels = true,
 }: {
@@ -64,6 +64,15 @@ export function TaskGrid({
   /** Day a new task lands on. Defaults to the start of the range. */
   addDate?: string;
   emptyText?: string;
+  /**
+   * Whether to offer "+ Task".
+   *
+   * Defaults to off, and pages that want it say so. It used to default to on,
+   * which put an add button on the Overview — a page that is meant to be a view
+   * of what is already planned, where the only things you arrange are the
+   * widgets themselves. Opt-in means a new widget cannot pick up a create
+   * control just by rendering a grid.
+   */
   showAdd?: boolean;
   /**
    * Lead with unfinished work whose due date has passed.

@@ -26,11 +26,12 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * the touch path being a second-class imitation.
  */
 
-/** Grid placement per size. Single column below lg, where two would be too thin
- *  for either to be readable. */
+/** Grid placement per size, keyed to the board's width rather than the window's
+ *  — see the grid in routes/index.tsx for why. One column below @3xl, where two
+ *  would be too thin for either to be readable. */
 const SPAN: Record<WidgetSize, string> = {
-  wide: "lg:col-span-2",
-  square: "lg:col-span-1",
+  wide: "@3xl/board:col-span-2",
+  square: "@3xl/board:col-span-1",
   /*
     row-span-2 is what lets two other widgets stack beside a tall one, rather
     than the tall one simply being a square with a gap under it.
@@ -42,7 +43,7 @@ const SPAN: Record<WidgetSize, string> = {
     section inside it; if that nesting ever changes the worst case is the hole
     coming back, not a break.
   */
-  tall: "lg:col-span-1 lg:row-span-2 [&>*]:h-full [&>*>*]:h-full",
+  tall: "@3xl/board:col-span-1 @3xl/board:row-span-2 [&>*]:h-full [&>*>*]:h-full",
 };
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: typeof Square }[] = [

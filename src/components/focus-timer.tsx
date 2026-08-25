@@ -19,16 +19,22 @@ import { Input } from "@/components/ui/input";
  * 240px it was the largest thing on Education and pulled the eye before the
  * assignments did.
  *
- * `square` is for sitting in a row beside other cards: no section heading, a
- * stacked layout instead of side-by-side, and the two duration inputs dropped.
- * Those are configuration, and a square that has to match the height of a
- * progress card has no room for configuration — the full controls are a click
- * away on Education. What survives is what the square is for: name the session,
- * start it.
+ * `widget` is for the Overview board, where the timer is one tile among several
+ * and its width is whatever the person chose. It replaces an earlier `square`
+ * variant that was square in the literal sense — `aspect-square h-full` — which
+ * is fine for a fixed 13rem slot and disastrous anywhere else: dropped into a
+ * half-width column it grew to 838px tall around a 104px dial.
+ *
+ * So `widget` sets no aspect ratio and no height, and lays itself out from its
+ * own width: dial above the controls when it is narrow, beside them when there
+ * is room. It keeps the duration fields the old square variant dropped, because
+ * 25 and 5 are the two numbers the timer is *about* — hiding them and sending
+ * people to another page to change them made the tile a display rather than a
+ * timer.
  */
 export function FocusTimer({
   size: variant = "large",
-}: { size?: "large" | "medium" | "square" } = {}) {
+}: { size?: "large" | "medium" | "widget" } = {}) {
   const [focusMin, setFocusMin] = useState(25);
   const [breakMin, setBreakMin] = useState(5);
   const [label, setLabel] = useState("Study session");
@@ -96,19 +102,52 @@ export function FocusTimer({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  const size = variant === "square" ? 104 : variant === "medium" ? 168 : 240;
+  const size = variant === "widget" ? 120 : variant === "medium" ? 168 : 240;
   const stroke = 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
-  if (variant === "square") {
-    return (
-      <div className="card-soft flex aspect-square h-full flex-col items-center justify-between gap-2 p-4">
-        <span className="self-start text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">
-          Focus
+  const durationFields = (
+    <div className="grid grid-cols-2 gap-2">
+      <label className="space-y-1">
+        <span className="text-[10px] uppercase tracking-[0.12em] text-ink-soft">Focus</span>
+        <span className="flex items-center gap-1.5">
+          <Input
+            type="number"
+            min={1}
+            max={90}
+            value={focusMin}
+            onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))}
+            className="h-8 text-xs"
+          />
+          <span className="text-[10px] text-ink-soft">min</span>
         </span>
+      </label>
+      <label className="space-y-1">
+        <span className="text-[10px] uppercase tracking-[0.12em] text-ink-soft">Break</span>
+        <span className="flex items-center gap-1.5">
+          <Input
+            type="number"
+            min={1}
+            max={30}
+            value={breakMin}
+            onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))}
+            className="h-8 text-xs"
+          />
+          <span className="text-[10px] text-ink-soft">min</span>
+        </span>
+      </label>
+    </div>
+  );
 
-        <div className="relative" style={{ width: size, height: size }}>
+  if (variant === "widget") {
+    return (
+      /* No aspect ratio and no height — it is as tall as its contents, and the
+         tile it sits in decides the width. @sm is the widget's own width, not
+         the window's, so a half-width tile stacks and a full-width one does
+         not. */
+      <div className="card-soft grid items-center gap-4 p-4 @sm:grid-cols-[auto_minmax(0,1fr)] @sm:gap-5 @sm:p-5">
+        <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
             <circle
@@ -125,20 +164,24 @@ export function FocusTimer({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
-            <div className={`mt-1 font-serif tabular-nums text-xl`}>{mm}:{ss}</div>
-            <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
+            <div className="text-[10px] uppercase tracking-widest text-ink-soft">
+              {phase === "focus" ? "Focus" : "Break"}
+            </div>
+            <div className="mt-0.5 font-serif text-2xl tabular-nums">
+              {mm}:{ss}
+            </div>
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2.5">
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Session label"
+            placeholder="What are you working on?"
             aria-label="What are you working on?"
             className="h-8 text-xs"
           />
+          {durationFields}
           <div className="flex gap-2">
             <Button
               size="sm"

@@ -225,6 +225,10 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "chart", enabled: true, size: "wide" },
   { key: "goals", enabled: true, size: "wide" },
   { key: "day", enabled: true, size: "wide" },
+  // Square, because that is the shape a dial wants. It shared the areas row for
+  // a while and had to match a progress card's height, which is how it ended up
+  // as an 838px card around a 104px dial.
+  { key: "focus", enabled: true, size: "square" },
   { key: "upcoming", enabled: true, size: "wide" },
 ];
 
@@ -237,7 +241,6 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultCalView: "week",
   navLayout: "sidebar",
   weekStartsOn: 1,
-  showFocusTimer: true,
   assistantTone: "gentle",
   assistantLength: "brief",
   assistantNotes: "",
@@ -296,7 +299,6 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
       "brief",
     ),
     assistantNotes: (row.assistant_notes ?? "").slice(0, 600),
-    showFocusTimer: row.show_focus_timer !== false,
     widgets: toWidgets(row.widgets),
   };
 }
@@ -315,7 +317,6 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
   if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
   if (patch.weekStartsOn !== undefined) row.week_starts_on = patch.weekStartsOn;
-  if (patch.showFocusTimer !== undefined) row.show_focus_timer = patch.showFocusTimer;
   if (patch.assistantTone !== undefined) row.assistant_tone = patch.assistantTone;
   if (patch.assistantLength !== undefined) row.assistant_length = patch.assistantLength;
   if (patch.assistantNotes !== undefined) row.assistant_notes = patch.assistantNotes.slice(0, 600);

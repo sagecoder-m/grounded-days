@@ -201,7 +201,6 @@ export interface Settings {
   assistantNotes: string;
   /** Size is optional on read for rows written before it existed. */
   widgets: { key: string; enabled: boolean; size: WidgetSize }[];
-  showFocusTimer: boolean;
 }
 
 export interface AppState {

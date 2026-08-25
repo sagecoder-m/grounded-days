@@ -48,6 +48,7 @@ const WIDGET_LABELS: Record<string, string> = {
   goals: "Area progress",
   chart: "Two-week rhythm chart",
   day: "A look at today",
+  focus: "Focus",
   upcoming: "Upcoming",
 };
 
@@ -224,7 +225,7 @@ function ProfilePage() {
 
       <AssistantSection settings={settings} />
 
-      <WidgetSection widgets={settings.widgets} showFocusTimer={settings.showFocusTimer} />
+      <WidgetSection widgets={settings.widgets} />
 
       <PasscodeSettings />
 
@@ -376,13 +377,7 @@ const SIZE_LABELS: Record<string, string> = {
   tall: "Tall",
 };
 
-function WidgetSection({
-  widgets,
-  showFocusTimer,
-}: {
-  widgets: Settings["widgets"];
-  showFocusTimer: boolean;
-}) {
+function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [working, setWorking] = useState<Settings["widgets"] | null>(null);
   const shown = (working ?? widgets).filter((w) => w.key in WIDGET_LABELS);
@@ -471,18 +466,6 @@ function WidgetSection({
         ))}
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">
-        <div>
-          <div className="text-sm font-medium">Focus timer</div>
-          <div className="text-[11px] text-ink-soft">
-            Sits beside your areas. No position of its own.
-          </div>
-        </div>
-        <Switch
-          checked={showFocusTimer}
-          onCheckedChange={(v) => actions.updateSettings({ showFocusTimer: v })}
-        />
-      </div>
     </section>
   );
 }
