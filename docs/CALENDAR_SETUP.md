@@ -61,14 +61,56 @@ If the tenant requires admin consent for `Calendars.Read`, grant it with
 
 ### The Google catch, in plain terms
 
-`calendar.readonly` is a *sensitive* scope. While the consent screen is in
-**Testing**, Google expires refresh tokens after **7 days** — so Google sync
-will stop roughly weekly and the connection will show *needs reconnecting* on
-Profile. That state is built into the UI on purpose; it is expected, not a bug.
+`calendar.readonly` is a *sensitive* scope, and that puts the consent screen's
+**publishing status** in charge of two things that matter to a pilot.
 
-To stop it happening, either publish the app and pass Google's verification
-review, or accept the weekly reconnect. Outlook has no equivalent limit, which
-is why it is worth connecting first.
+#### "Access blocked ... has not completed the Google verification process"
+
+```
+Error 403: access_denied
+```
+
+Not a bug, and not something in this repo. While the consent screen is in
+**Testing**, only Google accounts listed under **Test users** can authorise —
+every other account is refused at Google's own error page, before the browser
+ever comes back to the app.
+
+Fix: Google Cloud Console → **APIs & Services** → **OAuth consent screen** →
+**Test users** → **Add users** → the tester's Gmail. It takes effect
+immediately; they just try again. The list holds 100.
+
+Note the app cannot detect this. Google shows its own page and does not redirect
+back, and in the cases where it does redirect it sends the same `access_denied`
+code that a genuine cancel sends. The message on Profile therefore names both
+possibilities rather than guessing.
+
+#### Refresh tokens expire after 7 days in Testing
+
+Also a consequence of Testing status: Google kills refresh tokens weekly, so
+sync stops and the connection shows *needs reconnecting* on Profile. That state
+is built into the UI on purpose; it is expected, not a bug.
+
+#### Which status to run the pilot on
+
+| | Testing | Production, unverified | Verified |
+|---|---|---|---|
+| Who can connect | allowlist only, 100 max | anyone, ~100 cap on sensitive scopes | anyone |
+| Refresh tokens | **die after 7 days** | persist | persist |
+| What the tester sees | normal consent | "Google hasn't verified this app" → Advanced → continue | normal consent |
+| Cost to get there | nothing | privacy policy + terms + homepage URL | the above, plus demo video and review, days to weeks |
+
+For a pilot of a few dozen testers over three months, **Testing is the wrong
+place to sit**: every tester reconnects weekly for the whole pilot, and that
+friction gets attributed to the product rather than to Google. Publishing to
+production unverified removes the weekly reconnect and stays inside the user
+cap; the price is a warning screen testers must click through once.
+
+Whichever you choose, set **App name** on the consent screen to `Grounded` and
+the homepage to the deployed app. Left unset, Google shows the raw Supabase host
+(`<project>.supabase.co`) as the thing requesting access, which reads like
+phishing to anybody who reads the screen before clicking.
+
+Outlook has no equivalent limit, which is why it is worth connecting first.
 
 ## 4. Set the secrets
 

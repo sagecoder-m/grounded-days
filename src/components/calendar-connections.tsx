@@ -21,7 +21,13 @@ const OAUTH_PROVIDERS = ["microsoft", "google"] as const;
 
 /** Reasons the OAuth callback can bounce back, in the app's voice. */
 const CONNECT_ERRORS: Record<string, string> = {
-  access_denied: "You cancelled before finishing — nothing changed.",
+  // access_denied covers two very different things and the app cannot tell them
+  // apart: someone pressing Cancel, and Google refusing an account that is not on
+  // the OAuth consent screen's tester list while the app is unverified. Saying
+  // "you cancelled" to the second case sends a tester back to try the same thing
+  // again forever, so the message names both.
+  access_denied:
+    "Not connected. If you changed your mind, nothing happened. If Google said \u201caccess blocked\u201d, that account has not been added to the tester list yet \u2014 send it to whoever set up the pilot.",
   no_refresh_token:
     "The provider didn't grant long-term access. Try connecting again and accept every prompt.",
   unknown_or_expired_state: "That connection attempt timed out. Please try again.",
