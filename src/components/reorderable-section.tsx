@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
 
 import { actions, type Settings } from "@/lib/store";
@@ -53,6 +53,8 @@ export function ReorderableSection({
   children: ReactNode;
 }) {
   const [grabbed, setGrabbed] = useState(false);
+  /** Last pointer y, to know which way the hand is travelling. */
+  const lastY = useRef<number | null>(null);
   const isDragging = drag?.key === sectionKey;
 
   return (
@@ -68,7 +70,7 @@ export function ReorderableSection({
           The tile being carried lifts instead: slightly raised, slightly
           transparent, so it reads as held rather than as broken.
         */
-        className={`group/section relative transition-[opacity,transform] duration-150 ${
+        className={`group/section relative transition-[opacity,transform] duration-300 ${
           isDragging ? "z-20 scale-[1.02] opacity-70" : ""
         }`}
       >
@@ -88,6 +90,7 @@ export function ReorderableSection({
             } catch {
               /* not capturable; carry on */
             }
+            lastY.current = e.clientY;
             setGrabbed(true);
             setDrag({ key: sectionKey, overKey: null });
           }}
@@ -99,16 +102,39 @@ export function ReorderableSection({
             // appeared to pass. The element under the cursor has to be looked up.
             if (!drag) return;
             const under = document.elementFromPoint(e.clientX, e.clientY);
-            const over = under?.closest("[data-section]")?.getAttribute("data-section") ?? null;
-            if (!over || over === sectionKey) return;
-            // Rearrange now rather than remembering a target for later.
+            const target = under?.closest<HTMLElement>("[data-section]");
+            const over = target?.getAttribute("data-section") ?? null;
+
+            const previousY = lastY.current;
+            lastY.current = e.clientY;
+            if (!over || over === sectionKey || !target || previousY === null) return;
+
+            /*
+              Swap only once the cursor is properly onto the other tile, not the
+              moment it touches its edge.
+
+              Brushing an edge used to be enough, so sweeping down the board
+              chained a reorder per tile passed and everything flew around. The
+              rule is the midpoint, in the direction of travel: going down, the
+              cursor has to get past the middle of the tile below; going up, past
+              the middle of the tile above. That also stops the oscillation where
+              a swap moves a tile under the cursor and immediately triggers the
+              reverse swap.
+            */
+            const rect = target.getBoundingClientRect();
+            const middle = rect.top + rect.height / 2;
+            const movingDown = e.clientY > previousY;
+            if (movingDown ? e.clientY < middle : e.clientY > middle) return;
+
             onDragOver(sectionKey, over);
           }}
           onPointerUp={() => {
+            lastY.current = null;
             setGrabbed(false);
             onDrop();
           }}
           onPointerCancel={() => {
+            lastY.current = null;
             setGrabbed(false);
             onDrop();
           }}

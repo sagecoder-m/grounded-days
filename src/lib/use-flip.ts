@@ -27,6 +27,9 @@ export function useFlip(
 ) {
   const { selector, idAttribute, skipId } = options;
   const previous = useRef(new Map<string, DOMRect>());
+  /** In-flight animations by element id, so a new one can replace rather than
+   *  layer on top of the old. */
+  const running = useRef(new Map<string, Animation>());
 
   useLayoutEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector));
@@ -51,15 +54,24 @@ export function useFlip(
       // Sub-pixel drift is not movement worth animating.
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
 
-      node.animate(
+      // 2. Replace, do not stack. Dragging across several tiles starts a new
+      //    animation on the same element before the previous one has finished,
+      //    and two transforms fighting on one node is what makes a sweep look
+      //    frantic. Cancelling the old one means each tile is only ever
+      //    travelling to one place.
+      running.current.get(id)?.cancel();
+
+      const animation = node.animate(
         [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
         {
-          duration: 220,
-          // Quick to leave, slow to arrive — reads as settling rather than
-          // sliding, which suits a board you are arranging by hand.
-          easing: "cubic-bezier(0.2, 0, 0, 1)",
+          duration: 420,
+          // Eases in as well as out. The previous curve (0.2, 0, 0, 1) left at
+          // almost full speed, which is what read as a snap rather than a move —
+          // at this duration you can follow a tile with your eye.
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
         },
       );
+      running.current.set(id, animation);
     }
 
     previous.current = next;
