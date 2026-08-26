@@ -1,7 +1,7 @@
 /**
  * HQ — the admin portal for the pilot.
  *
- * Four panels, one per question a three-month test run has to answer:
+ * Panels, one per question a three-month test run has to answer:
  *   Pulse    — is the pilot healthy overall? (actives, retention, activation)
  *   Usage    — which sections earn use and which don't?
  *   Friction — where is the app breaking, and for whom is it breaking often?
@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { RetentionHeatmap } from "@/components/hq-retention";
+import { SetupPanel } from "@/components/hq-setup";
 import type { ActivityWeek } from "@/lib/hq-analytics";
 import { FeatureTrendChart } from "@/components/hq-feature-trend";
 import { format, parseISO, subDays } from "date-fns";
@@ -259,6 +260,7 @@ function Portal() {
         loading={accounts.isLoading}
         error={accounts.isError}
       />
+      <SetupPanel />
       <PilotChecklist />
     </div>
   );
