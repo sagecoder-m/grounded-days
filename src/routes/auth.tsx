@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/use-session";
@@ -138,6 +138,18 @@ function AuthPage() {
       </div>
       <p className="mt-4 text-center text-xs italic text-ink-soft">
         Your data lives in your account, so it's waiting for you on any device.
+      </p>
+      {/* Before the account, not after. Someone deciding whether to hand over a
+          calendar should be able to read what happens to it first — and Google's
+          OAuth review looks for exactly this link. */}
+      <p className="mt-3 text-center text-xs text-ink-soft">
+        <Link to="/privacy" className="underline underline-offset-4 hover:text-ink">
+          Privacy
+        </Link>
+        <span className="mx-2">&middot;</span>
+        <Link to="/terms" className="underline underline-offset-4 hover:text-ink">
+          Terms
+        </Link>
       </p>
     </div>
   );

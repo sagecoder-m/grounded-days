@@ -538,6 +538,18 @@ function DataSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Reachable from inside the app too, not only from the sign-in page —
+          someone who wants to check what happens to their calendar should not
+          have to sign out to find out. */}
+      <p className="text-xs text-ink-soft">
+        <Link to="/privacy" className="underline underline-offset-4 hover:text-ink">
+          Privacy policy
+        </Link>
+        <span className="mx-2">&middot;</span>
+        <Link to="/terms" className="underline underline-offset-4 hover:text-ink">
+          Terms of use
+        </Link>
+      </p>
     </section>
   );
 }

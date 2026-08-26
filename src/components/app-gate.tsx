@@ -18,7 +18,11 @@ import { GateSkeleton, PasscodeLock, PasscodeSetup } from "@/components/passcode
  * account here, and its own token is what authorises what they see. It renders
  * with no app chrome so none of the owner's navigation is exposed.
  */
-const PUBLIC_PATHS = ["/auth", "/share"] as const;
+// Privacy and terms are public because they have to be: Google will not let an
+// OAuth consent screen out of Testing without a policy reachable without signing
+// in, and someone deciding whether to trust the app with their calendar cannot
+// be asked to create an account first to find out what it does with it.
+const PUBLIC_PATHS = ["/auth", "/share", "/privacy", "/terms"] as const;
 const SHARE_PATH = "/share";
 
 function matches(pathname: string, route: string): boolean {

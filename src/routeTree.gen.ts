@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShareRouteImport } from './routes/share'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProfessionalRouteImport } from './routes/professional'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as EducationRouteImport } from './routes/education'
@@ -22,6 +24,11 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -40,6 +47,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const ProfessionalRoute = ProfessionalRouteImport.update({
   id: '/professional',
   path: '/professional',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PersonalRoute = PersonalRouteImport.update({
@@ -92,10 +104,12 @@ export interface FileRoutesByFullPath {
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
+  '/privacy': typeof PrivacyRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -106,10 +120,12 @@ export interface FileRoutesByTo {
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
+  '/privacy': typeof PrivacyRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -121,10 +137,12 @@ export interface FileRoutesById {
   '/education': typeof EducationRoute
   '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
+  '/privacy': typeof PrivacyRoute
   '/professional': typeof ProfessionalRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,10 +155,12 @@ export interface FileRouteTypes {
     | '/education'
     | '/journal'
     | '/personal'
+    | '/privacy'
     | '/professional'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
+    | '/terms'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,10 +171,12 @@ export interface FileRouteTypes {
     | '/education'
     | '/journal'
     | '/personal'
+    | '/privacy'
     | '/professional'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
+    | '/terms'
   id:
     | '__root__'
     | '/'
@@ -165,10 +187,12 @@ export interface FileRouteTypes {
     | '/education'
     | '/journal'
     | '/personal'
+    | '/privacy'
     | '/professional'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
+    | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -180,14 +204,23 @@ export interface RootRouteChildren {
   EducationRoute: typeof EducationRoute
   JournalRoute: typeof JournalRoute
   PersonalRoute: typeof PersonalRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProfessionalRoute: typeof ProfessionalRoute
   ProfileRoute: typeof ProfileRoute
   ShareRoute: typeof ShareRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -214,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/professional'
       fullPath: '/professional'
       preLoaderRoute: typeof ProfessionalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/personal': {
@@ -284,10 +324,12 @@ const rootRouteChildren: RootRouteChildren = {
   EducationRoute: EducationRoute,
   JournalRoute: JournalRoute,
   PersonalRoute: PersonalRoute,
+  PrivacyRoute: PrivacyRoute,
   ProfessionalRoute: ProfessionalRoute,
   ProfileRoute: ProfileRoute,
   ShareRoute: ShareRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

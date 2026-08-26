@@ -6,10 +6,15 @@
 // own tables could ask for the journal.
 //
 // What the model may see: goals and their steps, tasks, projects, habits (as
-// counts, not raw logs), upcoming events, and the display name.
+// counts, not raw logs), the display name, and the schedule — with synced events
+// reduced to their times, never their titles.
 // What it may never see: journal_entries — bodies, moods, gratitude. The user
 // drew that line explicitly. If they type how they are feeling into the chat
-// that is their choice and it flows through as an ordinary message.
+// that is their choice and it flows through as an ordinary message. Nor the
+// title of anything imported from Google, Outlook or a subscribed feed: that is
+// the provider's user data, it is often the most sensitive line in a calendar,
+// and passing it to a model vendor is the transfer Google's Limited Use policy
+// exists to prevent.
 import {
   corsHeaders,
   HttpError,
@@ -188,7 +193,7 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
         .gte("date", iso(new Date(today.getTime() - 14 * 86_400_000))),
       db
         .from("events")
-        .select("title, area, date, starts_at, all_day")
+        .select("title, area, date, starts_at, all_day, source")
         .eq("user_id", userId)
         .gte("date", iso(today))
         .lte("date", iso(horizon))
@@ -272,7 +277,25 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
     lines.push("\nSCHEDULE (next 3 weeks)");
     for (const e of events.data.slice(0, 40)) {
       const time = !e.all_day && e.starts_at ? ` ${e.starts_at.slice(11, 16)}` : " (all day)";
-      lines.push(`- ${e.date}${time} ${e.title}${e.area ? ` [${e.area}]` : ""}`);
+      /*
+       * Synced events contribute when they are, never what they are.
+       *
+       * Google's API Services User Data Policy restricts transferring Google
+       * user data to third parties, and this context goes to OpenRouter and on
+       * to whichever model serves it. An event title is Google user data —
+       * often the most sensitive line in someone's calendar ("MRI results",
+       * "Divorce mediation") — and sending it to an LLM provider is exactly the
+       * transfer that policy is about. The same reasoning covers Outlook and
+       * subscribed feeds, so all three are treated alike.
+       *
+       * The time still goes, which is what the assistant actually needs to plan
+       * around: it can see the afternoon is taken without being told why. Local
+       * events keep their titles, because those were typed into Grounded by the
+       * person asking.
+       */
+      const label =
+        e.source === "local" ? `${e.title}${e.area ? ` [${e.area}]` : ""}` : "Busy (synced)";
+      lines.push(`- ${e.date}${time} ${label}`);
     }
   }
 
