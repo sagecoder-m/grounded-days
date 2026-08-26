@@ -37,43 +37,39 @@ export function ReorderableSection({
   widgets,
   drag,
   setDrag,
+  onDragOver,
+  onDrop,
   children,
 }: {
   sectionKey: string;
   widgets: Settings["widgets"];
   drag: DragState | null;
   setDrag: (next: DragState | null) => void;
+  /** Called as the cursor passes over another tile, so the board rearranges
+   *  live instead of waiting for the drop. */
+  onDragOver: (key: string, over: string) => void;
+  /** Called once, on release: the single write. */
+  onDrop: () => void;
   children: ReactNode;
 }) {
   const [grabbed, setGrabbed] = useState(false);
   const isDragging = drag?.key === sectionKey;
-  const isTarget = drag !== null && drag.overKey === sectionKey && drag.key !== sectionKey;
-
-  /** Commit the move: pull the dragged key out and drop it at the target. */
-  function commit(from: string, to: string) {
-    if (from === to) return;
-    const next = [...widgets];
-    const fromIndex = next.findIndex((w) => w.key === from);
-    const toIndex = next.findIndex((w) => w.key === to);
-    if (fromIndex < 0 || toIndex < 0) return;
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    actions.reorderWidgets(next);
-  }
 
   return (
     <WidgetFrame widgetKey={sectionKey} widgets={widgets}>
       <div
         data-section={sectionKey}
-        onPointerEnter={() => {
-          // Only meaningful mid-drag; setting it otherwise would fight the
-          // pointer-up that ends the gesture.
-          if (drag && drag.key !== sectionKey) setDrag({ ...drag, overKey: sectionKey });
-        }}
-        className={`group/section relative transition-opacity ${isDragging ? "opacity-40" : ""} ${
-          isTarget
-            ? "before:absolute before:-top-3 before:left-0 before:h-0.5 before:w-full before:rounded-full before:bg-primary"
-            : ""
+        /*
+          No insertion line any more. It existed because nothing moved until you
+          let go, so something had to say where the tile would land; now the
+          board rearranges as you drag and the answer is simply what you are
+          looking at.
+
+          The tile being carried lifts instead: slightly raised, slightly
+          transparent, so it reads as held rather than as broken.
+        */
+        className={`group/section relative transition-[opacity,transform] duration-150 ${
+          isDragging ? "z-20 scale-[1.02] opacity-70" : ""
         }`}
       >
         <button
@@ -81,7 +77,17 @@ export function ReorderableSection({
           aria-label={`Reorder this section. Press and drag, or use arrow keys.`}
           onPointerDown={(e) => {
             e.preventDefault();
-            (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            // Capture keeps the gesture attached to this handle even when the
+            // cursor leaves it, which is the whole drag. It throws if the
+            // pointer id is not one the browser is tracking, and an exception
+            // here would abort the rest of this handler and leave the drag
+            // never starting — so a failure to capture degrades to a drag that
+            // still works while the cursor stays over the page.
+            try {
+              (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            } catch {
+              /* not capturable; carry on */
+            }
             setGrabbed(true);
             setDrag({ key: sectionKey, overKey: null });
           }}
@@ -94,16 +100,17 @@ export function ReorderableSection({
             if (!drag) return;
             const under = document.elementFromPoint(e.clientX, e.clientY);
             const over = under?.closest("[data-section]")?.getAttribute("data-section") ?? null;
-            if (over && over !== drag.overKey) setDrag({ ...drag, overKey: over });
+            if (!over || over === sectionKey) return;
+            // Rearrange now rather than remembering a target for later.
+            onDragOver(sectionKey, over);
           }}
           onPointerUp={() => {
-            if (drag?.overKey) commit(drag.key, drag.overKey);
             setGrabbed(false);
-            setDrag(null);
+            onDrop();
           }}
           onPointerCancel={() => {
             setGrabbed(false);
-            setDrag(null);
+            onDrop();
           }}
           onKeyDown={(e) => {
             // Keyboard equivalent, because a drag handle that only responds to a
@@ -118,12 +125,12 @@ export function ReorderableSection({
             actions.reorderWidgets(next);
           }}
           // -left-6 is the column gap exactly (gap-6), not a guess. The handle
-        // used to sit at -left-9 with a 32px box, which was fine when every
-        // widget was full width and it had the page margin to sit in. Now that
-        // two widgets can share a row, that offset put the right-hand widget's
-        // handle 12px inside the left-hand widget's card. Filling the gap
-        // precisely keeps it in the margin in both columns.
-        className={`absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-6 md:w-6 ${
+          // used to sit at -left-9 with a 32px box, which was fine when every
+          // widget was full width and it had the page margin to sit in. Now that
+          // two widgets can share a row, that offset put the right-hand widget's
+          // handle 12px inside the left-hand widget's card. Filling the gap
+          // precisely keeps it in the margin in both columns.
+          className={`absolute -left-1 top-0 z-10 grid h-8 w-8 place-items-center rounded-lg text-ink-soft opacity-40 transition-all hover:bg-secondary hover:text-ink hover:opacity-100 focus-visible:opacity-100 md:-left-6 md:w-6 ${
             grabbed ? "cursor-grabbing bg-secondary text-ink opacity-100" : "cursor-grab"
           }`}
         >

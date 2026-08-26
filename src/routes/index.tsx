@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
-import { PINNED_WIDGETS, useAppState } from "@/lib/store";
+import { actions, PINNED_WIDGETS, useAppState } from "@/lib/store";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
+import { MasonryCell } from "@/components/widget-frame";
+import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { AreaBalance } from "@/components/area-balance";
 import { MovementCards } from "@/components/movement-cards";
@@ -131,15 +133,70 @@ function Overview() {
    */
   const enabled = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
   const pinnedWidgets = enabled.filter((k) => PINNED_WIDGETS.has(k));
-  const orderedWidgets = enabled.filter((k) => !PINNED_WIDGETS.has(k));
+  const savedOrder = enabled.filter((k) => !PINNED_WIDGETS.has(k));
+
+  /**
+   * The order being shown while a drag is in progress.
+   *
+   * Reordering used to happen on release: until then a thin line marked where
+   * the tile would land and nothing moved, which is what made dragging feel
+   * dead. Now the order updates as the cursor passes over each tile, so the
+   * board rearranges under your hand and you are looking at the result rather
+   * than a promise of it.
+   *
+   * Local, not written through. actions.reorderWidgets is a database write, and
+   * doing one per pointer move would be dozens of round trips for a single
+   * gesture. The write happens once, on release.
+   */
+  const [preview, setPreview] = useState<string[] | null>(null);
+  const orderedWidgets = preview ?? savedOrder;
 
   // Which section is being dragged and what it is hovering over. Held here
   // rather than per-section so one section can react to another being dragged
   // across it.
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  /** Ends a drag that finished outside any section, so nothing gets stuck. */
-  const endDrag = () => setDrag(null);
+  // Animate the shuffle. Keyed on the order itself, so it fires when the board
+  // actually changes and not on every unrelated render.
+  useFlip(orderedWidgets.join(","), {
+    selector: "[data-section]",
+    idAttribute: "data-section",
+    skipId: drag?.key ?? null,
+  });
+
+  /** Move `key` to where `over` currently sits, without touching anything else. */
+  function reorderPreview(key: string, over: string) {
+    setPreview((current) => {
+      const order = [...(current ?? savedOrder)];
+      const from = order.indexOf(key);
+      const to = order.indexOf(over);
+      if (from < 0 || to < 0 || from === to) return current;
+      order.splice(to, 0, ...order.splice(from, 1));
+      return order;
+    });
+  }
+
+  /**
+   * Write the arrangement, once.
+   *
+   * Rebuilt from the full saved list rather than from the preview, because the
+   * preview only holds enabled, unpinned keys — hidden widgets and the pinned
+   * header have to keep their entries or a drag would quietly delete them.
+   */
+  function commitPreview() {
+    const order = preview;
+    setPreview(null);
+    setDrag(null);
+    if (!order) return;
+    const byKey = new Map(settings.widgets.map((w) => [w.key, w]));
+    const moved = order.map((k) => byKey.get(k)).filter((w) => w !== undefined);
+    const untouched = settings.widgets.filter((w) => !order.includes(w.key));
+    actions.reorderWidgets([...untouched, ...moved]);
+  }
+
+  /** Ends a drag that finished outside any section, so nothing gets stuck — and
+   *  keeps whatever arrangement the cursor had already produced. */
+  const endDrag = () => commitPreview();
 
   return (
     /*
@@ -164,7 +221,22 @@ function Overview() {
     */
     <div className="@container/board">
       <div
-        className="grid grid-flow-row-dense auto-rows-min gap-6 @2xl/board:grid-cols-6"
+        /*
+          Masonry, not rows.
+
+          auto-rows-min made every row as tall as its tallest tile, so a short
+          widget beside a long one left dead space underneath it — visible all
+          down the board. CSS has no masonry that ships in Chrome or Safari yet,
+          so this is the row-span technique: rows are 1px, row-gap is 0, and each
+          tile spans as many of those rows as its own measured height needs. The
+          spacing between stacked tiles is baked into that span rather than
+          coming from row-gap, which is why row-gap has to be zero.
+
+          grid-flow-dense is what lets a short tile drop back into a gap an
+          earlier row left open. Column gap stays a real gap because columns are
+          uniform and need no help.
+        */
+        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-6"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -175,9 +247,9 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <div key={key} className="@container @2xl/board:col-span-6">
+            <MasonryCell key={key} className="@container @2xl/board:col-span-6">
               {section}
-            </div>
+            </MasonryCell>
           );
         })}
 
@@ -191,6 +263,8 @@ function Overview() {
               widgets={settings.widgets}
               drag={drag}
               setDrag={setDrag}
+              onDragOver={reorderPreview}
+              onDrop={commitPreview}
             >
               {section}
             </ReorderableSection>

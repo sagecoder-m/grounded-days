@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   Columns2,
   Columns3,
@@ -54,24 +54,38 @@ const SPAN: Record<WidgetSize, string> = {
   square: "@2xl/board:col-span-3",
   third: "@2xl/board:col-span-3 @3xl/board:col-span-2",
   /*
-    Half width and three rows deep, so two or three ordinary widgets sit
-    alongside it — that arrangement is the whole reason to pick tall. It was two
-    rows, which left room for exactly one neighbour.
+    Half width with a floor under its height.
 
-    The h-full chain matters as much as the span: a grid item spanning rows is
-    given that height, but the card inside keeps its natural height, so the
-    reserved space showed as an empty hole under the card. Rows are min-content,
-    so a tall widget with nothing beside it reserves nothing — the unused rows
-    collapse and it keeps its own height.
+    Tall used to mean "span three grid rows", which no longer means anything now
+    that rows are 1px and a tile's height comes from measuring its own content.
+    So it is a minimum instead: the tile is at least this tall and its content
+    stretches to fill, which is the same thing visually and survives the change
+    to masonry. Two or three ordinary tiles pack alongside it on their own,
+    without anything reserving space for them.
   */
-  tall: "@2xl/board:col-span-3 @2xl/board:row-span-3 [&>*]:h-full [&>*>*]:h-full",
+  tall: "@2xl/board:col-span-3",
+};
+
+/**
+ * Extra classes for the measured box rather than the frame.
+ *
+ * Tall's minimum height has to live here, on the element whose height is being
+ * measured. Put on the frame it would fight the row span computed from that
+ * measurement — the frame would be forced taller than the rows it was given and
+ * would overlap whatever the grid packed underneath.
+ *
+ * The h-full chain goes with it so the card actually fills the floor rather than
+ * leaving a gap inside its own tile.
+ */
+const INNER: Partial<Record<WidgetSize, string>> = {
+  tall: "@2xl/board:min-h-[26rem] [&>*]:h-full [&>*>*]:h-full",
 };
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
   { key: "wide", label: "Full width", hint: "Spans the row", icon: RectangleHorizontal },
   { key: "square", label: "Half width", hint: "Two side by side", icon: Columns2 },
   { key: "third", label: "Third width", hint: "Three side by side", icon: Columns3 },
-  { key: "tall", label: "Tall", hint: "Half width, 2\u20133 fit beside", icon: RectangleVertical },
+  { key: "tall", label: "Tall", hint: "Half width, taller", icon: RectangleVertical },
 ];
 
 /** How long a press has to be held before it counts as "hold", in ms. Long
@@ -116,6 +130,63 @@ function isControl(target: EventTarget | null) {
   );
 }
 
+/** Vertical breathing room between stacked tiles, in px. Lives in the row span
+ *  rather than in row-gap, because row-gap would apply to every one of the 1px
+ *  rows and blow the layout apart. Matches the 1.5rem column gap. */
+const GUTTER = 24;
+
+/**
+ * Measures a tile and tells the grid how many 1px rows it occupies.
+ *
+ * This is what makes the board pack like masonry instead of like a table. The
+ * grid cannot know a tile's height — the tile's own content decides it, and that
+ * changes as tasks are ticked and charts load — so the height is observed and
+ * translated into a row span.
+ *
+ * useLayoutEffect rather than useEffect: it runs before paint, so the first
+ * frame is already correct rather than showing every tile at 1px and snapping.
+ * The Overview sits behind auth and is never meaningfully server-rendered, so
+ * there is no SSR pass to worry about here.
+ */
+function useRowSpan() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [span, setSpan] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () =>
+      setSpan(Math.max(1, Math.ceil(el.getBoundingClientRect().height + GUTTER)));
+    measure();
+    // Content decides the height and content moves: a chart finishing its
+    // animation, a task list shrinking, the window narrowing and text rewrapping.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return { ref, span };
+}
+
+/**
+ * A grid cell that sizes itself, for content that is not a resizable widget —
+ * the pinned greeting. Same packing, none of the menu.
+ */
+export function MasonryCell({
+  className = "",
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
+  const { ref, span } = useRowSpan();
+  return (
+    <section className={className} style={{ gridRowEnd: `span ${span}` }}>
+      <div ref={ref}>{children}</div>
+    </section>
+  );
+}
+
 export function WidgetFrame({
   widgetKey,
   widgets,
@@ -148,6 +219,7 @@ export function WidgetFrame({
 
   const entry = widgets.find((w) => w.key === widgetKey);
   const size = entry?.size ?? "wide";
+  const { ref: measureRef, span } = useRowSpan();
 
   function setSize(next: WidgetSize) {
     actions.reorderWidgets(widgets.map((w) => (w.key === widgetKey ? { ...w, size: next } : w)));
@@ -176,6 +248,8 @@ export function WidgetFrame({
       // actually has. Without it, half-width widgets keep asking the viewport
       // how much room they have and get the wrong answer.
       className={`@container relative ${SPAN[size]}`}
+      // Height in 1px grid rows, measured rather than declared — see useRowSpan.
+      style={{ gridRowEnd: `span ${span}` }}
       onContextMenu={(e) => {
         // The app's own menu instead of the browser's. Right-click is the
         // desktop half of the same gesture the hold covers on touch.
@@ -201,7 +275,11 @@ export function WidgetFrame({
       onPointerUp={cancelHold}
       onPointerCancel={cancelHold}
     >
-      {children}
+      {/* The measured box is the content, not the frame: the frame's own height
+          is what we are computing, so measuring it would be circular. */}
+      <div ref={measureRef} className={INNER[size]}>
+        {children}
+      </div>
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         {/* Anchored to the widget's top-right rather than the cursor. A menu that
