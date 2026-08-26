@@ -1,5 +1,13 @@
 import { useRef, useState, type ReactNode } from "react";
-import { EyeOff, LayoutGrid, RectangleHorizontal, RectangleVertical, Square } from "lucide-react";
+import {
+  Columns2,
+  Columns3,
+  EyeOff,
+  LayoutGrid,
+  RectangleHorizontal,
+  RectangleVertical,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -30,34 +38,40 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * Grid placement per size, keyed to the board's width rather than the window's —
  * see the grid in routes/index.tsx for why.
  *
- * @2xl is 42rem of board, which is two ~324px columns. The threshold has to be
- * stated in board width, but it is worth knowing what that costs in window
- * width: the rail and padding take about 344px, so two columns start at roughly
- * a 1016px window with the rail open and an 800px one with it collapsed. Set
- * this any higher and the feature quietly stops existing on ordinary laptops —
- * @3xl looked reasonable and turned out to need a 1248px window.
+ * The board is six columns so that both halves (three) and thirds (two) divide
+ * evenly. Worth knowing what the thresholds cost in window width: the rail and
+ * padding take about 344px, so columns start at roughly a 1016px window with the
+ * rail open and an 800px one with it collapsed.
+ *
+ * Thirds wait for a wider board than halves do. The board caps at 960px, so a
+ * third is about 300px at best and less than that on a smaller screen — below
+ * @3xl a "third" therefore behaves as a half rather than becoming a column too
+ * narrow to read. It widens on its own as the window does; nothing needs
+ * changing back.
  */
 const SPAN: Record<WidgetSize, string> = {
-  wide: "@2xl/board:col-span-2",
-  square: "@2xl/board:col-span-1",
+  wide: "@2xl/board:col-span-6",
+  square: "@2xl/board:col-span-3",
+  third: "@2xl/board:col-span-3 @3xl/board:col-span-2",
   /*
-    row-span-2 is what lets two other widgets stack beside a tall one, rather
-    than the tall one simply being a square with a gap under it.
+    Half width and three rows deep, so two or three ordinary widgets sit
+    alongside it — that arrangement is the whole reason to pick tall. It was two
+    rows, which left room for exactly one neighbour.
 
-    The h-full chain matters as much as the span. A grid item spanning two rows
-    is given that height, but the card inside it keeps its natural height, so the
-    reserved space showed as an empty hole below the card — which reads as a
-    layout bug, not a choice. The two levels are the frame's own wrapper and the
-    section inside it; if that nesting ever changes the worst case is the hole
-    coming back, not a break.
+    The h-full chain matters as much as the span: a grid item spanning rows is
+    given that height, but the card inside keeps its natural height, so the
+    reserved space showed as an empty hole under the card. Rows are min-content,
+    so a tall widget with nothing beside it reserves nothing — the unused rows
+    collapse and it keeps its own height.
   */
-  tall: "@2xl/board:col-span-1 @2xl/board:row-span-2 [&>*]:h-full [&>*>*]:h-full",
+  tall: "@2xl/board:col-span-3 @2xl/board:row-span-3 [&>*]:h-full [&>*>*]:h-full",
 };
 
-const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: typeof Square }[] = [
+const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
   { key: "wide", label: "Full width", hint: "Spans the row", icon: RectangleHorizontal },
-  { key: "square", label: "Half width", hint: "Sits beside another", icon: Square },
-  { key: "tall", label: "Tall", hint: "Half width, double height", icon: RectangleVertical },
+  { key: "square", label: "Half width", hint: "Two side by side", icon: Columns2 },
+  { key: "third", label: "Third width", hint: "Three side by side", icon: Columns3 },
+  { key: "tall", label: "Tall", hint: "Half width, 2\u20133 fit beside", icon: RectangleVertical },
 ];
 
 /** How long a press has to be held before it counts as "hold", in ms. Long

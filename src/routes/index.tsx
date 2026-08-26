@@ -154,12 +154,17 @@ function Overview() {
       nothing at all: the menu took the choice and the layout ignored it. The
       window is the wrong thing to measure anyway, since the side rail can be
       expanded or collapsed and takes 280px when it is open. @2xl is 42rem of
-      actual board — two ~324px columns, which start at roughly a 1016px window
-      with the rail open and an 800px one with it collapsed.
+      actual board, which starts at roughly a 1016px window with the rail open
+      and an 800px one with it collapsed.
+
+      Six columns rather than two or three, because both halves and thirds have
+      to divide evenly into it: a half is three columns and a third is two. With
+      a 3-column grid there is no way to express "half", and with 2 there is no
+      way to express "third".
     */
     <div className="@container/board">
       <div
-        className="grid grid-flow-row-dense auto-rows-min gap-6 @2xl/board:grid-cols-2"
+        className="grid grid-flow-row-dense auto-rows-min gap-6 @2xl/board:grid-cols-6"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -170,7 +175,7 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <div key={key} className="@container @2xl/board:col-span-2">
+            <div key={key} className="@container @2xl/board:col-span-6">
               {section}
             </div>
           );

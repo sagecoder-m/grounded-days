@@ -238,7 +238,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "movement", enabled: true, size: "square" },
 ];
 
-const WIDGET_SIZES = ["square", "wide", "tall"] as const;
+const WIDGET_SIZES = ["square", "wide", "tall", "third"] as const;
 
 /**
  * Widgets that are furniture rather than content, and so do not move.

@@ -378,6 +378,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
 const SIZE_LABELS: Record<string, string> = {
   wide: "Full width",
   square: "Half width",
+  third: "Third width",
   tall: "Tall",
 };
 

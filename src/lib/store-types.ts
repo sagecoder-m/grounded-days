@@ -194,7 +194,14 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  * side by side or give a long list the height it wants, without becoming a
  * layout editor nobody asked for.
  */
-export type WidgetSize = "square" | "wide" | "tall";
+/**
+ * How much of the Overview board a widget takes.
+ *
+ * "square" is a historical name for half width — it is the value already stored
+ * in every account's settings, so it stays rather than being renamed for tidiness
+ * and needing a migration. The menu has always labelled it "Half width".
+ */
+export type WidgetSize = "square" | "wide" | "tall" | "third";
 
 export interface Settings {
   displayName: string;
