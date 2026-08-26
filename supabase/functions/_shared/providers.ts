@@ -61,9 +61,17 @@ export function providerConfig(provider: ProviderId): ProviderConfig {
       // prompt=consent forces one to be reissued on reconnect — without it
       // Google silently omits the refresh token on repeat authorisations and
       // the connection appears to work until the first token refresh fails.
+      //
+      // select_account is what makes a SECOND Google account possible. prompt
+      // takes a space-delimited list, and with consent alone Google skips the
+      // chooser and re-authorises whichever account the browser is already
+      // signed into — so "Add another" silently re-linked the same Gmail and
+      // looked like the app refusing a second one. The database has always
+      // allowed it (UNIQUE is user_id + provider + account_id); the authorize
+      // request was never asking who.
       extraAuthParams: {
         access_type: "offline",
-        prompt: "consent",
+        prompt: "consent select_account",
         include_granted_scopes: "true",
       },
     };
@@ -88,7 +96,11 @@ export function providerConfig(provider: ProviderId): ProviderConfig {
     ].join(" "),
     clientId: requireEnv("MICROSOFT_CLIENT_ID"),
     clientSecret: requireEnv("MICROSOFT_CLIENT_SECRET"),
-    extraAuthParams: {},
+    // Same problem as Google, same fix. With no prompt at all, Microsoft signs
+    // you straight back in as the current account and a second Outlook is
+    // unreachable. Consent is not forced here because offline_access is in the
+    // scopes and Microsoft returns a refresh token without re-consenting.
+    extraAuthParams: { prompt: "select_account" },
   };
 }
 
