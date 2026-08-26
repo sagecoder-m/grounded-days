@@ -26,15 +26,7 @@ import { RetentionHeatmap } from "@/components/hq-retention";
 import type { ActivityWeek } from "@/lib/hq-analytics";
 import { FeatureTrendChart } from "@/components/hq-feature-trend";
 import { format, parseISO, subDays } from "date-fns";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -238,9 +230,8 @@ function Portal() {
         </Link>
         <h1 className="font-serif text-2xl md:text-3xl">HQ</h1>
         <p className="mt-2 max-w-xl text-ink-soft">
-          The pilot at a glance — last {WINDOW_DAYS} days. Counts of feature
-          names and timestamps only; nothing anyone wrote is collected or shown
-          here.
+          The pilot at a glance — last {WINDOW_DAYS} days. Counts of feature names and timestamps
+          only; nothing anyone wrote is collected or shown here.
         </p>
       </header>
 
@@ -263,7 +254,11 @@ function Portal() {
         truncated={pilotTruncated}
       />
       <FrictionPanel errors={errors.data} events={events.data} loading={errors.isLoading} />
-      <AccountsPanel accounts={accounts.data} loading={accounts.isLoading} error={accounts.isError} />
+      <AccountsPanel
+        accounts={accounts.data}
+        loading={accounts.isLoading}
+        error={accounts.isError}
+      />
       <PilotChecklist />
     </div>
   );
@@ -308,20 +303,15 @@ function PulsePanel({
       const doers = new Set(events.filter((e) => e.event !== "page_view").map((e) => e.user_id));
       activation =
         judgeable.length > 0
-          ? Math.round(
-              (judgeable.filter((a) => doers.has(a.id)).length / judgeable.length) * 100,
-            )
+          ? Math.round((judgeable.filter((a) => doers.has(a.id)).length / judgeable.length) * 100)
           : null;
     }
 
-    const errorsThisWeek = (errors ?? []).filter(
-      (e) => now - Date.parse(e.created_at) < wk,
-    ).length;
+    const errorsThisWeek = (errors ?? []).filter((e) => now - Date.parse(e.created_at) < wk).length;
 
     return {
       accounts: accounts?.length ?? null,
-      newThisWeek:
-        accounts?.filter((a) => now - Date.parse(a.createdAt) < wk).length ?? null,
+      newThisWeek: accounts?.filter((a) => now - Date.parse(a.createdAt) < wk).length ?? null,
       activeThisWeek: activeThisWeek.size,
       retention,
       activation,
@@ -334,10 +324,7 @@ function PulsePanel({
         {
           label: "Accounts",
           value: stats.accounts === null ? "—" : String(stats.accounts),
-          hint:
-            stats.newThisWeek === null
-              ? ""
-              : `${stats.newThisWeek} new this week`,
+          hint: stats.newThisWeek === null ? "" : `${stats.newThisWeek} new this week`,
         },
         {
           label: "Active this week",
@@ -437,9 +424,31 @@ function UsagePanel({ events, loading }: { events?: UsageRow[]; loading: boolean
               <ResponsiveContainer>
                 <BarChart data={sections} layout="vertical" margin={{ left: 24, right: 12 }}>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" fontSize={10} stroke="var(--ink-soft)" allowDecimals={false} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="label" fontSize={11} stroke="var(--ink-soft)" width={82} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }} />
+                  <XAxis
+                    type="number"
+                    fontSize={10}
+                    stroke="var(--ink-soft)"
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    fontSize={11}
+                    stroke="var(--ink-soft)"
+                    width={82}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                  />
                   <Bar dataKey="visits" fill="var(--sage)" radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -451,9 +460,31 @@ function UsagePanel({ events, loading }: { events?: UsageRow[]; loading: boolean
               <ResponsiveContainer>
                 <BarChart data={features} layout="vertical" margin={{ left: 24, right: 12 }}>
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" fontSize={10} stroke="var(--ink-soft)" allowDecimals={false} tickLine={false} axisLine={false} />
-                  <YAxis type="category" dataKey="label" fontSize={11} stroke="var(--ink-soft)" width={100} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, fontSize: 12 }} />
+                  <XAxis
+                    type="number"
+                    fontSize={10}
+                    stroke="var(--ink-soft)"
+                    allowDecimals={false}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    fontSize={11}
+                    stroke="var(--ink-soft)"
+                    width={100}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                  />
                   <Bar dataKey="uses" fill="var(--clay)" radius={[0, 8, 8, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -478,7 +509,10 @@ function FrictionPanel({
 }) {
   const grouped = useMemo(() => {
     if (!errors) return [];
-    const map = new Map<string, { message: string; route: string; count: number; latest: ErrorRow }>();
+    const map = new Map<
+      string,
+      { message: string; route: string; count: number; latest: ErrorRow }
+    >();
     for (const err of errors) {
       const key = `${err.route}::${err.message}`;
       const entry = map.get(key);
@@ -560,8 +594,7 @@ function AccountsPanel({
             <div className="h-32 animate-pulse rounded-2xl bg-secondary/60" />
           ) : error ? (
             <p className="text-sm text-ink-soft">
-              Could not load accounts — the admin-accounts function may not be
-              deployed yet.
+              Could not load accounts — the admin-accounts function may not be deployed yet.
             </p>
           ) : (
             <table className="w-full text-sm">
@@ -598,7 +631,9 @@ function suggestPassword() {
   // Readable enough to hand to a tester on a call, random enough to be safe as
   // a first password they will change.
   const bytes = crypto.getRandomValues(new Uint8Array(9));
-  return btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, "").slice(0, 12);
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/[+/=]/g, "")
+    .slice(0, 12);
 }
 
 /**
@@ -675,7 +710,12 @@ function CreateAccountCard() {
         </div>
         <div className="space-y-1.5">
           <Label>First password</Label>
-          <Input required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
         <Button type="submit" disabled={busy} className="w-full rounded-full">
           {busy ? "Creating…" : "Create account"}
