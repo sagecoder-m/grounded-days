@@ -137,7 +137,7 @@ function TermsPage() {
           If these terms change, the date at the top changes and anyone with an account is told.
           Continuing to use Grounded after that means accepting the new version.
         </p>
-        <p>These terms are governed by the law of England and Wales.</p>
+        <p>These terms are governed by the laws of the Commonwealth of Virginia, United States.</p>
         <p>
           Anything at all: <a href="mailto:eliaquineb@gmail.com">eliaquineb@gmail.com</a>.
         </p>
