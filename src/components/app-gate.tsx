@@ -107,23 +107,32 @@ export function AppGate({ children }: { children: ReactNode }) {
       });
   }, [user, unlocked, queryClient]);
 
-  // 1. SSR and first client paint.
-  if (!mounted) return <GateSkeleton />;
-
-  // 2. A share link authorises itself with its token, so it neither waits for a
-  // session nor borrows any of this app's chrome — it renders its own page even
-  // when the owner happens to be signed in on the same device.
+  /*
+   * 1. Public routes, before anything that waits on a session.
+   *
+   * These used to sit below the `mounted` guard, which meant every page — the
+   * privacy policy included — was served as a loading skeleton and only became
+   * itself after hydration. Fine for a person, useless for a fetcher: Google
+   * retrieves the privacy policy URL without running JavaScript when it reviews
+   * an OAuth consent screen, and a document that is three words of spinner reads
+   * to it as no policy at all. Same for anything else that reads a page without
+   * a browser — a link preview, a crawler.
+   *
+   * Nothing here depends on the session, so nothing here needs to wait for it,
+   * and rendering during SSR is the whole point.
+   */
   if (isSharePath(pathname)) return <>{children}</>;
 
+  // Signed in and on /auth is possible and harmless; auth.tsx sends them on.
+  if (isPublicPath(pathname)) return <BareShell>{children}</BareShell>;
+
+  // 2. Everything else waits for the session before it can decide anything.
+  if (!mounted) return <GateSkeleton />;
   if (loading) return <GateSkeleton />;
 
-  // 3. Signed out: only the sign-in page renders, without app chrome.
-  if (!user) {
-    return isPublicPath(pathname) ? <BareShell>{children}</BareShell> : <GateSkeleton />;
-  }
-
-  // 4. Signed in but sitting on /auth — auth.tsx redirects to "/" itself.
-  if (isPublicPath(pathname)) return <BareShell>{children}</BareShell>;
+  // 3. Signed out on a private route: hold the skeleton while the redirect above
+  //    takes them to /auth.
+  if (!user) return <GateSkeleton />;
 
   // 4. Still learning whether a passcode exists.
   if (hasPasscode.isPending) return <GateSkeleton />;
