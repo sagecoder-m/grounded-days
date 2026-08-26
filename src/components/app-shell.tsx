@@ -118,6 +118,19 @@ function Brand({
 export function AppShell({ children }: { children: ReactNode }) {
   const settings = useApp((s) => s.settings);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  /**
+   * The Overview is a dashboard and gets the width of the screen; every other
+   * page keeps a reading measure.
+   *
+   * The caps were 1152px with the side rail and 1024px with top tabs, which on a
+   * wide monitor left a few hundred pixels of dead space either side of the board
+   * that no widget could reach — the whole point of choosing "third width" is
+   * having somewhere to put things. Journal, Assistant and the area pages are
+   * mostly prose and lists, and stay narrow, because a 1500px line of text is
+   * miserable to read.
+   */
+  const isBoard = pathname === "/";
   // Collapsing is a per-session preference, not worth a round trip to store.
   const [railCollapsed, setRailCollapsed] = useState(false);
 
@@ -203,7 +216,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
           <main className="min-w-0">
-            <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+            <div
+              className={`mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
+                isBoard ? "max-w-[96rem]" : "max-w-6xl"
+              }`}
+            >
+              {children}
+            </div>
           </main>
         </>
       ) : (
@@ -289,7 +308,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </aside>
 
           <main className="min-w-0 flex-1">
-            <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+            <div
+              className={`mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
+                isBoard ? "max-w-[96rem]" : "max-w-5xl"
+              }`}
+            >
+              {children}
+            </div>
           </main>
         </div>
       )}

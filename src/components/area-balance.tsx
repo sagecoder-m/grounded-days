@@ -75,7 +75,6 @@ export function AreaBalance({ state }: { state: AppState }) {
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Where your attention went</h2>
-        <span className="text-xs italic text-ink-soft">No target, just the shape</span>
       </div>
 
       <div className="card-soft p-4 md:p-5">

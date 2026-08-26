@@ -105,20 +105,10 @@ function Overview() {
       (sum, d) => sum + d.personal + d.professional + d.education,
       0,
     );
-    const activeDays = chartData.filter(
-      (d) => d.personal + d.professional + d.education > 0,
-    ).length;
-
-    if (completed === 0) {
-      return {
-        headline: "A fresh fortnight",
-        sub: "Nothing logged yet — the first small thing counts.",
-      };
-    }
-    return {
-      headline: `${completed} ${completed === 1 ? "thing" : "things"} tended to`,
-      sub: `across ${activeDays} ${activeDays === 1 ? "day" : "days"} in the last two weeks`,
-    };
+    // The second line ("across N days...") went with the header notes. Dropping
+    // the value too rather than computing a string nobody reads.
+    if (completed === 0) return { headline: "A fresh fortnight" };
+    return { headline: `${completed} ${completed === 1 ? "thing" : "things"} tended to` };
   }, [chartData]);
 
   const settings = state.settings;
@@ -329,7 +319,6 @@ function Overview() {
         <section key={key}>
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-serif text-lg">Focus</h2>
-            <span className="text-xs italic text-ink-soft">One block at a time.</span>
           </div>
           <FocusTimer size="widget" />
         </section>
@@ -340,10 +329,6 @@ function Overview() {
         <section key={key}>
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-serif text-lg">A look at today</h2>
-            {/* HTML entity, not a unicode escape: in a JSX text child a
-                    backslash-u sequence is not an escape at all, just six
-                    literal characters, and it was rendering as written. */}
-            <span className="text-xs text-ink-soft">Just today&rsquo;s scope</span>
           </div>
           <TodayGlance />
         </section>
@@ -354,7 +339,6 @@ function Overview() {
         <section key={key}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-serif text-lg">{encouragement.headline}</h2>
-            <span className="text-xs text-ink-soft">{encouragement.sub}</span>
           </div>
           <div className="card-soft p-4 md:p-6">
             <div className="grid gap-6 @3xl:grid-cols-[2fr_1fr]">

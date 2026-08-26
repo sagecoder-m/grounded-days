@@ -95,7 +95,6 @@ export function MovementCards({ state }: { state: AppState }) {
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">How it&rsquo;s been going</h2>
-        <span className="text-xs italic text-ink-soft">Shape, not score</span>
       </div>
 
       {/* Three across when the widget is wide enough to read them, stacked when
