@@ -38,8 +38,15 @@ export interface PresenceDay {
   date: string;
   /** How many distinct things happened. Zero is simply nothing, not a deficit. */
   count: number;
-  /** False for days before this account existed, so they can be left blank
-   *  rather than drawn as empty days somebody failed to fill. */
+  /**
+   * Whether this day is one we can say anything about.
+   *
+   * False in two cases, and both matter: days that have not happened yet, and
+   * days before the record begins. The second was the bug — a twelve-week window
+   * on a three-week-old account drew nine weeks of empty cells, which reads as
+   * "you did nothing for two months" about a period when there was nothing to
+   * record. Same lie as printing 0% retention for a week nobody was watching.
+   */
   inRange: boolean;
 }
 
@@ -64,6 +71,19 @@ export function dailyPresence(state: AppState, weeks: number, today = new Date()
   for (const task of state.tasks) if (task.done && task.date) bump(task.date);
   for (const event of state.events) if (event.source === "local") bump(event.date);
 
+  /**
+   * The first day anything was recorded, or null if nothing ever was.
+   *
+   * yyyy-mm-dd sorts correctly as a string, so no parsing is needed. Derived
+   * from the data rather than from an account creation date, which the client
+   * does not hold — and which would be the wrong answer anyway for someone who
+   * signed up and only started using it weeks later.
+   */
+  let firstRecord: string | null = null;
+  for (const [date, count] of counts) {
+    if (count > 0 && (firstRecord === null || date < firstRecord)) firstRecord = date;
+  }
+
   // Whole weeks, so the grid's columns are weeks and the last column is this one.
   const start = startOfWeek(subWeeks(today, weeks - 1), WEEK_OPTS);
   const days: PresenceDay[] = [];
@@ -71,11 +91,12 @@ export function dailyPresence(state: AppState, weeks: number, today = new Date()
   for (let i = 0; i < totalDays; i++) {
     const d = addDays(start, i);
     const key = dayKey(d);
+    const happened = differenceInCalendarDays(d, today) <= 0;
+    const recorded = firstRecord !== null && key >= firstRecord;
     days.push({
       date: key,
       count: counts.get(key) ?? 0,
-      // Future days are not "empty", they have not happened.
-      inRange: differenceInCalendarDays(d, today) <= 0,
+      inRange: happened && recorded,
     });
   }
   return days;
@@ -140,7 +161,20 @@ export function weeklyAreaBalance(
     if (event.source === "local" && event.area) add(event.date, event.area);
   }
 
-  return [...buckets.values()];
+  /*
+    Drop the leading weeks that predate anything being recorded.
+
+    Kept, they draw as a long flat run at zero, which says "attention went
+    nowhere" about weeks when there was nothing to attend to — a three-week-old
+    account was showing seven empty weeks before its first real one. Only the
+    leading run goes: a genuinely quiet week *after* the record starts is real and
+    stays, because that is information rather than absence of it.
+  */
+  const all = [...buckets.values()];
+  const firstWithAnything = all.findIndex((w) => w.personal + w.professional + w.education > 0);
+  // Nothing anywhere: hand back the empty window and let the panel show its own
+  // empty state rather than an axis with no span.
+  return firstWithAnything <= 0 ? all : all.slice(firstWithAnything);
 }
 
 // ------------------------------------------------------------------- movement
@@ -166,7 +200,15 @@ export interface AreaMovement {
  */
 export function areaMovement(state: AppState, weeks: number, today = new Date()): AreaMovement[] {
   const balance = weeklyAreaBalance(state, weeks, today);
-  const recentCount = Math.max(1, Math.round(weeks / 3));
+  /*
+    A third of what we actually have, not a third of what was asked for.
+
+    weeklyAreaBalance now trims weeks that predate any record, so on a young
+    account the array is shorter than `weeks` — taking `weeks / 3` from it could
+    ask for more recent weeks than exist and leave nothing to compare them
+    against, which silently collapses every area to "steady".
+  */
+  const recentCount = Math.max(1, Math.round(balance.length / 3));
 
   return AREAS.map((area) => {
     const points = balance.map((b) => b[area]);

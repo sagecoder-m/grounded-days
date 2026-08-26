@@ -128,6 +128,15 @@ export function AreaBalance({ state }: { state: AppState }) {
                       stroke={s.color}
                       strokeWidth={1}
                       fill={`url(#balance-${s.key})`}
+                      /*
+                        Recharts defaults an Area's fillOpacity to 0.6 and
+                        multiplies it by whatever the fill already carries, so the
+                        gradient's own 0.85 and 0.55 were arriving as 0.51 and
+                        0.33 — half the intended weight, which is what made the
+                        bands wash out against cream. 1 here hands control back to
+                        the gradient, where the opacity was chosen.
+                      */
+                      fillOpacity={1}
                     />
                   ))}
                 </AreaChart>
