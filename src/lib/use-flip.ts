@@ -64,8 +64,11 @@ export function useFlip(
       const animation = node.animate(
         [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }],
         {
-          duration: 420,
-          // Eases in as well as out. The previous curve (0.2, 0, 0, 1) left at
+          // 500ms, set deliberately rather than tuned by feel. Past roughly this
+          // the board starts reading as slow to respond rather than calm, since
+          // the travel outlasts the gesture that caused it.
+          duration: 500,
+          // Eases in as well as out. The original curve (0.2, 0, 0, 1) left at
           // almost full speed, which is what read as a snap rather than a move —
           // at this duration you can follow a tile with your eye.
           easing: "cubic-bezier(0.4, 0, 0.2, 1)",
