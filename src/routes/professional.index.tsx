@@ -65,11 +65,7 @@ function ProfessionalPage() {
       </header>
 
       <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_17rem]">
-        <div
-          className="space-y-3"
-          onPointerUp={drag.endDrag}
-          onPointerLeave={drag.endDrag}
-        >
+        <div className="space-y-3" onPointerUp={drag.endDrag} onPointerLeave={drag.endDrag}>
           {projects.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm italic text-ink-soft">
               No projects yet. One is enough to begin with.
@@ -137,7 +133,9 @@ function ProjectRow({ project }: { project: ReturnType<typeof useAppState>["proj
 
       <div className="flex shrink-0 items-center gap-1">
         <button
-          onClick={() => actions.updateProject(project.id, { status: paused ? "active" : "paused" })}
+          onClick={() =>
+            actions.updateProject(project.id, { status: paused ? "active" : "paused" })
+          }
           className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
           aria-label={paused ? "Resume project" : "Pause project"}
           title={paused ? "Resume" : "Pause"}

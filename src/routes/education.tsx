@@ -159,7 +159,9 @@ function EducationPage() {
       {openCourse && (
         <CourseFocus course={openCourse} tasks={tasks} onClose={() => setFocusCourse(null)} />
       )}
-      {openGoal && <GoalFocus goal={openGoal} eyebrow="Education" onClose={() => setFocusGoal(null)} />}
+      {openGoal && (
+        <GoalFocus goal={openGoal} eyebrow="Education" onClose={() => setFocusGoal(null)} />
+      )}
     </div>
   );
 }
@@ -404,13 +406,25 @@ function CourseFocus({
       ) : (
         <div className="space-y-2">
           {outstanding.map((t) => (
-            <TaskRow key={t.id} task={t} showArea={false} floating onDelete={() => actions.deleteTask(t.id)} />
+            <TaskRow
+              key={t.id}
+              task={t}
+              showArea={false}
+              floating
+              onDelete={() => actions.deleteTask(t.id)}
+            />
           ))}
           {done.length > 0 && (
             <p className="px-1 pt-4 text-[11px] uppercase tracking-[0.08em] text-ink-soft">Done</p>
           )}
           {done.map((t) => (
-            <TaskRow key={t.id} task={t} showArea={false} floating onDelete={() => actions.deleteTask(t.id)} />
+            <TaskRow
+              key={t.id}
+              task={t}
+              showArea={false}
+              floating
+              onDelete={() => actions.deleteTask(t.id)}
+            />
           ))}
         </div>
       )}

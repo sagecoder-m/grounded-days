@@ -183,7 +183,9 @@ function SubprojectCard({
       </span>
       {/* Deleting lives in the open panel, not on the card: a card you are meant
           to click should not carry a destructive control under your thumb. */}
-      <span className="sr-only">{open ? "Close" : "Open"} {project.name} sub-project</span>
+      <span className="sr-only">
+        {open ? "Close" : "Open"} {project.name} sub-project
+      </span>
     </button>
   );
 }
@@ -219,9 +221,7 @@ function SubprojectPanel({
           <div className="font-serif text-xl">
             <InlineText
               value={subproject.name}
-              onSave={(v) =>
-                v && actions.updateSubproject(project.id, subproject.id, { name: v })
-              }
+              onSave={(v) => v && actions.updateSubproject(project.id, subproject.id, { name: v })}
               showIcon
             />
           </div>

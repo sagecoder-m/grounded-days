@@ -80,9 +80,7 @@ export function FocusOverlay({
       </div>
 
       <div className="mx-auto w-full max-w-2xl px-6 pb-24">
-        {eyebrow && (
-          <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">{eyebrow}</p>
-        )}
+        {eyebrow && <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">{eyebrow}</p>}
         <h1 className="mt-2 font-serif text-3xl leading-tight md:text-4xl">{title}</h1>
         <div className="mt-8">{children}</div>
         {footer && <div className="mt-8">{footer}</div>}
