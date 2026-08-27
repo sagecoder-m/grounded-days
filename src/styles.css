@@ -224,26 +224,77 @@
   --gradient-sage: linear-gradient(90deg, var(--sage-deep), var(--sage));
 }
 
+/*
+ * The dark palette, written at the raw tokens rather than the semantic ones.
+ *
+ * This block used to override six semantic names — background, card, border and
+ * so on — and leave the raw colours they are built from at their light values.
+ * That looks complete and is not, because half the semantic layer is defined as
+ * `var(--cream)` or `var(--surface-2)` and quietly kept resolving to a light
+ * colour: the sidebar, every popover and dropdown, every `hover:bg-secondary`
+ * and anything using `text-ink` came out as a cream panel or as dark text on a
+ * dark page. Nobody had seen it, because nothing switched dark mode on until
+ * now.
+ *
+ * Overriding the raw tokens fixes all of them at once and cannot drift: the
+ * aliases in :root are substituted against this element's own values, so
+ * `--secondary: var(--surface-2)` follows here without being restated.
+ */
 .dark {
-  --background: oklch(0.22 0.015 66);
-  --foreground: oklch(0.94 0.015 82);
-  --card: oklch(0.27 0.015 66);
-  --card-foreground: oklch(0.94 0.015 82);
+  /* Three surfaces, same order as light: page darkest, cards raised above it,
+     and a recessed tone between them for anything that should sit back. */
+  --beige: oklch(0.22 0.015 66);
+  --cream: oklch(0.27 0.015 66);
+  --surface-2: oklch(0.24 0.015 66);
+  /* A bright tan hairline is a harsh line on a dark page. Dropped to where it
+     reads as an edge rather than as a highlight. */
+  --tan: oklch(0.42 0.03 82);
+
+  --ink: oklch(0.94 0.015 82);
   /*
    * Dark mode needs this token lighter, not darker, and never had an override —
    * the light value sat at 3.55:1 on the dark page and 3.08:1 on a dark card,
    * worse than the light-mode failure it mirrors. 0.68 gives 6.01:1 and 5.23:1.
    */
   --ink-soft: oklch(0.68 0.03 74); /* #A49684 */
-  --border: oklch(1 0 0 / 12%);
+  --border-c: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
+
+  /*
+   * The soft accent fills, which are pale tints chosen to sit under dark text.
+   * Left alone they are the brightest thing on a dark page, and their paired
+   * foregrounds — sage-deep and friends — are dark, so the pairing inverts and
+   * the text goes with it. Darkened here, with the foregrounds lifted to match.
+   */
+  --sage-soft: oklch(0.33 0.032 130);
+  --clay-soft: oklch(0.33 0.032 70);
+  --brown-soft: oklch(0.33 0.026 72);
+  --accent-foreground: oklch(0.87 0.04 130);
+  --sidebar-accent-foreground: oklch(0.87 0.04 130);
+
   /*
    * A soft brown shadow is invisible against a dark page, so the light values
    * would silently amount to no lift at all. Near-black and heavier, which is
    * how depth actually reads on a dark surface.
    */
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.28), 0 8px 24px oklch(0 0 0 / 0.32);
   --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 3px 8px oklch(0 0 0 / 0.28);
   --shadow-float-hover: 0 2px 4px oklch(0 0 0 / 0.34), 0 8px 18px oklch(0 0 0 / 0.4);
+}
+
+/*
+ * The accent variants hard-code a dark foreground for their soft fill, which
+ * inverts once that fill is itself dark. Restated for dark mode.
+ *
+ * A descendant selector, not `.dark[data-accent=...]`: the theme class goes on
+ * the document element and the accent attribute on the app shell's wrapper div,
+ * so the compound form would match nothing at all.
+ */
+.dark [data-accent="clay"] {
+  --accent-foreground: oklch(0.88 0.045 70);
+}
+.dark [data-accent="brown"] {
+  --accent-foreground: oklch(0.88 0.035 72);
 }
 
 /* Accent variant themes chosen from Profile */

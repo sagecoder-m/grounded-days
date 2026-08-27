@@ -70,15 +70,6 @@ function Overview() {
   /** The three days after today. Today has its own section, so repeating it
    *  here would show the same task twice on one screen. */
   const upcomingRange = useMemo(() => dayRange(UPCOMING_DAYS, 1), []);
-  const upcomingLabel = useMemo(
-    () =>
-      `${format(parseISO(upcomingRange.from), "EEE, MMM d")} – ${format(
-        parseISO(upcomingRange.to),
-        "EEE, MMM d",
-      )}`,
-    [upcomingRange],
-  );
-
   // Weekly area chart: aggregate completed tasks per day per area over last 14d
   const chartData = useMemo(() => {
     // dateKey, not toISOString: the latter converts to UTC first, so an evening
@@ -518,27 +509,23 @@ function Overview() {
         <section key={key}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-serif text-lg">Upcoming</h2>
-            <span suppressHydrationWarning className="text-xs text-ink-soft">
-              {upcomingLabel}
-            </span>
           </div>
           {/* The three days after today — today has its own section above,
                   and repeating it here read as twice the work. Same grid, so
                   the two sections are one list split by time rather than two
                   designs. */}
-          {/* The card the other widgets have. Without it Upcoming was loose rows
-              floating on the page while everything beside it sat on a surface,
-              which is why it never looked like it belonged in the row. */}
-          <div className="card-soft p-4 md:p-5">
-            <TaskGrid
-              tasks={state.tasks}
-              events={state.events}
-              from={upcomingRange.from}
-              to={upcomingRange.to}
-              emptyText="Nothing in the next few days."
-              floating
-            />
-          </div>
+          {/* No card. It had one for a while, to make it match its neighbours,
+              and the matching was the wrong kind: a panel with rows inside reads
+              as a container of things and the rows stop being things. Today has
+              been brought to this shape rather than the other way round. */}
+          <TaskGrid
+            tasks={state.tasks}
+            events={state.events}
+            from={upcomingRange.from}
+            to={upcomingRange.to}
+            emptyText="Nothing in the next few days."
+            floating
+          />
         </section>
       );
 

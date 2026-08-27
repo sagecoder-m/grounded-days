@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { addDays, format, isToday, isTomorrow, parseISO } from "date-fns";
-import { Plus } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 
 import { AddTaskDialog } from "./add-task-dialog";
 import { AreaChip } from "./area-chip";
@@ -207,7 +207,7 @@ export function TaskGrid({
               )}
 
               {group.events.map((event) => (
-                <EventRow key={event.id} event={event} floating={floating} />
+                <EventRow key={event.id} event={event} />
               ))}
 
               {group.tasks.map((task) => (
@@ -226,20 +226,36 @@ export function TaskGrid({
   );
 }
 
-/** Synced events get a dashed edge: the database rejects client writes to them,
- *  so looking un-editable is the honest rendering. */
-function EventRow({ event, floating = false }: { event: CalEvent; floating?: boolean }) {
+/**
+ * An appointment, which is not a task and should not look like one.
+ *
+ * A task is something you decide to do; an event happens to you at a time you
+ * did not pick. Telling them apart used to mean noticing that one row had a
+ * checkbox and the other a dot — a difference you have to go looking for, and
+ * mistaking a fixed appointment for something movable is how a day gets planned
+ * wrong.
+ *
+ * Now the whole surface says it: events sit on the recessed tone with a calendar
+ * mark where a task keeps its checkbox on cream. Synced ones additionally get a
+ * dashed edge, because the database rejects client writes to them and looking
+ * un-editable is the honest rendering.
+ */
+function EventRow({ event }: { event: CalEvent }) {
   const synced = event.source && event.source !== "local";
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
-        synced ? "border-dashed border-tan bg-secondary/60" : "border-border bg-card"
-      } ${floating ? "float-row" : ""}`}
+      /* Deliberately never a float-row. An event is not interactive in this
+         grid, and a row that lifts under the pointer promises a press that does
+         nothing. Tasks lift because they answer; events sit still. */
+      className={`flex items-center gap-3 rounded-2xl border bg-secondary px-4 py-3 ${
+        synced ? "border-dashed border-tan" : "border-border"
+      }`}
     >
-      <span
-        className="h-2 w-2 shrink-0 rounded-full"
-        style={{ backgroundColor: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
+      <CalendarDays
+        className="h-4 w-4 shrink-0"
+        style={{ color: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
+        aria-hidden
       />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{event.title}</div>

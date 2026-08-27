@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { addDays, format } from "date-fns";
+import { CalendarDays } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
 import { dateKey } from "@/components/task-grid";
@@ -38,7 +39,9 @@ export function TodayGlance() {
   // Everything here keys off today's date, so hold a placeholder until the
   // client has mounted rather than risk a server/client mismatch.
   if (!mounted) {
-    return <div className="card-soft h-44 animate-pulse rounded-2xl bg-secondary/60" />;
+    // No card on the placeholder either, or the widget flashes a panel that
+    // then vanishes when the real thing arrives.
+    return <div className="h-44 animate-pulse rounded-2xl bg-secondary/50" />;
   }
 
   const today = new Date();
@@ -61,10 +64,20 @@ export function TodayGlance() {
   const nothing = events.length === 0 && tasks.length === 0;
 
   return (
-    <div className="card-soft overflow-hidden">
-      {/* The date rail, matching the calendar agenda's: a serif numeral with the
-          month and weekday beside it, and the day's shape on the right. */}
-      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+    /*
+      No card around any of this.
+
+      It had one, to make the widget match its neighbours, and that turned out to
+      be the wrong kind of matching: a panel with rows inside it reads as a
+      container of things, and the rows stop being things. Upcoming never had the
+      panel and always read better for it — a day is a few objects lying on the
+      page, not a filing cabinet. So the rail is a heading, the rows are the
+      cards, and the surface behind them is the page.
+    */
+    <div>
+      {/* The date rail: a serif numeral with the month and weekday beside it,
+          and the day's shape on the right. */}
+      <div className="flex items-center justify-between gap-4 px-1 pb-3">
         <div className="flex items-baseline gap-3">
           <span className="font-serif text-4xl leading-none tracking-tight">
             {format(today, "d")}
@@ -88,9 +101,9 @@ export function TodayGlance() {
 
       {/* Spaced rather than divided. Hairlines make a list read as one block,
           and a block is the thing that overwhelms — see .float-row. */}
-      <div className="space-y-2 p-3">
+      <div className="space-y-2">
         {nothing && (
-          <p className="px-2 py-8 text-center text-sm italic text-ink-soft">
+          <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
             A clear day. That counts as a good one.
           </p>
         )}
@@ -123,7 +136,7 @@ export function TodayGlance() {
 
       <Link
         to="/calendar"
-        className="block border-t border-border px-5 py-3 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+        className="mt-3 block px-1 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
       >
         See the whole calendar
       </Link>
@@ -131,8 +144,23 @@ export function TodayGlance() {
   );
 }
 
-/** One scheduled thing. The time sits in a fixed-width column so times line up
- *  down the list instead of drifting with each title's length. */
+/**
+ * One scheduled thing.
+ *
+ * Deliberately not the same object as a task. An event happens to you at a time
+ * you do not choose; a task is something you decide to do. They were separated
+ * only by a checkbox against a dot, which is a difference you have to look for —
+ * and mistaking a fixed appointment for something you could move is how a day
+ * gets planned wrong.
+ *
+ * So the surface differs too: an event sits on the recessed tone with no
+ * checkbox and a calendar mark, and reads as part of the day's shape rather than
+ * as a line waiting to be ticked. Nothing here is tickable, which is the honest
+ * rendering — the app cannot complete your dentist appointment.
+ *
+ * The time sits in a fixed-width column so times line up down the list instead
+ * of drifting with each title's length.
+ */
 function AgendaRow({
   time,
   dot,
@@ -147,9 +175,19 @@ function AgendaRow({
   synced?: boolean;
 }) {
   return (
-    <div className="float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+    <div
+      /* No float-row: an event is not interactive here — nothing to tick, edit
+         or open — and a row that lifts under the pointer promises something to
+         press. Tasks lift because they answer; events sit still because they
+         do not. The distinction earns its keep twice. */
+      className={`flex items-baseline gap-3 rounded-2xl border bg-secondary px-4 py-2.5 ${
+        // A synced event is not even ours to edit — the database rejects client
+        // writes to it — so the dashed edge is the honest rendering.
+        synced ? "border-dashed border-tan" : "border-border"
+      }`}
+    >
       <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-soft">{time}</span>
-      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dot }} />
+      <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: dot }} aria-hidden />
       <span className="min-w-0 flex-1 truncate text-sm">
         {title}
         {note && <span className="ml-1.5 text-[11px] text-[color:var(--clay)]">{note}</span>}
