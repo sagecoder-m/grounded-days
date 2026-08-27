@@ -13,6 +13,7 @@ import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
 import { FirstThing, isNewAccount } from "@/components/first-thing";
 import { WaitingAWhile } from "@/components/waiting-a-while";
+import { OneThing } from "@/components/one-thing";
 import { AreaBalance } from "@/components/area-balance";
 import { MovementCards } from "@/components/movement-cards";
 import { SoftProgress } from "@/components/soft-progress";
@@ -153,6 +154,10 @@ function Overview() {
    */
   const [lookingAround, setLookingAround] = useState(false);
 
+  /** Whether the one-at-a-time screen is up. Never persisted: it is a way of
+   *  working through a particular afternoon, not a mode to be left switched on. */
+  const [oneThing, setOneThing] = useState(false);
+
   /**
    * The backlog offer, and whether it has been waved away this session.
    *
@@ -211,6 +216,8 @@ function Overview() {
   /** Ends a drag that finished outside any section, so nothing gets stuck — and
    *  keeps whatever arrangement the cursor had already produced. */
   const endDrag = () => commitPreview();
+
+  if (oneThing) return <OneThing state={state} onClose={() => setOneThing(false)} />;
 
   if (isNewAccount(state) && !lookingAround) {
     return <FirstThing onLookAround={() => setLookingAround(true)} />;
@@ -356,8 +363,20 @@ function Overview() {
     if (key === "day" && w("day"))
       return (
         <section key={key}>
-          <div className="mb-3 flex items-baseline justify-between">
+          <div className="mb-3 flex items-baseline justify-between gap-2">
             <h2 className="font-serif text-lg">A look at today</h2>
+            {/* Deliberately here rather than in the nav: another tab would be one
+                more thing to choose between, which is the problem this exists to
+                answer. It sits next to the list it rescues you from. */}
+            {state.tasks.some((t) => !t.done) && (
+              <button
+                type="button"
+                onClick={() => setOneThing(true)}
+                className="shrink-0 text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+              >
+                Just one thing
+              </button>
+            )}
           </div>
           <TodayGlance />
         </section>
