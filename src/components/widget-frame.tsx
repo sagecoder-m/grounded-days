@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Columns2,
   Columns3,
@@ -136,6 +143,38 @@ function isControl(target: EventTarget | null) {
 const GUTTER = 24;
 
 /**
+ * A tile telling the board that its height changed.
+ *
+ * The board packs densely, which is what closes the gaps — and the price is that
+ * a tile which grows or shrinks can push, pull, or swap the ones after it. That
+ * is not avoidable while the gaps stay closed, but a jump-cut is: the Overview
+ * already animates reordering, and reflow was the one kind of movement that
+ * still teleported, because it changes no order and so changed nothing the
+ * animation was watching. A tile arriving somewhere new with no travel reads as
+ * a glitch, or worse as something you did.
+ *
+ * Optional, so a frame outside a board still renders.
+ */
+const BoardReflow = createContext<(() => void) | null>(null);
+
+export function BoardReflowProvider({
+  onReflow,
+  children,
+}: {
+  onReflow: () => void;
+  children: ReactNode;
+}) {
+  return <BoardReflow.Provider value={onReflow}>{children}</BoardReflow.Provider>;
+}
+
+/**
+ * Movement below this is not movement. Content wobbles by a pixel for reasons
+ * nobody can see — a font settling, a number changing width, a subpixel rounding
+ * — and at 1px rows every one of those re-packed the whole board.
+ */
+const SPAN_NOISE_PX = 3;
+
+/**
  * Measures a tile and tells the grid how many 1px rows it occupies.
  *
  * This is what makes the board pack like masonry instead of like a table. The
@@ -151,19 +190,32 @@ const GUTTER = 24;
 function useRowSpan() {
   const ref = useRef<HTMLDivElement>(null);
   const [span, setSpan] = useState(1);
+  /** Read inside the observer callback, where the state value would be the one
+   *  captured when the effect ran. */
+  const latest = useRef(1);
+  const onReflow = useContext(BoardReflow);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () =>
-      setSpan(Math.max(1, Math.ceil(el.getBoundingClientRect().height + GUTTER)));
+    const measure = () => {
+      const next = Math.max(1, Math.ceil(el.getBoundingClientRect().height + GUTTER));
+      if (Math.abs(next - latest.current) < SPAN_NOISE_PX) return;
+      // The first measurement is the tile appearing, not moving. Nothing was on
+      // screen to travel from, and animating it would make every page load
+      // shuffle itself.
+      const appearing = latest.current === 1;
+      latest.current = next;
+      setSpan(next);
+      if (!appearing) onReflow?.();
+    };
     measure();
     // Content decides the height and content moves: a chart finishing its
     // animation, a task list shrinking, the window narrowing and text rewrapping.
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [onReflow]);
 
   return { ref, span };
 }

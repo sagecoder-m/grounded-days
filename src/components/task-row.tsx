@@ -25,9 +25,19 @@ interface Props {
   showArea?: boolean;
   readOnly?: boolean;
   onDelete?: () => void;
+  /** Lift the row off its surface. Opt-in rather than the default: it is the
+   *  Overview's treatment, where the lists are short and each row is meant to
+   *  read as one liftable thing. An area page is a working list of forty. */
+  floating?: boolean;
 }
 
-export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: Props) {
+export function TaskRow({
+  task,
+  showArea = true,
+  readOnly = false,
+  onDelete,
+  floating = false,
+}: Props) {
   const overdue =
     task.date &&
     !task.done &&
@@ -57,6 +67,7 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
     <div
       className={cn(
         "group flex items-start gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-all",
+        floating && "float-row",
         task.done && "opacity-60",
       )}
     >

@@ -86,9 +86,11 @@ export function TodayGlance() {
         </span>
       </div>
 
-      <div className="divide-y divide-border">
+      {/* Spaced rather than divided. Hairlines make a list read as one block,
+          and a block is the thing that overwhelms — see .float-row. */}
+      <div className="space-y-2 p-3">
         {nothing && (
-          <p className="px-5 py-8 text-center text-sm italic text-ink-soft">
+          <p className="px-2 py-8 text-center text-sm italic text-ink-soft">
             A clear day. That counts as a good one.
           </p>
         )}
@@ -145,8 +147,8 @@ function AgendaRow({
   synced?: boolean;
 }) {
   return (
-    <div className="flex items-baseline gap-3 px-5 py-2.5">
-      <span className="w-16 shrink-0 text-right text-xs tabular-nums text-ink-soft">{time}</span>
+    <div className="float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-soft">{time}</span>
       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: dot }} />
       <span className="min-w-0 flex-1 truncate text-sm">
         {title}
@@ -162,9 +164,9 @@ function AgendaRow({
 function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
   const late = Boolean(task.date && task.date < today);
   return (
-    <div className="group flex items-baseline gap-3 px-5 py-2.5">
+    <div className="group float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
       <span
-        className={`w-16 shrink-0 text-right text-xs ${
+        className={`w-14 shrink-0 text-right text-xs ${
           late ? "text-[color:var(--clay)]" : "text-ink-soft"
         }`}
       >

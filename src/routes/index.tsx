@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
 import { actions, PINNED_WIDGETS, useAppState } from "@/lib/store";
 import { waitingAWhile, WAITING_MIN } from "@/lib/user-insights";
@@ -7,7 +7,7 @@ import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
-import { MasonryCell } from "@/components/widget-frame";
+import { BoardReflowProvider, MasonryCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
@@ -175,9 +175,26 @@ function Overview() {
   // across it.
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  // Animate the shuffle. Keyed on the order itself, so it fires when the board
-  // actually changes and not on every unrelated render.
-  useFlip(orderedWidgets.join(","), {
+  /**
+   * Counts the times a tile changed height, so the animation below has something
+   * to fire on.
+   *
+   * Reordering was the only movement the board animated, because the order
+   * string was the only thing it watched. Everything else moved instantly:
+   * ticking the last task off Today shortens that tile, dense packing pulls the
+   * tiles after it upward, and they arrive there between one frame and the next.
+   * A tile that teleports is read as a mistake — and, worse, as one you just
+   * made — when it is only the board closing a gap.
+   *
+   * A counter rather than the spans themselves. What travels matters, not how
+   * far: the animation measures that for itself.
+   */
+  const [reflow, setReflow] = useState(0);
+  const onReflow = useCallback(() => setReflow((n) => n + 1), []);
+
+  // Animate the shuffle. Keyed on the order and on reflow, so it fires when the
+  // board actually changes and not on every unrelated render.
+  useFlip(`${orderedWidgets.join(",")}|${reflow}`, {
     selector: "[data-section]",
     idAttribute: "data-section",
     skipId: drag?.key ?? null,
@@ -266,6 +283,7 @@ function Overview() {
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
+        <BoardReflowProvider onReflow={onReflow}>
         {/* Furniture: full width, no handle, no size menu, nothing to drop on.
             Rendered outside ReorderableSection so it carries no data-section
             attribute and therefore cannot be a drag target at all. */}
@@ -296,6 +314,7 @@ function Overview() {
             </ReorderableSection>
           );
         })}
+        </BoardReflowProvider>
       </div>
     </div>
   );
@@ -517,6 +536,7 @@ function Overview() {
               from={upcomingRange.from}
               to={upcomingRange.to}
               emptyText="Nothing in the next few days."
+              floating
             />
           </div>
         </section>

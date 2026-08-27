@@ -215,6 +215,12 @@
   --sidebar-ring: var(--sage);
 
   --shadow-soft: 0 1px 2px oklch(0.4 0.02 66 / 0.04), 0 8px 24px oklch(0.4 0.02 66 / 0.06);
+  /* A row lying on a card, and the same row answering the pointer. Tighter and
+     a shade stronger than --shadow-soft: that one is for a large panel sitting
+     on the page, and its 24px spread reads as haze rather than lift at the size
+     of a list row. */
+  --shadow-float: 0 1px 2px oklch(0.4 0.02 66 / 0.05), 0 3px 8px oklch(0.4 0.02 66 / 0.06);
+  --shadow-float-hover: 0 2px 4px oklch(0.4 0.02 66 / 0.06), 0 8px 18px oklch(0.4 0.02 66 / 0.1);
   --gradient-sage: linear-gradient(90deg, var(--sage-deep), var(--sage));
 }
 
@@ -231,6 +237,13 @@
   --ink-soft: oklch(0.68 0.03 74); /* #A49684 */
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
+  /*
+   * A soft brown shadow is invisible against a dark page, so the light values
+   * would silently amount to no lift at all. Near-black and heavier, which is
+   * how depth actually reads on a dark surface.
+   */
+  --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 3px 8px oklch(0 0 0 / 0.28);
+  --shadow-float-hover: 0 2px 4px oklch(0 0 0 / 0.34), 0 8px 18px oklch(0 0 0 / 0.4);
 }
 
 /* Accent variant themes chosen from Profile */
@@ -351,6 +364,48 @@
   .reveal-control:focus-visible {
     opacity: 1;
     pointer-events: auto;
+  }
+}
+
+/*
+ * Rows that sit above their surface rather than in it.
+ *
+ * A list of things to do reads as one dense block when the rows are separated by
+ * hairlines — the eye takes the block as the unit and the individual items stop
+ * being individual, which is the wrong impression to give someone who is meant
+ * to pick exactly one and ignore the rest. Lifting each row off the card breaks
+ * the block into objects: separate, liftable, one-at-a-time things.
+ *
+ * The shadow does the work rather than a tone change, because the rows and the
+ * card they lie on are the same cream and should stay that way — a recessed
+ * panel behind them would add a third surface to a palette that gets its
+ * calmness from having very few.
+ *
+ * The hover lift is 2px. Enough to answer the pointer, small enough that running
+ * the cursor down a list does not set the whole thing bobbing.
+ */
+.float-row {
+  box-shadow: var(--shadow-float);
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .float-row:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float-hover);
+  }
+}
+
+/* The lift is decoration; the shadow still marks the row as its own object. */
+@media (prefers-reduced-motion: reduce) {
+  .float-row {
+    transition: box-shadow 200ms ease;
+  }
+  .float-row:hover {
+    transform: none;
   }
 }
 

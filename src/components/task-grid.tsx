@@ -54,6 +54,7 @@ export function TaskGrid({
   showAdd = false,
   includeOverdue = false,
   showGroupLabels = true,
+  floating = false,
 }: {
   tasks: Task[];
   /** Omit for a tasks-only grid. */
@@ -94,6 +95,8 @@ export function TaskGrid({
    * label and not the information.
    */
   showGroupLabels?: boolean;
+  /** Lift every row off the surface. See TaskRow — the Overview's treatment. */
+  floating?: boolean;
 }) {
   const overdue = useMemo(() => {
     if (!includeOverdue) return [];
@@ -166,7 +169,12 @@ export function TaskGrid({
             </p>
           )}
           {overdue.map((task) => (
-            <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              floating={floating}
+              onDelete={() => actions.deleteTask(task.id)}
+            />
           ))}
         </div>
       )}
@@ -199,11 +207,16 @@ export function TaskGrid({
               )}
 
               {group.events.map((event) => (
-                <EventRow key={event.id} event={event} />
+                <EventRow key={event.id} event={event} floating={floating} />
               ))}
 
               {group.tasks.map((task) => (
-                <TaskRow key={task.id} task={task} onDelete={() => actions.deleteTask(task.id)} />
+                <TaskRow
+              key={task.id}
+              task={task}
+              floating={floating}
+              onDelete={() => actions.deleteTask(task.id)}
+            />
               ))}
             </div>
           ))}
@@ -215,14 +228,14 @@ export function TaskGrid({
 
 /** Synced events get a dashed edge: the database rejects client writes to them,
  *  so looking un-editable is the honest rendering. */
-function EventRow({ event }: { event: CalEvent }) {
+function EventRow({ event, floating = false }: { event: CalEvent; floating?: boolean }) {
   const synced = event.source && event.source !== "local";
 
   return (
     <div
       className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
         synced ? "border-dashed border-tan bg-secondary/60" : "border-border bg-card"
-      }`}
+      } ${floating ? "float-row" : ""}`}
     >
       <span
         className="h-2 w-2 shrink-0 rounded-full"
