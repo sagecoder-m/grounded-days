@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   Columns2,
   Columns3,
@@ -130,37 +130,61 @@ function isControl(target: EventTarget | null) {
   );
 }
 
-/**
- * Make a tile fill the row it was given.
- *
- * Grid gives every item in a row the same height, but the card inside keeps its
- * natural one — so without this an equal-height row just moves the gap from
- * between the tiles to inside them.
- *
- * Three levels, because that is the shape every widget has: the frame's wrapper,
- * the widget's own <section>, and the card as its last child. The card is the
- * part that should grow; the header above it should not.
- */
-const FILL =
-  // Applied to the wrapper that directly contains the widget's <section>, not to
-  // the frame — the frame's own child is this wrapper, so a `> section` selector
-  // written there matches nothing and the cards quietly keep their natural
-  // height while the tiles around them stretch.
-  "flex h-full flex-col [&>section]:flex [&>section]:h-full [&>section]:flex-col " +
-  "[&>section>*:last-child]:flex-1";
+/** Vertical breathing room between stacked tiles, in px. Lives in the row span
+ *  rather than in row-gap, because row-gap would apply to every one of the 1px
+ *  rows and blow the layout apart. Matches the 1.5rem column gap. */
+const GUTTER = 24;
 
 /**
- * A plain grid cell for content that is not a resizable widget — the pinned
- * greeting. Same column span, none of the menu or the handle.
+ * Measures a tile and tells the grid how many 1px rows it occupies.
+ *
+ * This is what makes the board pack like masonry instead of like a table. The
+ * grid cannot know a tile's height — the tile's own content decides it, and that
+ * changes as tasks are ticked and charts load — so the height is observed and
+ * translated into a row span.
+ *
+ * useLayoutEffect rather than useEffect: it runs before paint, so the first
+ * frame is already correct rather than showing every tile at 1px and snapping.
+ * The Overview sits behind auth and is never meaningfully server-rendered, so
+ * there is no SSR pass to worry about here.
  */
-export function PinnedCell({
+function useRowSpan() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [span, setSpan] = useState(1);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () =>
+      setSpan(Math.max(1, Math.ceil(el.getBoundingClientRect().height + GUTTER)));
+    measure();
+    // Content decides the height and content moves: a chart finishing its
+    // animation, a task list shrinking, the window narrowing and text rewrapping.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return { ref, span };
+}
+
+/**
+ * A grid cell that sizes itself, for content that is not a resizable widget —
+ * the pinned greeting. Same packing, none of the menu.
+ */
+export function MasonryCell({
   className = "",
   children,
 }: {
   className?: string;
   children: ReactNode;
 }) {
-  return <section className={className}>{children}</section>;
+  const { ref, span } = useRowSpan();
+  return (
+    <section className={className} style={{ gridRowEnd: `span ${span}` }}>
+      <div ref={ref}>{children}</div>
+    </section>
+  );
 }
 
 export function WidgetFrame({
@@ -195,6 +219,7 @@ export function WidgetFrame({
 
   const entry = widgets.find((w) => w.key === widgetKey);
   const size = entry?.size ?? "wide";
+  const { ref: measureRef, span } = useRowSpan();
 
   function setSize(next: WidgetSize) {
     actions.reorderWidgets(widgets.map((w) => (w.key === widgetKey ? { ...w, size: next } : w)));
@@ -223,6 +248,8 @@ export function WidgetFrame({
       // actually has. Without it, half-width widgets keep asking the viewport
       // how much room they have and get the wrong answer.
       className={`@container relative ${SPAN[size]}`}
+      // Height in 1px grid rows, measured rather than declared — see useRowSpan.
+      style={{ gridRowEnd: `span ${span}` }}
       onContextMenu={(e) => {
         // The app's own menu instead of the browser's. Right-click is the
         // desktop half of the same gesture the hold covers on touch.
@@ -248,7 +275,11 @@ export function WidgetFrame({
       onPointerUp={cancelHold}
       onPointerCancel={cancelHold}
     >
-      <div className={`${FILL} ${INNER[size] ?? ""}`}>{children}</div>
+      {/* The measured box is the content, not the frame: the frame's own height
+          is what we are computing, so measuring it would be circular. */}
+      <div ref={measureRef} className={INNER[size]}>
+        {children}
+      </div>
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         {/* Anchored to the widget's top-right rather than the cursor. A menu that

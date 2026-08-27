@@ -7,7 +7,7 @@ import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
-import { PinnedCell } from "@/components/widget-frame";
+import { MasonryCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
@@ -241,20 +241,21 @@ function Overview() {
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
       <div
         /*
-          Rows that share a height, not masonry.
+          Masonry, not rows.
 
-          Masonry packed tightly but left every column ending at a different
-          place, so nothing lined up and a short tile sat in its own pool of
-          space. For a dashboard that reads as broken rather than organic — the
-          tiles are meant to look like one instrument, not a feed.
+          Rows that share a height line up neatly, but a row is only as short as
+          its tallest tile — put the agenda next to the timer and the timer gets a
+          near-empty card the height of a full day's list. Packing tightly is the
+          better trade here: every tile is the size of its own contents, and the
+          ragged column ends read as a board rather than as a fault.
 
-          Grid rows already give every item in a row the same height; the tile
-          then has to actually fill it, which is what the h-full chain in
-          WidgetFrame does. A short widget becomes a roomier card rather than a
-          card with a gap under it, which is the difference between the two
-          layouts and the reason this is the right one here.
+          CSS has no masonry that ships in Chrome or Safari yet, so this is the
+          row-span technique: rows are 1px, row-gap is 0, and each tile measures
+          itself and spans as many of those rows as its height needs. The spacing
+          between stacked tiles lives inside that span, which is why row-gap has
+          to be zero.
         */
-        className="grid grid-flow-row-dense items-stretch gap-6 @2xl/board:grid-cols-6"
+        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-6"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -265,9 +266,9 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <PinnedCell key={key} className="@container @2xl/board:col-span-6">
+            <MasonryCell key={key} className="@container @2xl/board:col-span-6">
               {section}
-            </PinnedCell>
+            </MasonryCell>
           );
         })}
 
