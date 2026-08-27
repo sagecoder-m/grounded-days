@@ -10,6 +10,7 @@ import { MasonryCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
+import { FirstThing, isNewAccount } from "@/components/first-thing";
 import { AreaBalance } from "@/components/area-balance";
 import { MovementCards } from "@/components/movement-cards";
 import { SoftProgress } from "@/components/soft-progress";
@@ -140,6 +141,15 @@ function Overview() {
    * gesture. The write happens once, on release.
    */
   const [preview, setPreview] = useState<string[] | null>(null);
+
+  /**
+   * Whether someone with an empty account has asked to see the board anyway.
+   *
+   * Session-only and deliberately not persisted: by their next visit they will
+   * almost certainly have added something, and storing a flag for a state that
+   * resolves itself is a setting nobody will ever knowingly change.
+   */
+  const [lookingAround, setLookingAround] = useState(false);
   const orderedWidgets = preview ?? savedOrder;
 
   // Which section is being dragged and what it is hovering over. Held here
@@ -188,6 +198,10 @@ function Overview() {
   /** Ends a drag that finished outside any section, so nothing gets stuck — and
    *  keeps whatever arrangement the cursor had already produced. */
   const endDrag = () => commitPreview();
+
+  if (isNewAccount(state) && !lookingAround) {
+    return <FirstThing onLookAround={() => setLookingAround(true)} />;
+  }
 
   return (
     /*
