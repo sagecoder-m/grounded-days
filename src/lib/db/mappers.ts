@@ -222,20 +222,23 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
 // chart sit above the task list so the first thing seen is movement already
 // made, not work outstanding. Keep in step with the migration's column default.
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
+  // Four widgets, not nine. A day needs what is on today, what is coming,
+  // something to focus with, and one picture of how it has been going. The rest
+  // are kept but switched off — turning one on is easier than evaluating nine
+  // before you have used any of them.
+  //
+  // Thirds across the top and the river full width beneath divide evenly into
+  // the six-column board, so the default arrangement has no gaps.
   { key: "greeting", enabled: true, size: "wide" },
-  { key: "chart", enabled: true, size: "wide" },
-  { key: "goals", enabled: true, size: "wide" },
-  { key: "day", enabled: true, size: "wide" },
-  // Square, because that is the shape a dial wants. It shared the areas row for
-  // a while and had to match a progress card's height, which is how it ended up
-  // as an 838px card around a 104px dial.
-  { key: "focus", enabled: true, size: "square" },
-  { key: "upcoming", enabled: true, size: "wide" },
-  // The reflective panels. Wide for rhythm because twelve weeks of columns needs
-  // the room; the other two pair up as one half-width row.
-  { key: "rhythm", enabled: true, size: "wide" },
-  { key: "balance", enabled: true, size: "square" },
-  { key: "movement", enabled: true, size: "square" },
+  { key: "day", enabled: true, size: "third" },
+  { key: "upcoming", enabled: true, size: "third" },
+  { key: "focus", enabled: true, size: "third" },
+  { key: "river", enabled: true, size: "wide" },
+  { key: "chart", enabled: false, size: "wide" },
+  { key: "goals", enabled: false, size: "wide" },
+  { key: "rhythm", enabled: false, size: "wide" },
+  { key: "balance", enabled: false, size: "square" },
+  { key: "movement", enabled: false, size: "square" },
 ];
 
 const WIDGET_SIZES = ["square", "wide", "tall", "third"] as const;

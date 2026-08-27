@@ -242,3 +242,114 @@ export const MOVEMENT_WORDS: Record<Movement, string> = {
   quieter: "Quieter lately",
   none: "Nothing here yet",
 };
+
+// ---------------------------------------------------------------- rhythm river
+
+export interface RiverWeek {
+  /** Week start, yyyy-mm-dd. */
+  week: string;
+  /** Short axis label. */
+  label: string;
+  personal: number;
+  professional: number;
+  education: number;
+}
+
+export interface RiverData {
+  weeks: RiverWeek[];
+  /** How many weeks actually carry anything — the fallback threshold reads this
+   *  rather than the array length, which is padded. */
+  weeksWithData: number;
+  /** The area with the most across the window, or null when there is nothing. */
+  fullest: Area | null;
+  /** Loose comparison with the period before, for the optional second line.
+   *  Never a number — just which way it went. */
+  versusBefore: "fuller" | "quieter" | "similar" | "unknown";
+}
+
+/**
+ * Weekly activity per area, for the river.
+ *
+ * What counts, and what cannot:
+ *
+ * - Completed tasks and the person's own calendar entries carry an area, so they
+ *   land where they belong.
+ * - Habit ticks carry no area anywhere in the schema. They live under Personal
+ *   in the app, so they are counted there — an assumption worth knowing about,
+ *   not something the data states.
+ * - Goal and step completions are deliberately absent. A step records `done` but
+ *   no completion date, only updated_at, which changes when a title is edited or
+ *   a step reordered. Placing dots by that would put them in weeks nothing
+ *   happened, which is worse than leaving them out.
+ * - Imported calendar events never count. A lecture that arrived from a sync is
+ *   not something the person did.
+ *
+ * Not called time. Only timed events carry a duration and focus sessions carry
+ * minutes without an area, so an hours-per-area figure would be mostly invented.
+ */
+export function rhythmRiver(state: AppState, weeks: number, today = new Date()): RiverData {
+  const build = (from: Date, count: number): RiverWeek[] => {
+    const buckets = new Map<string, RiverWeek>();
+    for (let i = 0; i < count; i++) {
+      const w = addDays(from, i * 7);
+      buckets.set(dayKey(w), {
+        week: dayKey(w),
+        label: format(w, "d MMM"),
+        personal: 0,
+        professional: 0,
+        education: 0,
+      });
+    }
+    const add = (dateStr: string, area: Area) => {
+      // Parsed by component. A yyyy-mm-dd through new Date() is UTC midnight and
+      // slides into the previous week west of Greenwich.
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+      if (!m) return;
+      const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      const bucket = buckets.get(dayKey(startOfWeek(d, WEEK_OPTS)));
+      if (bucket) bucket[area] += 1;
+    };
+
+    for (const task of state.tasks) if (task.done && task.date) add(task.date, task.area);
+    for (const e of state.events) if (e.source === "local" && e.area) add(e.date, e.area);
+    for (const habit of state.habits) {
+      for (const [date, done] of Object.entries(habit.log)) if (done) add(date, "personal");
+    }
+    return [...buckets.values()];
+  };
+
+  const start = startOfWeek(subWeeks(today, weeks - 1), WEEK_OPTS);
+  const current = build(start, weeks);
+  const total = (w: RiverWeek) => w.personal + w.professional + w.education;
+
+  // The window before this one, same length, for the optional comparison line.
+  const previous = build(startOfWeek(subWeeks(start, weeks), WEEK_OPTS), weeks);
+  const sum = (list: RiverWeek[]) => list.reduce((n, w) => n + total(w), 0);
+  const now = sum(current);
+  const before = sum(previous);
+
+  let versusBefore: RiverData["versusBefore"] = "unknown";
+  if (before > 0) {
+    // A tenth either way, so ordinary variation reads as similar rather than as
+    // a change worth remarking on.
+    const margin = Math.max(1, before * 0.1);
+    versusBefore = now > before + margin ? "fuller" : now < before - margin ? "quieter" : "similar";
+  }
+
+  let fullest: Area | null = null;
+  let best = 0;
+  for (const area of AREAS) {
+    const n = current.reduce((acc, w) => acc + w[area], 0);
+    if (n > best) {
+      best = n;
+      fullest = area;
+    }
+  }
+
+  return {
+    weeks: current,
+    weeksWithData: current.filter((w) => total(w) > 0).length,
+    fullest,
+    versusBefore: now === 0 ? "unknown" : versusBefore,
+  };
+}

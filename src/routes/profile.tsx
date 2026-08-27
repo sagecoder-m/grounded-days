@@ -51,7 +51,8 @@ const WIDGET_LABELS: Record<string, string> = {
   day: "A look at today",
   focus: "Focus",
   upcoming: "Upcoming",
-  rhythm: "Your rhythm",
+  river: "Your rhythm (river)",
+  rhythm: "Rhythm grid",
   balance: "Where your attention went",
   movement: "How it's been going",
 };

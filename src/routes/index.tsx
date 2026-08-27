@@ -9,6 +9,7 @@ import { FocusTimer } from "@/components/focus-timer";
 import { MasonryCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
+import { RhythmRiver } from "@/components/rhythm-river";
 import { AreaBalance } from "@/components/area-balance";
 import { MovementCards } from "@/components/movement-cards";
 import { SoftProgress } from "@/components/soft-progress";
@@ -441,6 +442,7 @@ function Overview() {
         </section>
       );
 
+    if (key === "river" && w("river")) return <RhythmRiver key={key} state={state} />;
     if (key === "rhythm" && w("rhythm")) return <RhythmGrid key={key} state={state} />;
     if (key === "balance" && w("balance")) return <AreaBalance key={key} state={state} />;
     if (key === "movement" && w("movement")) return <MovementCards key={key} state={state} />;
