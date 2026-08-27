@@ -46,7 +46,11 @@ function isSharePath(pathname: string): boolean {
 function BareShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+      {/* A container, matching the signed-in shell's, so a page laid out with
+          container queries behaves the same either side of the gate. */}
+      <div className="@container mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
+        {children}
+      </div>
     </div>
   );
 }

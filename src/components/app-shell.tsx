@@ -223,8 +223,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
           <main className="min-w-0">
+            {/* A container, so a page can lay itself out against the width it
+                actually has rather than the window's. Pages were already written
+                with @xl/@4xl variants and none of them could ever match: with no
+                container ancestor a container query is simply never true, so
+                those columns had been silently collapsing to one this whole
+                time. The board declares its own named container inside this one
+                and is unaffected. */}
             <div
-              className={`mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
+              className={`@container mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
                 isBoard ? "max-w-[96rem]" : "max-w-6xl"
               }`}
             >
@@ -316,7 +323,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <main className="min-w-0 flex-1">
             <div
-              className={`mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
+              className={`@container mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
                 isBoard ? "max-w-[96rem]" : "max-w-5xl"
               }`}
             >
