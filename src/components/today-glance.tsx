@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 
 import { actions, useAppState } from "@/lib/store";
 import { dateKey } from "@/components/task-grid";
@@ -162,7 +162,7 @@ function AgendaRow({
 function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
   const late = Boolean(task.date && task.date < today);
   return (
-    <div className="flex items-baseline gap-3 px-5 py-2.5">
+    <div className="group flex items-baseline gap-3 px-5 py-2.5">
       <span
         className={`w-16 shrink-0 text-right text-xs ${
           late ? "text-[color:var(--clay)]" : "text-ink-soft"
@@ -182,6 +182,22 @@ function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
       >
         {task.title}
       </span>
+      {/* Everything in this list is due today or already late, so every open row
+          can be let go of. Kept to hover here rather than shown outright — the
+          rows are one line each and a permanent second control on all of them
+          would crowd the one widget people look at every morning. The full-size
+          version on the area pages is always visible. */}
+      {!task.done && (
+        <button
+          type="button"
+          onClick={() =>
+            actions.updateTask(task.id, { date: format(addDays(new Date(), 1), "yyyy-MM-dd") })
+          }
+          className="reveal-control shrink-0 text-[11px] text-ink-soft underline underline-offset-4 hover:text-ink"
+        >
+          not today
+        </button>
+      )}
       <span
         className="ml-2 h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ backgroundColor: AREA_VAR[task.area] }}

@@ -1,7 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { AreaChip } from "./area-chip";
 import { actions, type Task } from "@/lib/store";
-import { format, isBefore, isToday, parseISO } from "date-fns";
+import { addDays, format, isBefore, isToday, parseISO } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InlineText } from "./inline-text";
@@ -32,6 +32,27 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
     task.date &&
     !task.done &&
     isBefore(parseISO(task.date), new Date(new Date().setHours(0, 0, 0, 0)));
+
+  /**
+   * One tap to say "not today".
+   *
+   * Moving a task off today already worked — through the date field, which means
+   * opening a picker and choosing a day. That is a fine way to reschedule
+   * something and a terrible way to admit today is not happening, and the
+   * difference matters: when the only cheap action on a row is "done", a row you
+   * cannot do stays there looking at you. Tapping through into a calendar to
+   * defer feels like paperwork for a failure, so people leave it instead, and
+   * the list fills with things they have privately already given up on.
+   *
+   * Offered only on work that is due today or already late, since those are the
+   * rows that carry that weight — a task dated next week is not asking anything
+   * of anyone yet. Shown rather than revealed on hover: an escape hatch nobody
+   * discovers is not an escape hatch, and it is one line of small grey text.
+   */
+  const canDefer =
+    !readOnly && !task.done && !!task.date && (overdue || isToday(parseISO(task.date)));
+  const notToday = () =>
+    actions.updateTask(task.id, { date: format(addDays(new Date(), 1), "yyyy-MM-dd") });
   return (
     <div
       className={cn(
@@ -108,6 +129,15 @@ export function TaskRow({ task, showArea = true, readOnly = false, onDelete }: P
                 aria-label="Due date"
               />
             </label>
+          )}
+          {canDefer && (
+            <button
+              type="button"
+              onClick={notToday}
+              className="text-[11px] text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              not today
+            </button>
           )}
         </div>
       </div>
