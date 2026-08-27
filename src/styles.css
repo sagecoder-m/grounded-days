@@ -353,3 +353,46 @@
     pointer-events: auto;
   }
 }
+
+/*
+ * The rhythm river's arrival.
+ *
+ * Both are gated in the component on prefers-reduced-motion, so nothing here
+ * needs a media query of its own — a stopped animation should not still be
+ * holding an element at opacity 0.
+ */
+
+/* Each moment settles in rather than blinking on. */
+@keyframes river-dot {
+  from {
+    fill-opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    fill-opacity: 0.55;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * The bands rise and settle once, as a wave passing through.
+ *
+ * A slow scale from the centre line rather than a looping undulation: a river
+ * that never stops moving is a thing in the corner of your eye demanding
+ * attention, which is the opposite of what this app is for. It arrives, it
+ * settles, it stays still.
+ */
+@keyframes river-wave {
+  0% {
+    transform: scaleY(0.35);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scaleY(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}

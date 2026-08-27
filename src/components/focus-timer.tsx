@@ -71,13 +71,19 @@ export function FocusTimer({
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
               const o = ctx.createOscillator();
               const g = ctx.createGain();
-              o.type = "sine"; o.frequency.value = 528; o.connect(g); g.connect(ctx.destination);
+              o.type = "sine";
+              o.frequency.value = 528;
+              o.connect(g);
+              g.connect(ctx.destination);
               g.gain.setValueAtTime(0.001, ctx.currentTime);
               g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.05);
               g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-              o.start(); o.stop(ctx.currentTime + 1.5);
+              o.start();
+              o.stop(ctx.currentTime + 1.5);
             } catch {}
-            toast("Nicely done. Take a soft pause.", { description: `${focusMin} minutes of focus, logged.` });
+            toast("Nicely done. Take a soft pause.", {
+              description: `${focusMin} minutes of focus, logged.`,
+            });
             setPhase("break");
             setSecondsLeft(breakMin * 60);
           } else {
@@ -146,10 +152,28 @@ export function FocusTimer({
          tile it sits in decides the width. @sm is the widget's own width, not
          the window's, so a half-width tile stacks and a full-width one does
          not. */
-      <div className="card-soft grid items-center gap-4 p-4 @sm:grid-cols-[auto_minmax(0,1fr)] @sm:gap-5 @sm:p-5">
+      /*
+        h-full and centred, because tiles in a row now share a height. The timer
+        is the shortest thing on the board, so in a row with the agenda it gets a
+        tall tile whatever it asks for — floating its dial at the top of that
+        would look like a mistake. Centred, it reads as deliberate.
+
+        @md rather than @sm for the side-by-side switch: at a third of a wide
+        board the tile is around 460px, and splitting there left a squat dial
+        beside two cramped fields. Stacking until there is real room keeps the
+        dial the size it deserves and the tile closer to square.
+      */
+      <div className="card-soft flex h-full flex-col justify-center gap-4 p-4 @md:grid @md:grid-cols-[auto_minmax(0,1fr)] @md:items-center @md:gap-5 @md:p-5">
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke="var(--border)"
+              strokeWidth={stroke}
+              fill="none"
+            />
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -230,7 +254,14 @@ export function FocusTimer({
       >
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke="var(--border)"
+              strokeWidth={stroke}
+              fill="none"
+            />
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -245,32 +276,72 @@ export function FocusTimer({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
-            <div className={`mt-1 font-serif tabular-nums ${variant === "medium" ? "text-3xl" : "text-5xl"}`}>{mm}:{ss}</div>
+            <div className="text-[10px] uppercase tracking-widest text-ink-soft">
+              {phase === "focus" ? "Focus" : "Break"}
+            </div>
+            <div
+              className={`mt-1 font-serif tabular-nums ${variant === "medium" ? "text-3xl" : "text-5xl"}`}
+            >
+              {mm}:{ss}
+            </div>
             <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-widest text-ink-soft">What are you working on?</label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Session label" />
+            <label className="text-xs uppercase tracking-widest text-ink-soft">
+              What are you working on?
+            </label>
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Session label"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-widest text-ink-soft">Focus (min)</label>
-              <Input type="number" min={5} max={90} value={focusMin} onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))} />
+              <Input
+                type="number"
+                min={5}
+                max={90}
+                value={focusMin}
+                onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-widest text-ink-soft">Break (min)</label>
-              <Input type="number" min={1} max={30} value={breakMin} onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))} />
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={breakMin}
+                onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))}
+              />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button className="rounded-full" onClick={() => setRunning((r) => !r)}>
-              {running ? <><Pause className="h-4 w-4" /> Pause</> : <><Play className="h-4 w-4" /> Start</>}
+              {running ? (
+                <>
+                  <Pause className="h-4 w-4" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" /> Start
+                </>
+              )}
             </Button>
-            <Button variant="outline" className="rounded-full border-tan" onClick={() => { setRunning(false); setPhase("focus"); setSecondsLeft(focusMin * 60); }}>
+            <Button
+              variant="outline"
+              className="rounded-full border-tan"
+              onClick={() => {
+                setRunning(false);
+                setPhase("focus");
+                setSecondsLeft(focusMin * 60);
+              }}
+            >
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
           </div>

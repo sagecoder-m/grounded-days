@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Area as RArea, AreaChart, Customized, ResponsiveContainer, XAxis } from "recharts";
 
 import { AREA_META } from "@/lib/store";
@@ -34,6 +34,44 @@ import { rhythmRiver, type RiverWeek } from "@/lib/user-insights";
  */
 
 const WEEKS = 12;
+
+/**
+ * Counts how many times the element has come into view.
+ *
+ * Used as a React key so the whole animation restarts each time — the ask was
+ * for it to play "every time the graph is in view", not once per page load.
+ * Returning a count rather than a boolean means a re-entry always produces a new
+ * value, so nothing has to be reset first.
+ *
+ * Returns 0 and never moves when the system asks for reduced motion, so the
+ * chart simply exists rather than performing.
+ */
+function useInViewCount<T extends Element>() {
+  const ref = useRef<T>(null);
+  const [count, setCount] = useState(0);
+  const [still] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false),
+  );
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || still || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) if (entry.isIntersecting) setCount((n) => n + 1);
+      },
+      // A third of the card, so it fires when the chart is genuinely being
+      // looked at rather than when one pixel clips the viewport.
+      { threshold: 0.33 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [still]);
+
+  return { ref, playKey: count, still };
+}
 
 /** Under this, a river is a couple of blobs and reads as broken rather than
  *  quiet — the placeholder is kinder and more honest. */
@@ -71,7 +109,7 @@ function scatter(seed: number): number {
  * high volumes the dots simply read as texture, which is the right level of
  * precision for "how full was that week".
  */
-function MomentDots(props: Record<string, unknown>) {
+function MomentDots(props: Record<string, unknown> & { still?: boolean }) {
   const items = props.formattedGraphicalItems as
     | { props?: { points?: { x: number; y: number }[]; baseLine?: { x: number; y: number }[] } }[]
     | undefined;
@@ -123,6 +161,14 @@ function MomentDots(props: Record<string, unknown>) {
         const cx = Math.min(maxX - 2, Math.max(minX + 2, point.x + jitterX));
         // Inset so a dot never touches the band's edge.
         const y = top + 4 + scatter(seed + 0.5) * Math.max(1, height - 8);
+        /*
+          Staggered left to right, a hair apart, so the dots arrive like
+          something settling rather than all at once. The delay is driven by the
+          week rather than the dot index, so a busy week does not take longer to
+          finish than a quiet one — the sweep should read as time passing, not as
+          the chart counting things out.
+        */
+        const delay = props.still ? 0 : 240 + weekIndex * 55 + scatter(seed + 1.5) * 90;
         dots.push(
           <circle
             key={`${seriesIndex}-${weekIndex}-${i}`}
@@ -130,7 +176,14 @@ function MomentDots(props: Record<string, unknown>) {
             cy={y}
             r={1.6}
             fill="var(--card)"
-            fillOpacity={0.55}
+            style={
+              props.still
+                ? { fillOpacity: 0.55 }
+                : {
+                    fillOpacity: 0,
+                    animation: `river-dot 520ms cubic-bezier(0.2, 0.8, 0.2, 1) ${delay}ms forwards`,
+                  }
+            }
           />,
         );
       }
@@ -162,6 +215,7 @@ const VERSUS: Record<string, string> = {
 
 export function RhythmRiver({ state }: { state: AppState }) {
   const data = useMemo(() => rhythmRiver(state, WEEKS), [state]);
+  const { ref, playKey, still } = useInViewCount<HTMLDivElement>();
   // Off by default: a comparison is a second thing to think about, and the
   // point of the panel is the shape.
   const [showComparison, setShowComparison] = useState(false);
@@ -178,54 +232,87 @@ export function RhythmRiver({ state }: { state: AppState }) {
       <div className="card-soft p-4 md:p-5">
         {enough ? (
           <>
-            <div className="h-52 @xl:h-64">
-              <ResponsiveContainer>
-                <AreaChart
-                  data={data.weeks as RiverWeek[]}
-                  // The whole argument of the component, in one prop.
-                  stackOffset="wiggle"
-                  margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
-                >
-                  <defs>
-                    {SERIES.map((s) => (
-                      <linearGradient key={s.key} id={`river-${s.key}`} x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor={s.color} stopOpacity={0.9} />
-                        <stop offset="100%" stopColor={s.color} stopOpacity={0.65} />
-                      </linearGradient>
-                    ))}
-                  </defs>
+            {/*
+              Two elements, deliberately. The observed one never remounts; the
+              keyed one inside it does.
 
-                  {/* Weeks only. No y-axis at all: there is no quantity being
+              With the ref and the key on the same element, the first
+              intersection bumped the key, React replaced the node, and the
+              observer was left watching a detached one — so it fired exactly
+              once and never again. The replay looked like it worked because the
+              animation still ran on that first mount.
+            */}
+            <div ref={ref} className="h-52 @xl:h-64">
+              <div
+                className="h-full"
+                // The wave rises from the middle, which is where a wiggle stack's
+                // own baseline sits, so it grows out of its centre rather than up
+                // off a floor that is not there.
+                style={
+                  still
+                    ? undefined
+                    : {
+                        transformOrigin: "50% 50%",
+                        animation: "river-wave 900ms cubic-bezier(0.22, 1, 0.36, 1) both",
+                      }
+                }
+                key={playKey}
+              >
+                <ResponsiveContainer>
+                  <AreaChart
+                    data={data.weeks as RiverWeek[]}
+                    // The whole argument of the component, in one prop.
+                    stackOffset="wiggle"
+                    margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+                  >
+                    <defs>
+                      {SERIES.map((s) => (
+                        <linearGradient
+                          key={s.key}
+                          id={`river-${s.key}`}
+                          x1="0"
+                          x2="0"
+                          y1="0"
+                          y2="1"
+                        >
+                          <stop offset="0%" stopColor={s.color} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={s.color} stopOpacity={0.65} />
+                        </linearGradient>
+                      ))}
+                    </defs>
+
+                    {/* Weeks only. No y-axis at all: there is no quantity being
                       asserted, and an axis would invent one. */}
-                  <XAxis
-                    dataKey="label"
-                    fontSize={10}
-                    stroke="var(--ink-soft)"
-                    tickLine={false}
-                    axisLine={false}
-                    interval="preserveStartEnd"
-                    minTickGap={40}
-                  />
-
-                  {SERIES.map((s) => (
-                    <RArea
-                      key={s.key}
-                      type="basis"
-                      dataKey={s.key}
-                      name={AREA_META[s.key].label}
-                      stackId="river"
-                      stroke="none"
-                      fill={`url(#river-${s.key})`}
-                      // Recharts multiplies its own 0.6 default into whatever the
-                      // fill carries; 1 leaves the gradient's opacity as chosen.
-                      fillOpacity={1}
-                      isAnimationActive={false}
+                    <XAxis
+                      dataKey="label"
+                      fontSize={10}
+                      stroke="var(--ink-soft)"
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={40}
                     />
-                  ))}
 
-                  <Customized component={MomentDots} />
-                </AreaChart>
-              </ResponsiveContainer>
+                    {SERIES.map((s) => (
+                      <RArea
+                        key={s.key}
+                        type="basis"
+                        dataKey={s.key}
+                        name={AREA_META[s.key].label}
+                        stackId="river"
+                        stroke="none"
+                        fill={`url(#river-${s.key})`}
+                        // Recharts multiplies its own 0.6 default into whatever the
+                        // fill carries; 1 leaves the gradient's opacity as chosen.
+                        fillOpacity={1}
+                        isAnimationActive={false}
+                      />
+                    ))}
+
+                    <Customized component={MomentDots} still={still} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             <p className="mt-3 text-sm text-ink">{summarise(data.fullest, data.weeksWithData)}</p>

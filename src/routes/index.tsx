@@ -7,7 +7,7 @@ import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
-import { MasonryCell } from "@/components/widget-frame";
+import { PinnedCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
@@ -241,21 +241,20 @@ function Overview() {
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
       <div
         /*
-          Masonry, not rows.
+          Rows that share a height, not masonry.
 
-          auto-rows-min made every row as tall as its tallest tile, so a short
-          widget beside a long one left dead space underneath it — visible all
-          down the board. CSS has no masonry that ships in Chrome or Safari yet,
-          so this is the row-span technique: rows are 1px, row-gap is 0, and each
-          tile spans as many of those rows as its own measured height needs. The
-          spacing between stacked tiles is baked into that span rather than
-          coming from row-gap, which is why row-gap has to be zero.
+          Masonry packed tightly but left every column ending at a different
+          place, so nothing lined up and a short tile sat in its own pool of
+          space. For a dashboard that reads as broken rather than organic — the
+          tiles are meant to look like one instrument, not a feed.
 
-          grid-flow-dense is what lets a short tile drop back into a gap an
-          earlier row left open. Column gap stays a real gap because columns are
-          uniform and need no help.
+          Grid rows already give every item in a row the same height; the tile
+          then has to actually fill it, which is what the h-full chain in
+          WidgetFrame does. A short widget becomes a roomier card rather than a
+          card with a gap under it, which is the difference between the two
+          layouts and the reason this is the right one here.
         */
-        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-6"
+        className="grid grid-flow-row-dense items-stretch gap-6 @2xl/board:grid-cols-6"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -266,9 +265,9 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <MasonryCell key={key} className="@container @2xl/board:col-span-6">
+            <PinnedCell key={key} className="@container @2xl/board:col-span-6">
               {section}
-            </MasonryCell>
+            </PinnedCell>
           );
         })}
 
@@ -488,13 +487,18 @@ function Overview() {
                   and repeating it here read as twice the work. Same grid, so
                   the two sections are one list split by time rather than two
                   designs. */}
-          <TaskGrid
-            tasks={state.tasks}
-            events={state.events}
-            from={upcomingRange.from}
-            to={upcomingRange.to}
-            emptyText="Nothing in the next few days."
-          />
+          {/* The card the other widgets have. Without it Upcoming was loose rows
+              floating on the page while everything beside it sat on a surface,
+              which is why it never looked like it belonged in the row. */}
+          <div className="card-soft p-4 md:p-5">
+            <TaskGrid
+              tasks={state.tasks}
+              events={state.events}
+              from={upcomingRange.from}
+              to={upcomingRange.to}
+              emptyText="Nothing in the next few days."
+            />
+          </div>
         </section>
       );
 
