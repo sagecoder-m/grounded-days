@@ -139,6 +139,14 @@ const listPatch =
   (prev: T[] | undefined) =>
     (prev ?? []).map((row) => (row.id === id ? { ...row, ...patch } : row));
 
+/** The same, for a set of ids in one pass. */
+const listPatchMany =
+  <T extends { id: string }>(ids: string[], patch: Partial<T>) =>
+  (prev: T[] | undefined) => {
+    const set = new Set(ids);
+    return (prev ?? []).map((row) => (set.has(row.id) ? { ...row, ...patch } : row));
+  };
+
 /**
  * Where a newly created card lands: after everything already there.
  *
@@ -198,6 +206,24 @@ export const actions = {
     const { userId } = requireStoreContext();
     void write([{ key: qk.tasks(userId), update: listPatch<Task>(id, patch) }], () =>
       supabase.from("tasks").update(taskPatchToRow(patch)).eq("id", id),
+    );
+  },
+
+  /**
+   * One patch across many tasks, in a single statement.
+   *
+   * Written because clearing a backlog is the one place this app asks about
+   * dozens of rows at once. Looping updateTask would be one round trip per task
+   * — forty of them for a real pile — and each with its own optimistic patch and
+   * its own rollback, so a failure halfway through leaves the list in a state
+   * that is neither before nor after. One `in` filter is one request that either
+   * lands or does not.
+   */
+  updateTasks(ids: string[], patch: Partial<Task>) {
+    if (ids.length === 0) return;
+    const { userId } = requireStoreContext();
+    void write([{ key: qk.tasks(userId), update: listPatchMany<Task>(ids, patch) }], () =>
+      supabase.from("tasks").update(taskPatchToRow(patch)).in("id", ids),
     );
   },
 

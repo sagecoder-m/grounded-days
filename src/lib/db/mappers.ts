@@ -346,16 +346,32 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
 
 // -------------------------------------------------------------- to row patch
 
+/*
+ * On `"field" in patch` rather than `patch.field !== undefined`.
+ *
+ * Every guard below whose body ends in `?? null` exists so a value can be
+ * cleared. With a !== undefined guard that branch was unreachable: the domain
+ * types use undefined for absence, never null, so `patch.date ?? null` could
+ * only ever fire for a null nobody passes — and passing undefined skipped the
+ * assignment entirely. Clearing a due date, a description or a goal's target
+ * silently did nothing, with no error anywhere.
+ *
+ * `in` distinguishes the two cases the code always meant to distinguish: a key
+ * that is absent (leave the column alone) from a key explicitly set to undefined
+ * (write null). Guards without `?? null` keep the old form, because for a NOT
+ * NULL column an undefined should be ignored rather than rejected by Postgres.
+ */
+
 export function taskPatchToRow(patch: Partial<Task>): TablesUpdate<"tasks"> {
   const row: TablesUpdate<"tasks"> = {};
   if (patch.area !== undefined) row.area = patch.area;
   if (patch.title !== undefined) row.title = patch.title;
-  if (patch.description !== undefined) row.description = patch.description ?? null;
-  if (patch.courseId !== undefined) row.course_id = patch.courseId ?? null;
-  if (patch.date !== undefined) row.date = patch.date ?? null;
+  if ("description" in patch) row.description = patch.description ?? null;
+  if ("courseId" in patch) row.course_id = patch.courseId ?? null;
+  if ("date" in patch) row.date = patch.date ?? null;
   if (patch.done !== undefined) row.done = patch.done;
-  if (patch.projectId !== undefined) row.project_id = patch.projectId ?? null;
-  if (patch.subprojectId !== undefined) row.subproject_id = patch.subprojectId ?? null;
+  if ("projectId" in patch) row.project_id = patch.projectId ?? null;
+  if ("subprojectId" in patch) row.subproject_id = patch.subprojectId ?? null;
   return row;
 }
 
@@ -363,15 +379,15 @@ export function goalPatchToRow(patch: Partial<Goal>): TablesUpdate<"goals"> {
   const row: TablesUpdate<"goals"> = {};
   if (patch.area !== undefined) row.area = patch.area;
   if (patch.name !== undefined) row.name = patch.name;
-  if (patch.description !== undefined) row.description = patch.description ?? null;
+  if ("description" in patch) row.description = patch.description ?? null;
   // progress stays writable for goals that have no steps yet; once a goal has
   // steps its percentage is derived and nothing writes this column.
   if (patch.progress !== undefined) row.progress = patch.progress;
   // Explicit null on clear, so removing a target date actually removes it rather
   // than being dropped as "no change".
-  if (patch.targetDate !== undefined) row.target_date = patch.targetDate ?? null;
-  if (patch.projectId !== undefined) row.project_id = patch.projectId ?? null;
-  if (patch.subprojectId !== undefined) row.subproject_id = patch.subprojectId ?? null;
+  if ("targetDate" in patch) row.target_date = patch.targetDate ?? null;
+  if ("projectId" in patch) row.project_id = patch.projectId ?? null;
+  if ("subprojectId" in patch) row.subproject_id = patch.subprojectId ?? null;
   return row;
 }
 
@@ -379,7 +395,7 @@ export function projectPatchToRow(patch: Partial<Project>): TablesUpdate<"projec
   const row: TablesUpdate<"projects"> = {};
   if (patch.area !== undefined) row.area = patch.area;
   if (patch.name !== undefined) row.name = patch.name;
-  if (patch.description !== undefined) row.description = patch.description ?? null;
+  if ("description" in patch) row.description = patch.description ?? null;
   if (patch.status !== undefined) row.status = patch.status;
   return row;
 }
@@ -387,7 +403,7 @@ export function projectPatchToRow(patch: Partial<Project>): TablesUpdate<"projec
 export function subprojectPatchToRow(patch: Partial<Subproject>): TablesUpdate<"subprojects"> {
   const row: TablesUpdate<"subprojects"> = {};
   if (patch.name !== undefined) row.name = patch.name;
-  if (patch.description !== undefined) row.description = patch.description ?? null;
+  if ("description" in patch) row.description = patch.description ?? null;
   return row;
 }
 
@@ -395,13 +411,13 @@ export function eventPatchToRow(patch: Partial<CalEvent>): TablesUpdate<"events"
   const row: TablesUpdate<"events"> = {};
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.date !== undefined) row.date = patch.date;
-  if (patch.endDate !== undefined) row.end_date = patch.endDate ?? null;
-  if (patch.area !== undefined) row.area = patch.area ?? null;
+  if ("endDate" in patch) row.end_date = patch.endDate ?? null;
+  if ("area" in patch) row.area = patch.area ?? null;
   // Rescheduling moves the timestamps too. Without these a dragged event would
   // save its new date while starts_at still pointed at the old day, and the
   // board (which filters on date) would disagree with the day view (which
   // sorts on starts_at).
-  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt ?? null;
-  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt ?? null;
+  if ("startsAt" in patch) row.starts_at = patch.startsAt ?? null;
+  if ("endsAt" in patch) row.ends_at = patch.endsAt ?? null;
   return row;
 }

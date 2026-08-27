@@ -19,7 +19,7 @@
  */
 import { addDays, differenceInCalendarDays, format, startOfWeek, subWeeks } from "date-fns";
 
-import type { AppState, Area } from "./store-types";
+import type { AppState, Area, Task } from "./store-types";
 
 /** Monday, matching the habit grid and the calendar. */
 const WEEK_OPTS = { weekStartsOn: 1 } as const;
@@ -352,4 +352,41 @@ export function rhythmRiver(state: AppState, weeks: number, today = new Date()):
     fullest,
     versusBefore: now === 0 ? "unknown" : versusBefore,
   };
+}
+
+// ------------------------------------------------------------- waiting a while
+
+/**
+ * How old a due date has to be before the backlog is worth mentioning.
+ *
+ * A week, so yesterday's task is simply today's problem and does not summon a
+ * whole panel. The offer is for the pile that builds while someone is away, not
+ * for ordinary slippage.
+ */
+export const WAITING_DAYS = 7;
+
+/**
+ * And how many, before a panel is less annoying than the pile itself.
+ *
+ * One forgotten task does not need an intervention; it needs ticking or
+ * ignoring. Three is where a list starts to feel like a backlog.
+ */
+export const WAITING_MIN = 3;
+
+/**
+ * Tasks that have been waiting long enough to be worth offering to clear.
+ *
+ * This is the return-after-absence case: someone stops for three weeks, comes
+ * back, and the first thing the app does is show them everything they did not
+ * do. That moment is where people quit, and it is the one thing the app was not
+ * softening.
+ *
+ * Unfinished only, and dated only — an undated task is not late, it is just
+ * unscheduled, which is exactly the state this offers to move things into.
+ */
+export function waitingAWhile(state: AppState, today = new Date()): Task[] {
+  const cutoff = dayKey(addDays(today, -WAITING_DAYS));
+  return state.tasks
+    .filter((t) => !t.done && t.date && t.date < cutoff)
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 }

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
 import { actions, PINNED_WIDGETS, useAppState } from "@/lib/store";
+import { waitingAWhile, WAITING_MIN } from "@/lib/user-insights";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
@@ -11,6 +12,7 @@ import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
 import { FirstThing, isNewAccount } from "@/components/first-thing";
+import { WaitingAWhile } from "@/components/waiting-a-while";
 import { AreaBalance } from "@/components/area-balance";
 import { MovementCards } from "@/components/movement-cards";
 import { SoftProgress } from "@/components/soft-progress";
@@ -150,6 +152,17 @@ function Overview() {
    * resolves itself is a setting nobody will ever knowingly change.
    */
   const [lookingAround, setLookingAround] = useState(false);
+
+  /**
+   * The backlog offer, and whether it has been waved away this session.
+   *
+   * Session-only on purpose. Persisting a dismissal would mean the pile can be
+   * silenced permanently and then quietly grow, and the offer is only ever three
+   * buttons at the top of a page — cheap to ignore again.
+   */
+  const [backlogDismissed, setBacklogDismissed] = useState(false);
+  const waiting = useMemo(() => waitingAWhile(state), [state]);
+  const showBacklog = !backlogDismissed && waiting.length >= WAITING_MIN;
   const orderedWidgets = preview ?? savedOrder;
 
   // Which section is being dragged and what it is hovering over. Held here
@@ -225,6 +238,7 @@ function Overview() {
       way to express "third".
     */
     <div className="@container/board">
+      {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
       <div
         /*
           Masonry, not rows.
