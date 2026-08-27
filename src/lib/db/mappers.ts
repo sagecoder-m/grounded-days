@@ -31,6 +31,7 @@ import type {
   AssistantTone,
   Settings,
   Subproject,
+  Theme,
   WidgetSize,
   WeekStart,
   Task,
@@ -258,6 +259,7 @@ export const DEFAULT_SETTINGS: Settings = {
   displayName: "friend",
   density: "comfy",
   accent: "sage",
+  theme: "system",
   defaultCalView: "week",
   navLayout: "sidebar",
   weekStartsOn: 1,
@@ -300,6 +302,9 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     displayName: row.display_name,
     density: oneOf<Density>(["compact", "comfy"], row.density, "comfy"),
     accent: oneOf<AccentVariant>(["sage", "clay", "brown", "tan"], row.accent, "sage"),
+    // Rows written before the column existed read as null through the client,
+    // NOT NULL default notwithstanding — same case as week_starts_on.
+    theme: oneOf<Theme>(["light", "dark", "system"], row.theme, "system"),
     defaultCalView: oneOf<CalView>(["week", "month", "year"], row.default_cal_view, "week"),
     navLayout: oneOf<NavLayout>(["sidebar", "top"], row.nav_layout, "sidebar"),
     // Numeric rather than a string union, so oneOf() does not apply. A row
@@ -334,6 +339,7 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.displayName !== undefined) row.display_name = patch.displayName;
   if (patch.density !== undefined) row.density = patch.density;
   if (patch.accent !== undefined) row.accent = patch.accent;
+  if (patch.theme !== undefined) row.theme = patch.theme;
   if (patch.defaultCalView !== undefined) row.default_cal_view = patch.defaultCalView;
   if (patch.navLayout !== undefined) row.nav_layout = patch.navLayout;
   if (patch.weekStartsOn !== undefined) row.week_starts_on = patch.weekStartsOn;

@@ -711,6 +711,7 @@ export type Database = {
           display_name: string
           nav_layout: string
           show_focus_timer: boolean
+          theme: string
           updated_at: string
           user_id: string
           week_starts_on: number
@@ -727,6 +728,7 @@ export type Database = {
           display_name?: string
           nav_layout?: string
           show_focus_timer?: boolean
+          theme?: string
           updated_at?: string
           user_id: string
           week_starts_on?: number
@@ -743,6 +745,7 @@ export type Database = {
           display_name?: string
           nav_layout?: string
           show_focus_timer?: boolean
+          theme?: string
           updated_at?: string
           user_id?: string
           week_starts_on?: number

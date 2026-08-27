@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppGate } from "@/components/app-gate";
 import { Toaster } from "sonner";
+import { THEME_BOOT_SCRIPT } from "@/lib/use-theme";
 
 function NotFoundComponent() {
   return (
@@ -79,6 +80,10 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Before anything else in the head: this decides whether the first
+            painted frame is cream or dark. Run after the stylesheet and it is
+            a flash; run from React and it is a longer one. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>

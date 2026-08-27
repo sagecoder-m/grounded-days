@@ -11,6 +11,7 @@ import {
   type AssistantTone,
   type NavLayout,
   type Settings,
+  type Theme,
   type WeekStart,
 } from "@/lib/store";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,16 @@ import { PasscodeSettings } from "@/components/passcode-settings";
 import { useIsAdmin } from "@/lib/use-is-admin";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ShareLinksSection } from "@/components/share-links";
-import { ArrowDown, ArrowUp, GripVertical, Pin } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  GripVertical,
+  Monitor,
+  Moon,
+  Pin,
+  Sun,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -56,6 +66,12 @@ const WIDGET_LABELS: Record<string, string> = {
   balance: "Where your attention went",
   movement: "How it's been going",
 };
+
+const THEMES: { key: Theme; label: string; hint: string; icon: LucideIcon }[] = [
+  { key: "system", label: "Follow my device", hint: "Changes when your device does", icon: Monitor },
+  { key: "light", label: "Light", hint: "Cream, always", icon: Sun },
+  { key: "dark", label: "Dark", hint: "Easier at night", icon: Moon },
+];
 
 const NAV_LAYOUTS: { key: NavLayout; label: string; hint: string }[] = [
   { key: "sidebar", label: "Side rail", hint: "Tabs down the left, collapsible to icons" },
@@ -135,6 +151,34 @@ function ProfilePage() {
       <CalendarConnectionsSection />
 
       <ShareLinksSection />
+
+      <section className="card-soft p-6 space-y-4">
+        <h2 className="font-serif text-lg">Light or dark</h2>
+        {/* The quick switch lives beside the lock in the sidebar, which is where
+            it gets used. This is here for the third option: "system" cannot be
+            reached by a two-state toggle, and it is the one worth keeping, since
+            it follows a device that already dims itself in the evening. */}
+        <p className="text-sm text-ink-soft">
+          There&rsquo;s a quicker switch next to Lock. This is where you can hand the choice back
+          to your device.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {THEMES.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => actions.updateSettings({ theme: t.key })}
+              className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
+                settings.theme === t.key ? "border-primary bg-accent" : "border-border"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-medium">
+                <t.icon className="h-4 w-4" /> {t.label}
+              </div>
+              <div className="mt-1 text-xs text-ink-soft">{t.hint}</div>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="card-soft p-6 space-y-5">
         <h2 className="font-serif text-lg">Accent color</h2>

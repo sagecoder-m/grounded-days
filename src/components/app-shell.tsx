@@ -7,19 +7,22 @@ import {
   Home,
   Lock,
   LogOut,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   NotebookPen,
   RefreshCw,
   Sparkles,
   Sprout,
+  Sun,
   User,
 } from "lucide-react";
 
-import { AREA_META, useApp, useSyncStatus } from "@/lib/store";
+import { actions, AREA_META, useApp, useSyncStatus } from "@/lib/store";
 import { useSession } from "@/lib/use-session";
 import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
+import { useResolvedTheme, useTheme } from "@/lib/use-theme";
 import { installErrorReporting, track } from "@/lib/telemetry";
 
 /**
@@ -143,6 +146,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   const topLayout = settings.navLayout === "top";
+
+  // Writes the `dark` class onto the document, and follows the device while the
+  // setting is "system".
+  useTheme(settings.theme);
 
   return (
     <div
@@ -400,6 +407,37 @@ function NavChips({ pathname }: { pathname: string }) {
   );
 }
 
+/**
+ * Light or dark, one press, next to the lock.
+ *
+ * Here rather than only in Profile because it is not really a setting — it is
+ * something you change when the room changes, several times a day, and burying
+ * it three screens away means people simply put up with a bright page instead.
+ * The lock is the other control you reach for when you stop, so this is where
+ * the hand already goes.
+ *
+ * Two states, not three. "System" stays the default and stays reachable in
+ * Profile, but it is not a thing to cycle through at the moment you want the
+ * lights off — and someone on system who presses this is telling you plainly
+ * that the machine got it wrong for right now.
+ */
+function useThemeToggle() {
+  const settings = useApp((s) => s.settings);
+  const showing = useResolvedTheme(settings.theme);
+  return {
+    showing,
+    /** What pressing it would give you — the label has to name the destination,
+     *  because an icon of the current state and an icon of the offered one are
+     *  indistinguishable to anyone who has not already worked out which it is. */
+    next: showing === "dark" ? ("light" as const) : ("dark" as const),
+    toggle: () => actions.updateSettings({ theme: showing === "dark" ? "light" : "dark" }),
+  };
+}
+
+function ThemeIcon({ next, className }: { next: "light" | "dark"; className: string }) {
+  return next === "dark" ? <Moon className={className} /> : <Sun className={className} />;
+}
+
 function AccountBox({
   compact = false,
   iconsOnly = false,
@@ -411,6 +449,7 @@ function AccountBox({
   const { user } = useSession();
   const sync = useSyncStatus();
   const signOut = useSignOut();
+  const theme = useThemeToggle();
 
   if (!user) return null;
 
@@ -426,6 +465,14 @@ function AccountBox({
   if (iconsOnly) {
     return (
       <div className="flex flex-col items-center gap-1.5">
+        <button
+          onClick={theme.toggle}
+          aria-label={`Switch to ${theme.next} mode`}
+          title={`Switch to ${theme.next} mode`}
+          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+        >
+          <ThemeIcon next={theme.next} className="h-3.5 w-3.5" />
+        </button>
         <button
           onClick={lockNow}
           aria-label="Lock"
@@ -449,6 +496,15 @@ function AccountBox({
   if (compact) {
     return (
       <div className="flex shrink-0 items-center gap-1.5">
+        {/* Icon only here: the bar already carries the brand, the sync state and
+            sign out, and a fourth word makes it wrap on a small phone. */}
+        <button
+          onClick={theme.toggle}
+          aria-label={`Switch to ${theme.next} mode`}
+          className="grid h-7 w-7 place-items-center rounded-full border border-border text-ink-soft"
+        >
+          <ThemeIcon next={theme.next} className="h-3 w-3" />
+        </button>
         <button
           onClick={lockNow}
           className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 py-1.5 text-[11px] text-ink-soft"
@@ -484,6 +540,12 @@ function AccountBox({
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-[11px]">
+        <button
+          onClick={theme.toggle}
+          className="flex items-center gap-1.5 underline underline-offset-4"
+        >
+          <ThemeIcon next={theme.next} className="h-3 w-3" /> {theme.next === "dark" ? "Dark" : "Light"}
+        </button>
         <button
           onClick={lockNow}
           className="flex items-center gap-1.5 underline underline-offset-4"

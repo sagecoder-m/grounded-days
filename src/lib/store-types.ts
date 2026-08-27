@@ -203,10 +203,21 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  */
 export type WidgetSize = "square" | "wide" | "tall" | "third";
 
+/**
+ * Light, dark, or whatever the device says.
+ *
+ * "system" is not a synonym for light — it follows the machine, so a phone that
+ * dims itself in the evening dims this with it. It is the default because a
+ * preference nobody has expressed is best answered by the one they already
+ * expressed to their operating system.
+ */
+export type Theme = "light" | "dark" | "system";
+
 export interface Settings {
   displayName: string;
   density: Density;
   accent: AccentVariant;
+  theme: Theme;
   defaultCalView: CalView;
   navLayout: NavLayout;
   weekStartsOn: WeekStart;

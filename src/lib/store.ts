@@ -60,6 +60,7 @@ export type {
   Subproject,
   SyncStatus,
   Task,
+  Theme,
   WeekStart,
   WidgetSize,
 } from "./store-types";
