@@ -162,11 +162,12 @@ function nextPosition<T extends { position: number }>(rows: T[] | undefined): nu
 export const actions = {
   // ------------------------------------------------------------------- tasks
 
-  addTask(input: Omit<Task, "id" | "done" | "createdAt">) {
+  addTask(input: Omit<Task, "id" | "done" | "createdAt" | "updatedAt">) {
     track("task_add");
     const { userId } = requireStoreContext();
     const id = uuid();
-    const optimistic: Task = { ...input, id, done: false, createdAt: Date.now() };
+    const now = Date.now();
+    const optimistic: Task = { ...input, id, done: false, createdAt: now, updatedAt: now };
     void write([{ key: qk.tasks(userId), update: listAdd(optimistic) }], () =>
       supabase.from("tasks").insert({
         id,
@@ -190,8 +191,17 @@ export const actions = {
       (t) => t.id === id,
     );
     const next = !(current?.done ?? false);
-    void write([{ key: qk.tasks(userId), update: listPatch<Task>(id, { done: next }) }], () =>
-      supabase.from("tasks").update({ done: next }).eq("id", id),
+    // updatedAt locally as well as done: the trigger sets it server-side, but
+    // the cache is what the page renders from, and "was this ticked today"
+    // must be true the moment it is ticked rather than after the next refetch.
+    void write(
+      [
+        {
+          key: qk.tasks(userId),
+          update: listPatch<Task>(id, { done: next, updatedAt: Date.now() }),
+        },
+      ],
+      () => supabase.from("tasks").update({ done: next }).eq("id", id),
     );
   },
 

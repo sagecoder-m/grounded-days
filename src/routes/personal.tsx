@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { actions, useAppState } from "@/lib/store";
-import type { Goal, Habit } from "@/lib/store-types";
+import type { Goal, Habit, Task } from "@/lib/store-types";
+import { HowFarYouveCome } from "@/components/how-far";
 import { dateKey } from "@/components/task-grid";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
@@ -38,18 +39,27 @@ function PersonalPage() {
     .filter((t) => t.area === "personal")
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   /*
-    Personal has no projects any more, so nothing is filed away out of sight and
-    every open task belongs in this one list — the projectId filter that used to
-    hide them went with the section that displayed them.
+    Ticking something off does not make it disappear from under your hand.
 
-    Finished work is split out rather than dropped: it is what "see how far
-    you've come" is made of. Newest first, because the thing you did this
-    morning is the one worth seeing.
+    A task crossed out at nine in the morning stays in the list all day, struck
+    through, and only moves to the look-back tomorrow. Two reasons, and the
+    second is the real one: a list that empties itself as you work erases the
+    evidence that you worked, and — worse — a line that vanishes the instant you
+    tick it makes an accidental tick unrecoverable without going to find it
+    somewhere else.
+
+    "Today" is by when it was last changed, which for a finished task is when it
+    was finished. Personal has no projects any more, so nothing is filed away
+    out of sight and every open task belongs in this one list.
   */
-  const looseTasks = personalTasks.filter((t) => !t.done);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const finishedToday = (t: Task) => t.done && t.updatedAt >= startOfToday.getTime();
+
+  const looseTasks = personalTasks.filter((t) => !t.done || finishedToday(t));
   const doneTasks = personalTasks
-    .filter((t) => t.done)
-    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    .filter((t) => t.done && !finishedToday(t))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 
   const today = new Date();
   /**
@@ -70,17 +80,27 @@ function PersonalPage() {
   // The habit grid keys off today's date, so it stays a skeleton until mount.
   const mounted = useMounted();
 
+  /*
+    Habits completed per day, and nothing else.
+
+    There was a second line here for average goal progress, and it was not a
+    history: the same number — today's average — was plotted against all
+    twenty-one days, so it drew a perfectly flat line that looked like evidence
+    of total consistency and was actually evidence of nothing. It also ran 0–100
+    against a series that runs 0–4, which flattened the real line along the
+    bottom of the chart.
+
+    Goal progress has no per-day record to draw, so the honest chart is the one
+    series that does.
+  */
   const chartData = useMemo(() => {
     return Array.from({ length: 21 }, (_, i) => {
       const d = addDays(today, -20 + i);
       const iso = dateKey(d);
       const completed = state.habits.reduce((s, h) => s + (h.log[iso] ? 1 : 0), 0);
-      const goalAvg = personalGoals.length
-        ? personalGoals.reduce((s, g) => s + g.progress, 0) / personalGoals.length
-        : 0;
-      return { day: format(d, "M/d"), habits: completed, goals: Math.round(goalAvg) };
+      return { day: format(d, "M/d"), habits: completed };
     });
-  }, [state.habits, personalGoals]);
+  }, [state.habits]);
 
   return (
     <div className="space-y-10">
@@ -122,7 +142,13 @@ function PersonalPage() {
                 tickLine={false}
                 axisLine={false}
               />
-              <YAxis fontSize={10} stroke="var(--ink-soft)" tickLine={false} axisLine={false} />
+              <YAxis
+                fontSize={10}
+                stroke="var(--ink-soft)"
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+              />
               <Tooltip
                 contentStyle={{
                   background: "var(--card)",
@@ -138,258 +164,186 @@ function PersonalPage() {
                 strokeWidth={2.5}
                 dot={{ r: 3, fill: "var(--sage)" }}
               />
-              <Line
-                type="monotone"
-                dataKey="goals"
-                stroke="var(--clay)"
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: "var(--clay)" }}
-              />
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="mt-2 flex gap-4 text-xs text-ink-soft">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--sage)" }} />{" "}
-            Habits completed
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--clay)" }} /> Avg
-            goal progress
-          </span>
-        </div>
+        {/* One series needs a caption, not a legend. */}
+        <p className="mt-2 text-xs text-ink-soft">Habits completed, day by day.</p>
       </section>
 
       <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        {/* Habits */}
-        <section>
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-serif text-lg">Daily habits</h2>
-          </div>
-          <div className="card-soft p-4 md:p-6">
-            {!mounted ? (
-              <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
-            ) : (
-              <>
-                {/* Wide screens: one header row across the whole table. The
+        {/* The left track: habits, and the tasks that sit under them. */}
+        <div className="space-y-8">
+          {/* Habits */}
+          <section>
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="font-serif text-lg">Daily habits</h2>
+            </div>
+            <div className="card-soft p-4 md:p-6">
+              {!mounted ? (
+                <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
+              ) : (
+                <>
+                  {/* Wide screens: one header row across the whole table. The
                   transparent border, matching padding and fixed-width spacer
                   mirror the habit cards' horizontal box exactly — same trick
                   the narrow header below uses. Without them the cards' px-3,
                   1px border and 24px delete button made the day columns start
                   50px further left than the header's, so every letter floated
                   37px right of its dots. */}
-                <div className="mb-2 hidden grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 rounded-2xl border border-transparent px-3 text-[10px] uppercase tracking-widest text-ink-soft md:grid">
-                  <div>Habit</div>
-                  {days.map((d) => (
-                    <div key={d.toISOString()} className="text-center">
-                      {format(d, "EEEEE")}
-                    </div>
-                  ))}
-                  {/* Same width as the delete button in each card's last column. */}
-                  <div className="w-6" />
-                </div>
+                  <div className="mb-2 hidden grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] gap-2 rounded-2xl border border-transparent px-3 text-[10px] uppercase tracking-widest text-ink-soft md:grid">
+                    <div>Habit</div>
+                    {days.map((d) => (
+                      <div key={d.toISOString()} className="text-center">
+                        {format(d, "EEEEE")}
+                      </div>
+                    ))}
+                    {/* Same width as the delete button in each card's last column. */}
+                    <div className="w-6" />
+                  </div>
 
-                {/* Narrow screens: the dots wrap below each habit name, so the day
+                  {/* Narrow screens: the dots wrap below each habit name, so the day
                   letters go here instead. The transparent border and matching
                   padding make this line up with the cards below to the pixel —
                   without labels the seven circles are unreadable. */}
-                <div className="mb-1 grid grid-cols-7 gap-2 rounded-2xl border border-transparent px-3 text-center text-[10px] uppercase tracking-widest text-ink-soft md:hidden">
-                  {days.map((d) => (
-                    <div key={d.toISOString()}>{format(d, "EEEEE")}</div>
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  {state.habits.map((h) => (
-                    <div
-                      key={h.id}
-                      className="group grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 rounded-2xl border border-border bg-background px-3 py-2 md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] md:gap-2"
-                    >
-                      <div className="min-w-0">
-                        <InlineText
-                          value={h.name}
-                          onSave={(v) => v && actions.updateHabit(h.id, { name: v })}
-                          showIcon
-                          className="text-sm font-medium"
-                        />
-                        <HabitGoalPicker habit={h} goals={personalGoals} />
-                      </div>
-                      <div className="col-span-full md:col-span-7 grid grid-cols-7 gap-2 md:contents">
-                        {days.map((d) => {
-                          // Local, not toISOString(): that converts to UTC
-                          // first, so west of Greenwich an evening tap was
-                          // logged against tomorrow.
-                          const iso = dateKey(d);
-                          const done = !!h.log[iso];
-                          return (
-                            <button
-                              key={iso}
-                              onClick={() => actions.toggleHabit(h.id, iso)}
-                              title={format(d, "EEE, MMM d")}
-                              className={`mx-auto grid place-items-center h-8 w-8 rounded-lg border transition-all ${
-                                done ? "border-primary" : "border-border bg-card hover:bg-secondary"
-                              }`}
-                              style={
-                                done
-                                  ? {
-                                      background:
-                                        "linear-gradient(135deg, var(--sage-deep), var(--sage))",
-                                    }
-                                  : undefined
-                              }
-                            >
-                              {done && (
-                                <svg
-                                  viewBox="0 0 24 24"
-                                  className="h-4 w-4 text-primary-foreground"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="3"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="5 12 10 17 19 8" />
-                                </svg>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <button
-                        onClick={() => {
-                          // Capture the logged days before they go, so Undo can
-                          // put the history back and not just the name.
-                          const dates = Object.keys(h.log).filter((d) => h.log[d]);
-                          const name = h.name;
-                          actions.deleteHabit(h.id);
-                          toast(`"${name}" removed`, {
-                            description:
-                              dates.length > 0
-                                ? `${dates.length} logged ${dates.length === 1 ? "day" : "days"} went with it.`
-                                : undefined,
-                            action: {
-                              label: "Undo",
-                              onClick: () => actions.restoreHabit(name, dates),
-                            },
-                          });
-                        }}
-                        className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
-                        aria-label={`Remove habit "${h.name}"`}
+                  <div className="mb-1 grid grid-cols-7 gap-2 rounded-2xl border border-transparent px-3 text-center text-[10px] uppercase tracking-widest text-ink-soft md:hidden">
+                    {days.map((d) => (
+                      <div key={d.toISOString()}>{format(d, "EEEEE")}</div>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    {state.habits.map((h) => (
+                      <div
+                        key={h.id}
+                        className="group grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 rounded-2xl border border-border bg-background px-3 py-2 md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] md:gap-2"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!newHabit.trim()) return;
-                    actions.addHabit(newHabit.trim());
-                    setNewHabit("");
-                  }}
-                  className="mt-4 flex gap-2"
-                >
-                  <Input
-                    value={newHabit}
-                    onChange={(e) => setNewHabit(e.target.value)}
-                    placeholder="Add a new habit — e.g. drink water"
-                  />
-                  <Button type="submit" variant="outline" className="rounded-full border-tan">
-                    <Plus className="h-4 w-4" /> Add
+                        <div className="min-w-0">
+                          <InlineText
+                            value={h.name}
+                            onSave={(v) => v && actions.updateHabit(h.id, { name: v })}
+                            showIcon
+                            className="text-sm font-medium"
+                          />
+                          <HabitGoalPicker habit={h} goals={personalGoals} />
+                        </div>
+                        <div className="col-span-full md:col-span-7 grid grid-cols-7 gap-2 md:contents">
+                          {days.map((d) => {
+                            // Local, not toISOString(): that converts to UTC
+                            // first, so west of Greenwich an evening tap was
+                            // logged against tomorrow.
+                            const iso = dateKey(d);
+                            const done = !!h.log[iso];
+                            return (
+                              <button
+                                key={iso}
+                                onClick={() => actions.toggleHabit(h.id, iso)}
+                                title={format(d, "EEE, MMM d")}
+                                className={`mx-auto grid place-items-center h-8 w-8 rounded-lg border transition-all ${
+                                  done
+                                    ? "border-primary"
+                                    : "border-border bg-card hover:bg-secondary"
+                                }`}
+                                style={
+                                  done
+                                    ? {
+                                        background:
+                                          "linear-gradient(135deg, var(--sage-deep), var(--sage))",
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {done && (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="h-4 w-4 text-primary-foreground"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="3"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <polyline points="5 12 10 17 19 8" />
+                                  </svg>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => {
+                            // Capture the logged days before they go, so Undo can
+                            // put the history back and not just the name.
+                            const dates = Object.keys(h.log).filter((d) => h.log[d]);
+                            const name = h.name;
+                            actions.deleteHabit(h.id);
+                            toast(`"${name}" removed`, {
+                              description:
+                                dates.length > 0
+                                  ? `${dates.length} logged ${dates.length === 1 ? "day" : "days"} went with it.`
+                                  : undefined,
+                              action: {
+                                label: "Undo",
+                                onClick: () => actions.restoreHabit(name, dates),
+                              },
+                            });
+                          }}
+                          className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
+                          aria-label={`Remove habit "${h.name}"`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!newHabit.trim()) return;
+                      actions.addHabit(newHabit.trim());
+                      setNewHabit("");
+                    }}
+                    className="mt-4 flex gap-2"
+                  >
+                    <Input
+                      value={newHabit}
+                      onChange={(e) => setNewHabit(e.target.value)}
+                      placeholder="Add a new habit — e.g. drink water"
+                    />
+                    <Button type="submit" variant="outline" className="rounded-full border-tan">
+                      <Plus className="h-4 w-4" /> Add
+                    </Button>
+                  </form>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/*
+          Anything not tied to a goal or a habit.
+
+          Open work only. What has been finished used to trail underneath it here,
+          and now has its own hideable section below — the two answer different
+          questions and only one of them should be able to fill the page.
+        */}
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-serif text-lg">Anything else</h2>
+              <AddTaskDialog
+                area="personal"
+                trigger={
+                  <Button variant="outline" size="sm" className="rounded-full border-tan">
+                    <Plus className="h-3.5 w-3.5" /> Task
                   </Button>
-                </form>
-              </>
-            )}
-          </div>
-        </section>
-
-        {/* Goals */}
-        <section>
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-serif text-lg">Goals</h2>
-            <AddGoalDialog
-              area="personal"
-              trigger={
-                <Button variant="outline" size="sm" className="rounded-full border-tan">
-                  <Plus className="h-3.5 w-3.5" /> Goal
-                </Button>
-              }
-            />
-          </div>
-          <div
-            className="space-y-3"
-            onPointerUp={goalDrag.endDrag}
-            onPointerLeave={goalDrag.endDrag}
-          >
-            {personalGoals.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
-                No goals yet. On this page a goal is the whole of a project — a few steps that
-                belong together.
-              </p>
-            )}
-            {personalGoals.map((g) => (
-              <ReorderableCard
-                key={g.id}
-                id={g.id}
-                collection="goals"
-                orderedIds={personalGoals.map((x) => x.id)}
-                drag={goalDrag.drag}
-                setDrag={goalDrag.setDrag}
-              >
-                <GoalCard
-                  goal={g}
-                  tint="sage"
-                  footer={<GoalHabits goal={g} habits={state.habits} days={days} />}
-                />
-              </ReorderableCard>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/*
-        Other tasks, and the only backward-looking part of the page.
-
-        The brief's line is "'other tasks' → see how far you've come", and the
-        arrow is the instruction: this is not merely the leftovers, it is where
-        you find out the leftovers have been getting done. So what is
-        outstanding sits at the top and what is finished collects underneath,
-        rather than vanishing the moment it is ticked.
-      */}
-      <section>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-serif text-lg">See how far you&rsquo;ve come</h2>
-          <AddTaskDialog
-            area="personal"
-            trigger={
-              <Button variant="outline" size="sm" className="rounded-full border-tan">
-                <Plus className="h-3.5 w-3.5" /> Task
-              </Button>
-            }
-          />
-        </div>
-        <div className="space-y-2">
-          {looseTasks.length === 0 && doneTasks.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
-              Nothing loose — everything has a home.
-            </p>
-          )}
-          {looseTasks.map((t) => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              showArea={false}
-              floating
-              onDelete={() => actions.deleteTask(t.id)}
-            />
-          ))}
-
-          {doneTasks.length > 0 && (
-            <>
-              <p className="px-1 pt-4 text-[11px] uppercase tracking-[0.08em] text-ink-soft">
-                Done
-              </p>
-              {doneTasks.map((t) => (
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              {looseTasks.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
+                  Nothing loose — everything has a home.
+                </p>
+              )}
+              {looseTasks.map((t) => (
                 <TaskRow
                   key={t.id}
                   task={t}
@@ -398,10 +352,62 @@ function PersonalPage() {
                   onDelete={() => actions.deleteTask(t.id)}
                 />
               ))}
-            </>
-          )}
+            </div>
+          </section>
         </div>
-      </section>
+
+        {/* The right track. */}
+        <div className="space-y-8">
+          {/* Goals */}
+          <section>
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="font-serif text-lg">Goals</h2>
+              <AddGoalDialog
+                area="personal"
+                trigger={
+                  <Button variant="outline" size="sm" className="rounded-full border-tan">
+                    <Plus className="h-3.5 w-3.5" /> Goal
+                  </Button>
+                }
+              />
+            </div>
+            <div
+              className="space-y-3"
+              onPointerUp={goalDrag.endDrag}
+              onPointerLeave={goalDrag.endDrag}
+            >
+              {personalGoals.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
+                  No goals yet. On this page a goal is the whole of a project — a few steps that
+                  belong together.
+                </p>
+              )}
+              {personalGoals.map((g) => (
+                <ReorderableCard
+                  key={g.id}
+                  id={g.id}
+                  collection="goals"
+                  orderedIds={personalGoals.map((x) => x.id)}
+                  drag={goalDrag.drag}
+                  setDrag={goalDrag.setDrag}
+                >
+                  <GoalCard
+                    goal={g}
+                    tint="sage"
+                    footer={<GoalHabits goal={g} habits={state.habits} days={days} />}
+                  />
+                </ReorderableCard>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <HowFarYouveCome
+        storageKey="grounded.personal.history"
+        groups={[{ id: "all", tasks: doneTasks }]}
+        blurb="Small, repeatable things add up quietly. Here they are."
+      />
     </div>
   );
 }

@@ -312,18 +312,24 @@ export function AppShell({ children }: { children: ReactNode }) {
                 );
               })}
             </nav>
-
-            {/* Collapsed used to hide this whole block, which took Lock and Sign
-                out with it — a rail you collapsed could not be signed out of.
-                Collapsed now gets the same two controls as icons. */}
-            <div className="mt-4 border-t border-border px-3 pb-4 pt-3">
-              <AccountBox compact={railCollapsed} iconsOnly={railCollapsed} />
-            </div>
           </aside>
 
           <main className="min-w-0 flex-1">
+            {/*
+              Theme, lock and sign out, top right.
+
+              They used to sit at the foot of the rail, which is the one part of
+              a sidebar nobody looks at — and worse, they sat among the
+              destinations, so the control that ends your session had the same
+              weight as a link to your journal. The brief puts them top right,
+              which is also where the top-tabs layout has always had them: the
+              two layouts now agree, and the rail is only places to go.
+            */}
+            <div className="flex justify-end px-4 pt-4 md:px-8 md:pt-6">
+              <AccountBox compact />
+            </div>
             <div
-              className={`@container mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
+              className={`@container mx-auto w-full px-4 pb-6 pt-4 md:px-8 md:pb-10 md:pt-4 ${
                 isBoard ? "max-w-[96rem]" : "max-w-5xl"
               }`}
             >
@@ -445,14 +451,7 @@ function ThemeIcon({ next, className }: { next: "light" | "dark"; className: str
   return next === "dark" ? <Moon className={className} /> : <Sun className={className} />;
 }
 
-function AccountBox({
-  compact = false,
-  iconsOnly = false,
-}: {
-  compact?: boolean;
-  /** Collapsed rail: the same two controls with their labels dropped. */
-  iconsOnly?: boolean;
-}) {
+function AccountBox({ compact = false }: { compact?: boolean }) {
   const { user } = useSession();
   const sync = useSyncStatus();
   const signOut = useSignOut();
@@ -468,37 +467,6 @@ function AccountBox({
     ) : (
       <Cloud className="h-3 w-3" />
     );
-
-  if (iconsOnly) {
-    return (
-      <div className="flex flex-col items-center gap-1.5">
-        <button
-          onClick={theme.toggle}
-          aria-label={`Switch to ${theme.next} mode`}
-          title={`Switch to ${theme.next} mode`}
-          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
-        >
-          <ThemeIcon next={theme.next} className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={lockNow}
-          aria-label="Lock"
-          title="Lock"
-          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
-        >
-          <Lock className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={signOut}
-          aria-label="Sign out"
-          title="Sign out"
-          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    );
-  }
 
   if (compact) {
     return (
@@ -551,7 +519,8 @@ function AccountBox({
           onClick={theme.toggle}
           className="flex items-center gap-1.5 underline underline-offset-4"
         >
-          <ThemeIcon next={theme.next} className="h-3 w-3" /> {theme.next === "dark" ? "Dark" : "Light"}
+          <ThemeIcon next={theme.next} className="h-3 w-3" />{" "}
+          {theme.next === "dark" ? "Dark" : "Light"}
         </button>
         <button
           onClick={lockNow}

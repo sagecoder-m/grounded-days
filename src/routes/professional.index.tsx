@@ -7,6 +7,7 @@ import { areaProjectProgress, lastProjectId, projectProgress } from "@/lib/proje
 import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { AddProjectDialog } from "@/components/add-project-dialog";
 import { SoftProgress } from "@/components/soft-progress";
+import { HowFarYouveCome, newestFirst, type HowFarGroup } from "@/components/how-far";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/professional/")({
@@ -88,7 +89,49 @@ function ProfessionalPage() {
 
         <WhereYouLeftOff />
       </div>
+
+      <ProfessionalHistory />
     </div>
+  );
+}
+
+/**
+ * Finished work, by project.
+ *
+ * Grouped rather than listed flat, because on this page a completed task on its
+ * own says very little — "sent the invoice" means one thing in a project that
+ * is nearly done and another in one that has barely started. The project name
+ * is the context that makes the item worth having kept.
+ *
+ * Projects with nothing finished yet do not appear at all. An empty heading is
+ * a heading that says you have done nothing, which is the one message this
+ * section exists not to send.
+ */
+function ProfessionalHistory() {
+  const state = useAppState();
+  const projects = state.projects.filter((p) => p.area === "professional");
+  const done = state.tasks.filter((t) => t.area === "professional" && t.done);
+
+  const groups: HowFarGroup[] = [
+    ...projects.map((p) => ({
+      id: p.id,
+      label: p.name,
+      tasks: newestFirst(done.filter((t) => t.projectId === p.id)),
+    })),
+    // Work that belonged to no project still counts as work done.
+    {
+      id: "loose",
+      label: "Not in a project",
+      tasks: newestFirst(done.filter((t) => !t.projectId)),
+    },
+  ];
+
+  return (
+    <HowFarYouveCome
+      storageKey="grounded.professional.history"
+      groups={groups}
+      blurb="What you have already shipped, project by project."
+    />
   );
 }
 

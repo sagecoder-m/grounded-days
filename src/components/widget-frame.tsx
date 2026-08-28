@@ -128,8 +128,10 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
  *               fitting: the x axis is time, and time needs length.
  *   timer       square, half or full. A dial and two fields; nothing a third
  *               can hold and nothing that rewards height.
- *   your rhythm the square-format one, so it runs vertically: tall, taller, or
- *               square. It is the river, and it is the widget the brief names.
+ *   your rhythm a graph like the others, so it follows the same rule. It was
+ *               briefly given the vertical sizes and a river squeezed into a
+ *               half-width column is simply a bad chart: the x axis is twelve
+ *               weeks, and twelve weeks needs width to be twelve of anything.
  *
  * Anything not listed keeps every option, which is the brief's own "everything
  * else can stay with size options".
@@ -140,7 +142,7 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
  */
 const HORIZONTAL: WidgetSize[] = ["wide", "threeQuarter", "square"];
 const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
-  river: ["tall", "taller", "square"],
+  river: HORIZONTAL,
   chart: HORIZONTAL,
   balance: HORIZONTAL,
   movement: HORIZONTAL,

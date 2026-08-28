@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { CalendarDays, Plus, Trash2 } from "lucide-react";
 
@@ -13,6 +13,7 @@ import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
 import { AddCourseDialog } from "@/components/add-course-dialog";
 import { InlineText } from "@/components/inline-text";
+import { HowFarYouveCome, newestFirst } from "@/components/how-far";
 import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -112,7 +113,12 @@ function EducationPage() {
             )}
           </section>
 
-          <History tasks={tasks} />
+          <HowFarYouveCome
+            storageKey="grounded.education.history"
+            groups={[{ id: "all", tasks: newestFirst(tasks.filter((t) => t.done)) }]}
+            sessions={state.focusSessions}
+            blurb="Everything you have finished, and every block you have sat through."
+          />
         </div>
 
         <div className="space-y-8">
@@ -429,109 +435,5 @@ function CourseFocus({
         </div>
       )}
     </FocusOverlay>
-  );
-}
-
-const HISTORY_KEY = "grounded.education.history";
-
-/**
- * The only part of this page that looks backwards, and it is closed by default.
- *
- * The brief asks for hide/unhide, and the default matters: a list of everything
- * you have finished is lovely to go and look at, and heavy to be shown
- * unprompted every time you open the page to do some work. Remembered per
- * device, so someone who likes it open only has to say so once.
- */
-function History({ tasks }: { tasks: Task[] }) {
-  const state = useAppState();
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    try {
-      setShown(window.localStorage.getItem(HISTORY_KEY) === "open");
-    } catch {
-      /* storage unavailable; stays closed */
-    }
-  }, []);
-
-  function toggle() {
-    setShown((was) => {
-      const next = !was;
-      try {
-        window.localStorage.setItem(HISTORY_KEY, next ? "open" : "closed");
-      } catch {
-        /* nothing to remember it with */
-      }
-      return next;
-    });
-  }
-
-  const history = tasks
-    .filter((t) => t.done)
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  const sessions = state.focusSessions;
-  const nothing = history.length === 0 && sessions.length === 0;
-
-  return (
-    <section>
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-lg">See how far you&rsquo;ve come</h2>
-        <button
-          onClick={toggle}
-          aria-expanded={shown}
-          className="text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
-        >
-          {shown ? "Hide" : "Unhide"}
-        </button>
-      </div>
-      <p className="text-sm italic text-ink-soft">
-        Everything you have finished, and every block you have sat through.
-      </p>
-
-      {shown && (
-        <div className="mt-3 space-y-2">
-          {nothing && (
-            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
-              Your completed work will collect here.
-            </p>
-          )}
-          {history.map((t) => (
-            <div
-              key={t.id}
-              className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 opacity-80"
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm line-through decoration-1">{t.title}</div>
-                {t.description && (
-                  <div className="truncate text-xs text-ink-soft">{t.description}</div>
-                )}
-              </div>
-              <div className="shrink-0 pl-3 text-[11px] text-ink-soft">
-                {t.date && format(parseISO(t.date), "MMM d")}
-              </div>
-            </div>
-          ))}
-          {sessions.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span
-                  className="chip shrink-0"
-                  style={{ backgroundColor: "var(--clay-soft)", color: "var(--clay)" }}
-                >
-                  Focus
-                </span>
-                <span className="truncate text-sm">{s.label}</span>
-              </div>
-              <div className="shrink-0 pl-3 text-[11px] text-ink-soft">
-                {s.minutes} min · {format(new Date(s.completedAt), "MMM d")}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
   );
 }

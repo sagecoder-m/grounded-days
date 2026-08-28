@@ -20,6 +20,16 @@ export interface Task {
   date?: string; // ISO yyyy-mm-dd
   done: boolean;
   createdAt: number;
+  /**
+   * When this row last changed, from the database's own trigger.
+   *
+   * Used as "when was this ticked". It is an approximation — renaming a
+   * finished task moves it too — but the alternative is a completed_at column
+   * whose only consumer is deciding whether a crossed-out line has earned the
+   * right to leave today's list, and being a few hours out on that costs
+   * nothing.
+   */
+  updatedAt: number;
   // Optional linkage for professional tasks
   projectId?: string;
   subprojectId?: string;
