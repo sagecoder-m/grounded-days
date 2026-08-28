@@ -52,6 +52,16 @@ const KINDS: { key: AddKind; label: string; hint: string }[] = [
   { key: "goal", label: "Goal", hint: "Something to work towards, by a chosen day" },
 ];
 
+/** What a drag or a right-click "New event" on the grid hands over — the shape
+ *  it dragged out, with no title yet. See the `draft` prop below. */
+export interface EventDraft {
+  startDate: string;
+  endDate?: string;
+  allDay: boolean;
+  startTime?: string;
+  endTime?: string;
+}
+
 /**
  * One dialog for everything the calendar can add.
  *
@@ -61,7 +71,32 @@ const KINDS: { key: AddKind; label: string; hint: string }[] = [
  * that changes per kind is the dates: an event has a start and an end, a task
  * has a due date, and a goal has neither.
  */
-export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
+export function AddEventDialog({
+  defaultDate,
+  draft,
+  onDraftHandled,
+}: {
+  defaultDate?: string;
+  /**
+   * Set when a drag or a right-click "New event" on the grid started this,
+   * rather than the +Add button — see calendar-dayflow.tsx's onEventCreate.
+   *
+   * DayFlow's own drag-to-create and its right-click "New event" both end by
+   * calling one callback with a bare, untitled event at the shape that was
+   * dragged out. Nothing was listening for it before this existed, so the
+   * gesture visibly did nothing: DayFlow's internal state briefly held the new
+   * event, and the very next render of useDayFlowEventSync reconciled it away
+   * again, since the app's own `events` array — the only thing that survives
+   * a render — had never heard of it. Routing the callback here instead opens
+   * this same dialog, pre-filled with what was dragged, so the one thing a
+   * drag cannot supply — a title, and which area it belongs to — is still
+   * asked for through the app's one editing surface rather than skipped.
+   */
+  draft?: EventDraft | null;
+  /** Called once the draft has been either saved or dismissed, so the parent
+   *  clears it and a closed dialog does not reopen on the next render. */
+  onDraftHandled?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<AddKind>("event");
   const [title, setTitle] = useState("");
@@ -113,11 +148,32 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
 
+  /**
+   * A fresh draft always wins — it is new information about a gesture that
+   * just happened, arriving after this dialog already mounted and already
+   * has its own state for the +Add-button path. Runs after the defaultDate
+   * effect above for the same reason that one exists: only a prop actually
+   * changing should move these fields, never a re-render.
+   */
+  useEffect(() => {
+    if (!draft) return;
+    setKind("event");
+    setTitle("");
+    setStartDate(draft.startDate);
+    setEndDate(draft.endDate ?? "");
+    setAllDay(draft.allDay);
+    if (draft.startTime) setStartTime(draft.startTime);
+    if (draft.endTime) setEndTime(draft.endTime);
+    setOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
+
   function reset() {
     setTitle("");
     setEndDate("");
     setAllDay(true);
     setOpen(false);
+    onDraftHandled?.();
   }
 
   function submit(e: React.FormEvent) {
@@ -173,7 +229,12 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
     endTime <= startTime;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    // Closing runs through reset() rather than bare setOpen(false): the
+    // Escape key, an outside click and the corner X all fire onOpenChange
+    // without ever touching submit(), and a cancelled draft still has to
+    // tell the calendar to drop it or the next render reopens this dialog
+    // with the same stale draft.
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : reset())}>
       <DialogTrigger asChild>
         <Button variant="outline" className="rounded-full border-tan" size="sm">
           <Plus className="h-3.5 w-3.5" /> Add
@@ -181,29 +242,37 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
       </DialogTrigger>
       <DialogContent className="bg-card">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">Add to your calendar</DialogTitle>
+          <DialogTitle className="font-serif text-2xl">
+            {draft ? "Name this event" : "Add to your calendar"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>What is it?</Label>
-            <div className="flex flex-wrap gap-2">
-              {KINDS.map((k) => (
-                <button
-                  key={k.key}
-                  type="button"
-                  title={k.hint}
-                  onClick={() => setKind(k.key)}
-                  className={`chip ${
-                    kind === k.key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-ink-soft"
-                  }`}
-                >
-                  {k.label}
-                </button>
-              ))}
+          {/* Only the +Add button offers a choice of kind. A drag or a
+              right-click "New event" on the grid can only ever mean an
+              event — there is no gesture on a day cell that means "task"
+              or "goal" instead. */}
+          {!draft && (
+            <div className="space-y-1.5">
+              <Label>What is it?</Label>
+              <div className="flex flex-wrap gap-2">
+                {KINDS.map((k) => (
+                  <button
+                    key={k.key}
+                    type="button"
+                    title={k.hint}
+                    onClick={() => setKind(k.key)}
+                    className={`chip ${
+                      kind === k.key
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-ink-soft"
+                    }`}
+                  >
+                    {k.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>{kind === "goal" ? "Goal" : "Title"}</Label>

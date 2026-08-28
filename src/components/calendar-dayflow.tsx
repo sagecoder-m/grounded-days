@@ -16,6 +16,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { createDragPlugin } from "@dayflow/plugin-drag";
 import {
   DayFlowCalendar,
@@ -46,7 +47,12 @@ import {
 } from "@/lib/dayflow-adapter";
 import { useDayFlowEventSync } from "@/lib/use-dayflow-sync";
 import { dateKey } from "@/components/task-grid";
-import { AddEventDialog, EditEventDialog, SyncedHint } from "@/components/calendar-dialogs";
+import {
+  AddEventDialog,
+  EditEventDialog,
+  SyncedHint,
+  type EventDraft,
+} from "@/components/calendar-dialogs";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 const FILTER_AREAS: { key: Area; label: string; dot: string }[] = [
@@ -142,6 +148,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
   const [areaFilter, setAreaFilter] = useState<Set<Area>>(new Set());
   const [editing, setEditing] = useState<CalEvent | null>(null);
   const [range, setRange] = useState<{ start: Date; end: Date } | null>(null);
+  /** What a drag or a right-click "New event" just carved out of the grid,
+   *  waiting to be named — see onEventCreate below and AddEventDialog's
+   *  `draft` prop for why this has to go through a dialog rather than
+   *  being saved on the spot. */
+  const [createDraft, setCreateDraft] = useState<EventDraft | null>(null);
 
   // Matches Tailwind's md. False during SSR and the first paint, which lands on
   // the desktop view set — the safer default, since every view it offers exists
@@ -265,6 +276,42 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     [state.events],
   );
 
+  /**
+   * A drag or a right-click "New event" just carved a shape out of the grid.
+   *
+   * DayFlow hands over a bare event with that shape and no title — creating
+   * a real one is left entirely to the host app, per its own docs. Nothing
+   * was listening for this before, which is why the gesture visibly did
+   * nothing: DayFlow's own reconciliation (useDayFlowEventSync, below) syncs
+   * its internal event list to match `events` on every render, and `events`
+   * never heard about a draft that only ever lived inside DayFlow — so the
+   * very next render quietly erased it again.
+   *
+   * Converted through fromDayFlowEvent, the same adapter drag/resize already
+   * use, then reformatted into the local wall-clock date/time strings the
+   * dialog's plain <input type="date"/time"> fields expect — the adapter's
+   * own output is a UTC instant, which is correct for the database and wrong
+   * for a form field a person reads in their own timezone.
+   */
+  const onEventCreate = useCallback((created: DayFlowEvent) => {
+    const { date, startsAt, endsAt } = fromDayFlowEvent(created);
+    if (!startsAt) {
+      setCreateDraft({ startDate: date, allDay: true });
+      return;
+    }
+    const start = new Date(startsAt);
+    const end = endsAt ? new Date(endsAt) : null;
+    const startDate = format(start, "yyyy-MM-dd");
+    const endDate = end ? format(end, "yyyy-MM-dd") : undefined;
+    setCreateDraft({
+      startDate,
+      endDate: endDate && endDate !== startDate ? endDate : undefined,
+      allDay: false,
+      startTime: format(start, "HH:mm"),
+      endTime: end ? format(end, "HH:mm") : undefined,
+    });
+  }, []);
+
   const onVisibleRangeChange = useCallback((start: Date, end: Date) => {
     // Compared by date key, not by Date identity: DayFlow re-reports the range
     // on renders that are not a real change, and two fresh Dates are never ===,
@@ -324,7 +371,7 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
       defaultView: narrow
         ? ViewType.DAY
         : (VIEW_FOR_SETTING[state.settings.defaultCalView] ?? ViewType.MONTH),
-      callbacks: { onVisibleRangeChange, onEventClick },
+      callbacks: { onVisibleRangeChange, onEventClick, onEventCreate },
       // The rest of the app writes times as "4:00am"; DayFlow defaults to 24h,
       // which made one event read two different ways on two pages.
       timeFormat: "12h",
@@ -365,7 +412,11 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
         <div className="flex flex-wrap items-center gap-2">
           <AreaFilter selected={areaFilter} onChange={setAreaFilter} />
           <SyncedHint />
-          <AddEventDialog defaultDate={range ? dateKey(range.start) : undefined} />
+          <AddEventDialog
+            defaultDate={range ? dateKey(range.start) : undefined}
+            draft={createDraft}
+            onDraftHandled={() => setCreateDraft(null)}
+          />
         </div>
       </div>
 
