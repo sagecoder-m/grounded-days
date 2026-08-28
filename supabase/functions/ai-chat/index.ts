@@ -15,6 +15,14 @@
 // the provider's user data, it is often the most sensitive line in a calendar,
 // and passing it to a model vendor is the transfer Google's Limited Use policy
 // exists to prevent.
+//
+// A message can also carry an image — see loadImageDataUrls below. The client
+// uploads it to the assistant-uploads storage bucket and sends only the path;
+// this function is what actually reads the bytes and hands them to the model,
+// same "server assembles what the model sees" reasoning as everything else
+// here. Only a message with an image draws from the shorter, verified-vision
+// model chain (VISION_MODEL_PREFERENCES) — every other message still uses the
+// general one.
 import {
   corsHeaders,
   HttpError,
@@ -50,6 +58,23 @@ const MODEL_PREFERENCES = [
   "z-ai/glm-5.2:free",
   "openrouter/free",
 ] as const;
+
+/**
+ * The chain for a message that includes an image — a photo of a syllabus, a
+ * screenshot of a schedule.
+ *
+ * A separate, shorter list rather than reusing MODEL_PREFERENCES filtered at
+ * call time: most of that chain is text-only. Nemotron and GLM, the two most
+ * reliable free models above, cannot read an image at all — sending one to
+ * either is either a silent no-op or an error, not a worse answer. Checked
+ * against OpenRouter's own catalogue (architecture.input_modalities) rather
+ * than assumed, the same way MODEL_PREFERENCES already gets verified below.
+ *
+ * This chain is thinner than the text one on purpose, because the free tier
+ * genuinely offers less vision capacity — that is a real trade the person
+ * chose over paying for a steadier fallback, not an oversight here.
+ */
+const VISION_MODEL_PREFERENCES = ["google/gemma-4-31b-it:free", "openrouter/free"] as const;
 
 /**
  * Which model ids OpenRouter currently serves, cached for the isolate's life.
@@ -91,11 +116,17 @@ async function fetchAvailableIds(): Promise<Set<string> | null> {
  *
  * OPENROUTER_MODEL still wins if set, but it is verified rather than trusted —
  * a typo or a retired override lands behind the working defaults instead of
- * breaking every call.
+ * breaking every call. Skipped entirely for a vision request: the override is
+ * an operator's general-purpose choice, not necessarily one that can read an
+ * image, and silently forcing it ahead of the verified vision chain would
+ * reintroduce the exact failure mode this function exists to prevent.
  */
-async function resolveModelChain(): Promise<{ primary: string; fallbacks: string[] }> {
-  const override = Deno.env.get("OPENROUTER_MODEL")?.trim();
-  const wanted = override ? [override, ...MODEL_PREFERENCES] : [...MODEL_PREFERENCES];
+async function resolveModelChain(
+  opts: { requireVision?: boolean } = {},
+): Promise<{ primary: string; fallbacks: string[] }> {
+  const override = !opts.requireVision ? Deno.env.get("OPENROUTER_MODEL")?.trim() : undefined;
+  const preferences = opts.requireVision ? VISION_MODEL_PREFERENCES : MODEL_PREFERENCES;
+  const wanted = override ? [override, ...preferences] : [...preferences];
 
   const ids = await fetchAvailableIds();
   const usable = ids ? wanted.filter((m) => ids.has(m)) : wanted;
@@ -180,6 +211,15 @@ ORGANIZING A PASTE OF TASKS OR ASSIGNMENTS
   the id it returns as courseId.
 - Reply with a short recap of what changed, not a re-listing of every line — surface what
   needs a decision (missing dates, an ambiguous course match), not what already worked.
+
+READING AN IMAGE THEY SEND
+- A photo of a syllabus, a screenshot of a schedule, a handwritten list — read what is
+  actually written in it and treat it exactly like a pasted list: extract every item, call
+  create_tasks once for all of them, follow every rule above about dates and courses.
+- If part of the image is blurry, cropped, or genuinely illegible, say which part plainly
+  rather than guessing at a date or a title it could be. A wrong guess that gets silently
+  saved is worse than asking.
+- An image with no request text attached is still a request — treat it as "organize this."
 
 WHEN THEY'RE OVERLOADED
 Don't hand back a bigger plan. Say what you see, name the one immediate priority, and stop —
@@ -710,12 +750,79 @@ async function runCreateCourse(
   return { ok: true, id: data.id, name, existed: false };
 }
 
+/** At most this many images per message. A syllabus is one photo, maybe two
+ *  for a two-page one; past that the person almost certainly meant to send
+ *  them as separate messages, and an unbounded array is an unbounded bill. */
+const MAX_IMAGES_PER_MESSAGE = 3;
+/** Past this, a "free tier" image stops being free in any practical sense —
+ *  skipped rather than sent, so one oversized file cannot blow up the request
+ *  instead of just not being read. Client-side compression should keep every
+ *  real photo well under this. */
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
+
+const IMAGE_EXT_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+};
+
+/**
+ * Turns storage paths into inline data URLs a vision model can read.
+ *
+ * Downloaded with the service role rather than the caller's own token — this
+ * function already runs after requireUser, and a signed URL would be one more
+ * round trip for no real benefit here — but every path is checked against
+ * this user's own prefix first. The service role bypasses RLS entirely, so
+ * that check is the only thing stopping one person's request from asking for
+ * another person's uploaded photo by path.
+ */
+async function loadImageDataUrls(
+  userId: string,
+  paths: unknown,
+): Promise<{ urls: string[]; skipped: string[] }> {
+  const candidates = (Array.isArray(paths) ? paths : [])
+    .filter((p): p is string => typeof p === "string" && p.startsWith(`${userId}/`))
+    .slice(0, MAX_IMAGES_PER_MESSAGE);
+
+  const urls: string[] = [];
+  const skipped: string[] = [];
+  const bucket = serviceClient().storage.from("assistant-uploads");
+
+  for (const path of candidates) {
+    const { data, error } = await bucket.download(path);
+    if (error || !data) {
+      console.error("assistant image download failed", path, error?.message);
+      skipped.push(path);
+      continue;
+    }
+    if (data.size > MAX_IMAGE_BYTES) {
+      skipped.push(path);
+      continue;
+    }
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
+    const mime = IMAGE_EXT_TO_MIME[ext] ?? data.type ?? "image/jpeg";
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    // btoa wants a binary string, not raw bytes — chunked so a large image
+    // does not blow the call stack passed to String.fromCharCode at once.
+    let binary = "";
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    urls.push(`data:${mime};base64,${btoa(binary)}`);
+  }
+
+  return { urls, skipped };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const user = await requireUser(req);
-    const body = (await req.json()) as { messages?: ChatMessage[] };
+    const body = (await req.json()) as { messages?: ChatMessage[]; attachments?: unknown };
     const messages = (body.messages ?? []).filter(
       (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
     );
@@ -726,7 +833,16 @@ Deno.serve(async (req) => {
     const recent = messages.slice(-12);
 
     const { context, brief } = await buildContext(user.id);
-    const { primary, fallbacks } = await resolveModelChain();
+
+    // Attachments belong to the turn that was just sent — the last message in
+    // the array, which the client always builds as the newest user message.
+    // Only that message needs to become multimodal; everything before it is
+    // plain text the model already answered once.
+    const { urls: imageUrls, skipped: skippedImages } = await loadImageDataUrls(
+      user.id,
+      body.attachments,
+    );
+    const { primary, fallbacks } = await resolveModelChain({ requireVision: imageUrls.length > 0 });
 
     // deno-lint-ignore no-explicit-any
     const convo: any[] = [
@@ -738,6 +854,26 @@ Deno.serve(async (req) => {
       { role: "system", content: briefPrompt(brief) },
       ...recent,
     ];
+
+    if (imageUrls.length > 0) {
+      // The chat-completions multimodal shape: content becomes an array of
+      // parts instead of a bare string. Only the final message is rewritten —
+      // it is, by construction, the newest user turn the client just sent.
+      const last = convo[convo.length - 1];
+      convo[convo.length - 1] = {
+        ...last,
+        content: [
+          ...(last.content ? [{ type: "text", text: last.content }] : []),
+          ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+        ],
+      };
+    }
+    if (skippedImages.length > 0) {
+      convo.push({
+        role: "system",
+        content: `${skippedImages.length} image(s) attached to this message could not be read (too large or unreadable) and were left out. Tell them plainly rather than acting as if you saw it.`,
+      });
+    }
 
     const callModel = (withTools: boolean) =>
       fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -832,6 +968,21 @@ Deno.serve(async (req) => {
     const text = await res.text();
     if (!res.ok) {
       console.error(`openrouter ${res.status}: ${text}`);
+      // A vision request draws from VISION_MODEL_PREFERENCES's much shorter
+      // chain (see its own comment), so it fails more often than a plain text
+      // one — that is a real, chosen trade-off (free over paid), not a bug,
+      // and the person should hear that rather than a generic error that
+      // reads the same as any other failure.
+      if (imageUrls.length > 0) {
+        return jsonResponse(
+          {
+            error: "vision_unavailable",
+            message:
+              "The free model that can read images is busy right now. Try again in a minute, or send it as text instead.",
+          },
+          502,
+        );
+      }
       // 429 on the free tier is routine (20/min, 50/day), so it gets its own
       // message rather than a generic failure the user cannot act on.
       if (res.status === 429) {

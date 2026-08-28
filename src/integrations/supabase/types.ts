@@ -173,29 +173,67 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       assistant_messages: {
         Row: {
+          attachments: Json
           content: string
+          conversation_id: string
           created_at: string
           id: string
           role: string
           user_id: string
         }
         Insert: {
+          attachments?: Json
           content: string
+          conversation_id: string
           created_at?: string
           id?: string
           role: string
           user_id: string
         }
         Update: {
+          attachments?: Json
           content?: string
+          conversation_id?: string
           created_at?: string
           id?: string
           role?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       journal_entries: {
         Row: {
