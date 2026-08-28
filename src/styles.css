@@ -52,12 +52,26 @@
  * the design uses. Paths are relative on purpose — Vite rewrites them with
  * whatever base the build targets, which differs between the GitHub Pages
  * subpath build and every other target.
+ *
+ * font-display is "optional", not the more common "swap". Swap draws with the
+ * fallback immediately and cuts over once Fraunces/Karla arrive — and because
+ * a display serif and its fallback have different metrics, that cutover
+ * changes the rendered height of every heading and card on the page. The
+ * Overview board measures each tile's height to pack it (see useRowSpan in
+ * widget-frame.tsx) and re-measures on a real change, so it recovers — but for
+ * the second or so it takes the font to download, tiles overlap while the
+ * board repacks around the new heights. "optional" gives the font one short
+ * window to arrive from cache; if it is not there yet, the page commits to the
+ * fallback for that load instead of swapping mid-render, so a first visit (or
+ * one after the cache is cleared) shows the fallback font rather than a
+ * layout jump, and every visit after that shows Fraunces/Karla from the very
+ * first frame once they are cached.
  */
 @font-face {
   font-family: "Fraunces";
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: optional;
   src: url("./fonts/fraunces-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -67,7 +81,7 @@
   font-family: "Fraunces";
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: optional;
   src: url("./fonts/fraunces-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -78,7 +92,7 @@
   font-family: "Karla";
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: optional;
   src: url("./fonts/karla-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -88,7 +102,7 @@
   font-family: "Karla";
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: optional;
   src: url("./fonts/karla-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,

@@ -671,11 +671,17 @@ export const actions = {
   // Events mirrored from Google/Outlook are read-only. RLS rejects a client
   // write to them outright, so these three only ever handle local events —
   // callers must not offer edit affordances on a synced event.
+  //
+  // allDay is derived from startsAt rather than taken as input: it used to be
+  // hardcoded true here, so a timed event could only exist by being dragged
+  // into shape after creation (updateEvent does write starts_at/ends_at) —
+  // there was no way to create a "1pm to 2pm" block in the first place.
   addEvent(input: Omit<CalEvent, "id" | "source" | "allDay">) {
     track("event_add");
     const { userId } = requireStoreContext();
     const id = uuid();
-    const optimistic: CalEvent = { ...input, id, source: "local", allDay: true };
+    const allDay = !input.startsAt;
+    const optimistic: CalEvent = { ...input, id, source: "local", allDay };
     void write([{ key: qk.events(userId), update: listAdd(optimistic) }], () =>
       supabase.from("events").insert({
         id,
@@ -685,7 +691,9 @@ export const actions = {
         end_date: input.endDate ?? null,
         area: input.area ?? null,
         source: "local",
-        all_day: true,
+        all_day: allDay,
+        starts_at: input.startsAt ?? null,
+        ends_at: input.endsAt ?? null,
       }),
     );
   },

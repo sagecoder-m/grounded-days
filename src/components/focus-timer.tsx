@@ -93,9 +93,25 @@ export function FocusTimer({
     return () => clearInterval(intRef.current!);
   }, [running, phase, focusMin, breakMin, label]);
 
+  /**
+   * Live-updates the dial while someone edits the Focus/Break minutes, but only
+   * for that — it must not fire just because `running` flipped.
+   *
+   * It used to depend on `running` directly, which meant pausing (running:
+   * true -> false) re-ran this effect, and since the timer was now "not
+   * running" it reset secondsLeft to a fresh focusMin * 60 — wiping out
+   * whatever time was left and making Pause behave like Reset. `running` is
+   * read from a ref instead, so it can gate the effect without being a
+   * dependency that re-triggers it.
+   */
+  const runningRef = useRef(running);
   useEffect(() => {
-    if (!running) setSecondsLeft((phase === "focus" ? focusMin : breakMin) * 60);
-  }, [focusMin, breakMin, phase, running]);
+    runningRef.current = running;
+  }, [running]);
+
+  useEffect(() => {
+    if (!runningRef.current) setSecondsLeft((phase === "focus" ? focusMin : breakMin) * 60);
+  }, [focusMin, breakMin, phase]);
 
   const total = (phase === "focus" ? focusMin : breakMin) * 60;
   const pct = 1 - secondsLeft / total;

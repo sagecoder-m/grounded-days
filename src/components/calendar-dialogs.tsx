@@ -10,7 +10,7 @@
  * title and description editing, a date picker and a delete — so this file only
  * deals with events.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -78,12 +78,45 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
   const [startDate, setStartDate] = useState(
     defaultDate && defaultDate > todayKey ? defaultDate : todayKey,
   );
+  /**
+   * Re-syncs when the calendar's visible period changes underneath an already-
+   * mounted dialog.
+   *
+   * The state above only ran its initializer once, on this component's first
+   * mount — which happens before the calendar has ever reported a visible
+   * range, so defaultDate was still undefined and startDate latched onto
+   * today permanently. Paging the calendar forward and opening "+Add" kept
+   * defaulting to today rather than the period actually on screen, silently
+   * contradicting the comment above that today should only win when nothing
+   * later is in view.
+   */
+  useEffect(() => {
+    setStartDate(defaultDate && defaultDate > todayKey ? defaultDate : todayKey);
+    // Only when the calendar's own range moves — not on every render, or a
+    // day picked by hand in the field below would get overwritten back to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultDate]);
   const [endDate, setEndDate] = useState("");
   const [area, setArea] = useState<string>("personal");
+  /**
+   * Times, off by default.
+   *
+   * A pair of time inputs was deliberately left out of the *edit* dialog
+   * (below) because editing a dragged event's time risked disagreeing with
+   * where it visually sat on the grid. Creating one has no such position to
+   * disagree with, so the gap here was not that design choice — it was that
+   * there was simply no way to give a new event a time at all, on the
+   * dialog or the grid. "All day" keeps the common case (an appointment with
+   * no particular hour) at one click, same as before this existed.
+   */
+  const [allDay, setAllDay] = useState(true);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
 
   function reset() {
     setTitle("");
     setEndDate("");
+    setAllDay(true);
     setOpen(false);
   }
 
@@ -93,6 +126,20 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
     if (!name) return;
 
     if (kind === "event") {
+      // Timed only for a single day — a start and end hour describe one
+      // sitting, and a "1pm to 2pm" spanning several calendar days is not a
+      // shape this form tries to collect.
+      const singleDay = !endDate || endDate === startDate;
+      const timed = !allDay && singleDay && startTime && endTime;
+      // `new Date("yyyy-MM-ddTHH:mm:00")` with no offset is read as local
+      // time by the browser, which is what the time inputs mean — the person
+      // typed 1pm in their own timezone, not UTC. toISOString() is what turns
+      // that into the UTC instant the timestamptz column actually needs;
+      // sending the naive string straight through would have PostgREST parse
+      // it as UTC and store 1pm as 1pm UTC, quietly shifting every event by
+      // the local offset.
+      const startsAt = timed ? new Date(`${startDate}T${startTime}:00`).toISOString() : undefined;
+      const endsAt = timed ? new Date(`${startDate}T${endTime}:00`).toISOString() : undefined;
       actions.addEvent({
         title: name,
         date: startDate,
@@ -100,6 +147,8 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
         // redundant end that could drift out of step with its start.
         endDate: endDate && endDate !== startDate ? endDate : undefined,
         area: area as Area,
+        startsAt,
+        endsAt,
       });
     } else if (kind === "task") {
       actions.addTask({ area: area as Area, title: name, date: startDate });
@@ -115,6 +164,13 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
   // An end before the start is the one input the database rejects outright, so
   // it is caught here rather than surfaced as a failed save.
   const endBeforeStart = Boolean(endDate) && endDate < startDate;
+  const timeInvalid =
+    kind === "event" &&
+    !allDay &&
+    (!endDate || endDate === startDate) &&
+    Boolean(startTime) &&
+    Boolean(endTime) &&
+    endTime <= startTime;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -176,6 +232,47 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
                   placeholder="same day"
                 />
               </div>
+
+              {/* A time only means one thing when the event lives on a single
+                  day — "1pm to 2pm" spanning several days is not a shape this
+                  form asks for, so the toggle disappears rather than offering
+                  an hour that would be ignored. */}
+              {(!endDate || endDate === startDate) && (
+                <div className="col-span-2 space-y-2.5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={allDay}
+                      onChange={(e) => setAllDay(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-tan accent-[color:var(--brown)]"
+                    />
+                    All day
+                  </label>
+                  {!allDay && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ev-start-time">Start time</Label>
+                        <Input
+                          id="ev-start-time"
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ev-end-time">End time</Label>
+                        <Input
+                          id="ev-end-time"
+                          type="time"
+                          value={endTime}
+                          min={startTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -227,9 +324,14 @@ export function AddEventDialog({ defaultDate }: { defaultDate?: string }) {
               The end date is before the start date.
             </p>
           )}
+          {timeInvalid && (
+            <p className="text-xs text-[color:var(--clay)]">
+              The end time is before the start time.
+            </p>
+          )}
 
           <DialogFooter>
-            <Button type="submit" disabled={endBeforeStart} className="rounded-full">
+            <Button type="submit" disabled={endBeforeStart || timeInvalid} className="rounded-full">
               Add {kind}
             </Button>
           </DialogFooter>
