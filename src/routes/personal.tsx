@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useMounted } from "@/lib/use-mounted";
 import { toast } from "sonner";
 import { InlineText } from "@/components/inline-text";
+import { AreaEvents } from "@/components/area-events";
 import {
   Line,
   LineChart,
@@ -355,6 +356,8 @@ function PersonalPage() {
               ))}
             </div>
           </section>
+
+          <AreaEvents area="personal" />
         </div>
 
         {/* The right track. */}

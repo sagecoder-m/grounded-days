@@ -9,6 +9,7 @@ import { AddProjectDialog } from "@/components/add-project-dialog";
 import { SoftProgress } from "@/components/soft-progress";
 import { HowFarYouveCome, newestFirst, type HowFarGroup } from "@/components/how-far";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
+import { AreaEvents } from "@/components/area-events";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/professional/")({
@@ -90,6 +91,8 @@ function ProfessionalPage() {
 
         <WhereYouLeftOff />
       </div>
+
+      <AreaEvents area="professional" />
 
       <ProfessionalHistory />
     </div>

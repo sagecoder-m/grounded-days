@@ -15,6 +15,7 @@ import { AddCourseDialog } from "@/components/add-course-dialog";
 import { InlineText } from "@/components/inline-text";
 import { HowFarYouveCome, newestFirst } from "@/components/how-far";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
+import { AreaEvents } from "@/components/area-events";
 import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ function EducationPage() {
         <div className="space-y-8">
           <Today tasks={tasks} today={today} />
           <DueThisWeek tasks={tasks} today={today} />
+          <AreaEvents area="education" />
 
           <section onPointerUp={goalDrag.endDrag} onPointerLeave={goalDrag.endDrag}>
             <div className="mb-3 flex items-baseline justify-between gap-2">
