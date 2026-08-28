@@ -15,7 +15,6 @@ import { Route as ShareRouteImport } from './routes/share'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PersonalRouteImport } from './routes/personal'
-import { Route as JournalRouteImport } from './routes/journal'
 import { Route as EducationRouteImport } from './routes/education'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -23,7 +22,9 @@ import { Route as AssistantRouteImport } from './routes/assistant'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfessionalIndexRouteImport } from './routes/professional.index'
+import { Route as JournalIndexRouteImport } from './routes/journal.index'
 import { Route as ProfessionalProjectIdRouteImport } from './routes/professional.$projectId'
+import { Route as JournalAllRouteImport } from './routes/journal.all'
 
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
@@ -53,11 +54,6 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PersonalRoute = PersonalRouteImport.update({
   id: '/personal',
   path: '/personal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JournalRoute = JournalRouteImport.update({
-  id: '/journal',
-  path: '/journal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EducationRoute = EducationRouteImport.update({
@@ -95,9 +91,19 @@ const ProfessionalIndexRoute = ProfessionalIndexRouteImport.update({
   path: '/professional/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JournalIndexRoute = JournalIndexRouteImport.update({
+  id: '/journal/',
+  path: '/journal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfessionalProjectIdRoute = ProfessionalProjectIdRouteImport.update({
   id: '/professional/$projectId',
   path: '/professional/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JournalAllRoute = JournalAllRouteImport.update({
+  id: '/journal/all',
+  path: '/journal/all',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -108,14 +114,15 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
-  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/journal/all': typeof JournalAllRoute
   '/professional/$projectId': typeof ProfessionalProjectIdRoute
+  '/journal/': typeof JournalIndexRoute
   '/professional/': typeof ProfessionalIndexRoute
 }
 export interface FileRoutesByTo {
@@ -125,14 +132,15 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
-  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/journal/all': typeof JournalAllRoute
   '/professional/$projectId': typeof ProfessionalProjectIdRoute
+  '/journal': typeof JournalIndexRoute
   '/professional': typeof ProfessionalIndexRoute
 }
 export interface FileRoutesById {
@@ -143,14 +151,15 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/education': typeof EducationRoute
-  '/journal': typeof JournalRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/share': typeof ShareRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/journal/all': typeof JournalAllRoute
   '/professional/$projectId': typeof ProfessionalProjectIdRoute
+  '/journal/': typeof JournalIndexRoute
   '/professional/': typeof ProfessionalIndexRoute
 }
 export interface FileRouteTypes {
@@ -162,14 +171,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
-    | '/journal'
     | '/personal'
     | '/privacy'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
     | '/terms'
+    | '/journal/all'
     | '/professional/$projectId'
+    | '/journal/'
     | '/professional/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -179,14 +189,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
-    | '/journal'
     | '/personal'
     | '/privacy'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
     | '/terms'
+    | '/journal/all'
     | '/professional/$projectId'
+    | '/journal'
     | '/professional'
   id:
     | '__root__'
@@ -196,14 +207,15 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/education'
-    | '/journal'
     | '/personal'
     | '/privacy'
     | '/profile'
     | '/share'
     | '/sitemap.xml'
     | '/terms'
+    | '/journal/all'
     | '/professional/$projectId'
+    | '/journal/'
     | '/professional/'
   fileRoutesById: FileRoutesById
 }
@@ -214,14 +226,15 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   EducationRoute: typeof EducationRoute
-  JournalRoute: typeof JournalRoute
   PersonalRoute: typeof PersonalRoute
   PrivacyRoute: typeof PrivacyRoute
   ProfileRoute: typeof ProfileRoute
   ShareRoute: typeof ShareRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  JournalAllRoute: typeof JournalAllRoute
   ProfessionalProjectIdRoute: typeof ProfessionalProjectIdRoute
+  JournalIndexRoute: typeof JournalIndexRoute
   ProfessionalIndexRoute: typeof ProfessionalIndexRoute
 }
 
@@ -267,13 +280,6 @@ declare module '@tanstack/react-router' {
       path: '/personal'
       fullPath: '/personal'
       preLoaderRoute: typeof PersonalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/journal': {
-      id: '/journal'
-      path: '/journal'
-      fullPath: '/journal'
-      preLoaderRoute: typeof JournalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/education': {
@@ -325,11 +331,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfessionalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/journal/': {
+      id: '/journal/'
+      path: '/journal'
+      fullPath: '/journal/'
+      preLoaderRoute: typeof JournalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/professional/$projectId': {
       id: '/professional/$projectId'
       path: '/professional/$projectId'
       fullPath: '/professional/$projectId'
       preLoaderRoute: typeof ProfessionalProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/journal/all': {
+      id: '/journal/all'
+      path: '/journal/all'
+      fullPath: '/journal/all'
+      preLoaderRoute: typeof JournalAllRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -342,14 +362,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   EducationRoute: EducationRoute,
-  JournalRoute: JournalRoute,
   PersonalRoute: PersonalRoute,
   PrivacyRoute: PrivacyRoute,
   ProfileRoute: ProfileRoute,
   ShareRoute: ShareRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  JournalAllRoute: JournalAllRoute,
   ProfessionalProjectIdRoute: ProfessionalProjectIdRoute,
+  JournalIndexRoute: JournalIndexRoute,
   ProfessionalIndexRoute: ProfessionalIndexRoute,
 }
 export const routeTree = rootRouteImport

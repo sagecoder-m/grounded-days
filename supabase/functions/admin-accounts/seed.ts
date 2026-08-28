@@ -35,6 +35,18 @@ function at(offset: number, hour: number, minute = 0): string {
 const id = () => crypto.randomUUID();
 
 /**
+ * The moods the database will accept.
+ *
+ * Typed rather than left as free strings: the first version of this file used
+ * "okay", which is not one of them, and the CHECK constraint rejected the whole
+ * journal insert — halfway through a seed that had already written projects and
+ * tasks, leaving the account partly filled and no obvious reason why. A union
+ * turns that into a red squiggle.
+ */
+type Mood = "low" | "tender" | "steady" | "good" | "wired";
+const mood = (m: Mood) => m;
+
+/**
  * Clear this account's content, then write the sample set.
  *
  * Clearing first so the command is repeatable — running it twice should leave
@@ -737,7 +749,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       id: id(),
       user_id: userId,
       date: day(0),
-      mood: "okay",
+      mood: mood("steady"),
       body: "Slow start, better afternoon. The walk helped more than I expected it to.",
       gratitude: "The light in the kitchen at four o'clock.",
     },
@@ -745,7 +757,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       id: id(),
       user_id: userId,
       date: day(-1),
-      mood: "good",
+      mood: mood("good"),
       body: "Got the introduction written in one sitting. Rare and worth writing down.",
       gratitude: "Whoever invented the two-minute rule.",
     },
@@ -753,7 +765,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       id: id(),
       user_id: userId,
       date: day(-3),
-      mood: "low",
+      mood: mood("low"),
       body: "Not much today. Made the bed, drank water, called that enough.",
       gratitude: null,
     },
@@ -761,7 +773,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       id: id(),
       user_id: userId,
       date: day(-8),
-      mood: "okay",
+      mood: mood("steady"),
       body: "Back after a few quiet days. Nothing fell over while I was gone.",
       gratitude: "A week that waited for me.",
     },
@@ -769,7 +781,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       id: id(),
       user_id: userId,
       date: day(-12),
-      mood: "good",
+      mood: mood("good"),
       body: "Long walk, then the problem set actually made sense.",
       gratitude: null,
     },

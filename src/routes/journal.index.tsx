@@ -1,15 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 
 import { dateKey } from "@/components/task-grid";
 import { actions, useAppState } from "@/lib/store";
-import type { Mood } from "@/lib/store-types";
+import type { JournalEntry, Mood } from "@/lib/store-types";
 import { affirmationForDate } from "@/lib/affirmations";
 import { useMounted } from "@/lib/use-mounted";
 
-export const Route = createFileRoute("/journal")({
+export const Route = createFileRoute("/journal/")({
   component: JournalPage,
+  /**
+   * Which day is open, in the URL.
+   *
+   * It was component state, which meant the archive had nowhere to send you: a
+   * list of every entry is only useful if the entries are reachable, and a link
+   * needs somewhere to point. In the address bar it also survives a reload and
+   * can be shared with yourself between devices.
+   */
+  validateSearch: (search: Record<string, unknown>): { date?: string } => {
+    const date = typeof search.date === "string" ? search.date : undefined;
+    return /^\d{4}-\d{2}-\d{2}$/.test(date ?? "") ? { date } : {};
+  },
 });
 
 /** Words rather than a 1-5 scale — a number invites grading the day. */
@@ -28,7 +40,15 @@ const MOOD_TINT: Record<Mood, string> = Object.fromEntries(
 function JournalPage() {
   const state = useAppState();
   const mounted = useMounted();
-  const [selected, setSelected] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const { date: fromUrl } = Route.useSearch();
+  const navigate = useNavigate();
+
+  const today = format(new Date(), "yyyy-MM-dd");
+  const selected = fromUrl ?? today;
+  const setSelected = (d: string) =>
+    // Replace rather than push: stepping along the day strip should not build a
+    // back-button history you have to click through to leave the page.
+    navigate({ to: "/journal", search: d === today ? {} : { date: d }, replace: true });
 
   const entry = state.journal.find((e) => e.date === selected);
   const affirmation = affirmationForDate(selected);
@@ -53,29 +73,116 @@ function JournalPage() {
         </p>
       </header>
 
-      <p className="card-soft p-5 font-serif text-lg leading-snug">{affirmation.text}</p>
+      {/*
+        Writing on the left, everything about writing on the right.
 
-      <DayStrip
-        dates={strip}
-        selected={selected}
-        onSelect={setSelected}
-        moodFor={(d) => state.journal.find((e) => e.date === d)?.mood}
-        hasEntry={(d) => {
-          const e = state.journal.find((x) => x.date === d);
-          return Boolean(e && (e.body.trim() || e.gratitude?.trim() || e.mood));
+        The affirmation and the fortnight of days used to sit above the box, so
+        opening the journal meant scrolling past two things before reaching the
+        one thing you came to do. They are context, not steps — moving them
+        beside the box puts the cursor at the top of the page where it belongs.
+      */}
+      <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="space-y-8">
+          <Editor
+            key={selected}
+            date={selected}
+            body={entry?.body ?? ""}
+            mood={entry?.mood}
+            gratitude={entry?.gratitude ?? ""}
+          />
+
+          <WeeklyReview />
+        </div>
+
+        <aside className="space-y-6">
+          <p className="card-soft p-5 font-serif text-base leading-snug">{affirmation.text}</p>
+
+          <DayStrip
+            dates={strip}
+            selected={selected}
+            onSelect={setSelected}
+            moodFor={(d) => state.journal.find((e) => e.date === d)?.mood}
+            hasEntry={(d) => {
+              const e = state.journal.find((x) => x.date === d);
+              return Boolean(e && (e.body.trim() || e.gratitude?.trim() || e.mood));
+            }}
+          />
+
+          <RecentEntries selected={selected} />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The last few entries, and the way to the rest of them.
+ *
+ * Until now a journal entry was reachable only by finding its day in a
+ * fortnight-long strip, which meant anything written three weeks ago was, in
+ * practice, gone. Writing that cannot be re-read is a diary with no point.
+ */
+function RecentEntries({ selected }: { selected: string }) {
+  const state = useAppState();
+  const written = useMemo(
+    () =>
+      state.journal
+        .filter((e) => e.body.trim() || e.gratitude?.trim() || e.mood)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [state.journal],
+  );
+
+  return (
+    <section>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <h2 className="font-serif text-lg">Entries</h2>
+        <Link
+          to="/journal/all"
+          className="text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+        >
+          See all
+        </Link>
+      </div>
+
+      {written.length === 0 ? (
+        <p className="text-sm italic text-ink-soft">Nothing written down yet.</p>
+      ) : (
+        <div className="space-y-1">
+          {written.slice(0, 6).map((e) => (
+            <EntryLine key={e.date} entry={e} active={e.date === selected} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** One entry as a line: the day, its mood as a dot, and the first few words. */
+export function EntryLine({ entry, active = false }: { entry: JournalEntry; active?: boolean }) {
+  const firstLine = (entry.body.trim() || entry.gratitude?.trim() || "").split("\n")[0];
+
+  return (
+    <Link
+      to="/journal"
+      search={{ date: entry.date }}
+      className={`float-row flex items-baseline gap-2.5 rounded-2xl border px-3 py-2 ${
+        active ? "border-primary bg-accent" : "border-border bg-card"
+      }`}
+    >
+      <span
+        className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full border"
+        style={{
+          backgroundColor: entry.mood ? MOOD_TINT[entry.mood] : "transparent",
+          borderColor: entry.mood ? MOOD_TINT[entry.mood] : "var(--ink-soft)",
         }}
       />
-
-      <Editor
-        key={selected}
-        date={selected}
-        body={entry?.body ?? ""}
-        mood={entry?.mood}
-        gratitude={entry?.gratitude ?? ""}
-      />
-
-      <WeeklyReview />
-    </div>
+      <span className="w-14 shrink-0 text-[11px] text-ink-soft">
+        {format(parseISO(entry.date), "MMM d")}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-xs">
+        {firstLine || <span className="italic text-ink-soft">Mood only</span>}
+      </span>
+    </Link>
   );
 }
 
@@ -217,7 +324,7 @@ function Editor({
             dirty.current = true;
             setDraftBody(e.target.value);
           }}
-          rows={6}
+          rows={4}
           placeholder="One sentence is a complete entry."
           className="w-full resize-y rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed outline-none focus:border-primary"
         />
