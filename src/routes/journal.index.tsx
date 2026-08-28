@@ -433,11 +433,17 @@ function WeeklyReview() {
         </div>
       ) : (
         <div className="card-soft space-y-4 p-5">
-          <div className="grid grid-cols-2 gap-4">
-            <Stat label="tasks done" value={review.tasksDone} />
-            <Stat label="habit days" value={review.habitTicks} />
-            <Stat label="goal steps" value={review.stepsDone} />
-            <Stat label="focus minutes" value={review.focusMinutes} />
+          {/* Four across when the column can hold them, two by two when it
+              cannot. A container query rather than a screen one: this sits in a
+              sidebar on a wide window and full width on a phone, so what
+              matters is the width of the card, not of the display. */}
+          <div className="@container">
+            <div className="grid grid-cols-2 gap-4 @xs:grid-cols-4">
+              <Stat label="tasks done" value={review.tasksDone} />
+              <Stat label="habit days" value={review.habitTicks} />
+              <Stat label="goal steps" value={review.stepsDone} />
+              <Stat label="focus minutes" value={review.focusMinutes} />
+            </div>
           </div>
 
           <div className="space-y-1.5 border-t border-border pt-4 text-sm">
