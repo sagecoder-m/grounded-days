@@ -270,7 +270,7 @@ function Overview() {
           between stacked tiles lives inside that span, which is why row-gap has
           to be zero.
         */
-        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-6"
+        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-12"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -282,7 +282,7 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <MasonryCell key={key} className="@container @2xl/board:col-span-6">
+            <MasonryCell key={key} className="@container @2xl/board:col-span-12">
               {section}
             </MasonryCell>
           );

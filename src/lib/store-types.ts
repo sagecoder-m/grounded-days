@@ -201,7 +201,7 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  * in every account's settings, so it stays rather than being renamed for tidiness
  * and needing a migration. The menu has always labelled it "Half width".
  */
-export type WidgetSize = "square" | "wide" | "tall" | "third";
+export type WidgetSize = "square" | "wide" | "tall" | "third" | "threeQuarter";
 
 /**
  * Light, dark, or whatever the device says.

@@ -45,10 +45,13 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * Grid placement per size, keyed to the board's width rather than the window's —
  * see the grid in routes/index.tsx for why.
  *
- * The board is six columns so that both halves (three) and thirds (two) divide
- * evenly. Worth knowing what the thresholds cost in window width: the rail and
- * padding take about 344px, so columns start at roughly a 1016px window with the
- * rail open and an 800px one with it collapsed.
+ * The board is twelve columns, so halves (six), thirds (four) and three
+ * quarters (nine) all divide evenly. It was six until three-quarter width was
+ * asked for, which six cannot express — 75% of six is four and a half.
+ *
+ * Worth knowing what the thresholds cost in window width: the rail and padding
+ * take about 344px, so columns start at roughly a 1016px window with the rail
+ * open and an 800px one with it collapsed.
  *
  * Thirds wait for a wider board than halves do. The board caps at 960px, so a
  * third is about 300px at best and less than that on a smaller screen — below
@@ -57,9 +60,13 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * changing back.
  */
 const SPAN: Record<WidgetSize, string> = {
-  wide: "@2xl/board:col-span-6",
-  square: "@2xl/board:col-span-3",
-  third: "@2xl/board:col-span-3 @3xl/board:col-span-2",
+  wide: "@2xl/board:col-span-12",
+  /* Three quarters, which only reads as three quarters when something can sit
+     in the remaining quarter — so it falls back to full width until the board
+     is wide enough for a third-width tile to be legible beside it. */
+  threeQuarter: "@2xl/board:col-span-12 @3xl/board:col-span-9",
+  square: "@2xl/board:col-span-6",
+  third: "@2xl/board:col-span-6 @3xl/board:col-span-4",
   /*
     Half width with a floor under its height.
 
@@ -70,7 +77,7 @@ const SPAN: Record<WidgetSize, string> = {
     to masonry. Two or three ordinary tiles pack alongside it on their own,
     without anything reserving space for them.
   */
-  tall: "@2xl/board:col-span-3",
+  tall: "@2xl/board:col-span-6",
 };
 
 /**
@@ -90,10 +97,49 @@ const INNER: Partial<Record<WidgetSize, string>> = {
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
   { key: "wide", label: "Full width", hint: "Spans the row", icon: RectangleHorizontal },
+  {
+    key: "threeQuarter",
+    label: "Three quarters",
+    hint: "Room for one third beside it",
+    icon: RectangleHorizontal,
+  },
   { key: "square", label: "Half width", hint: "Two side by side", icon: Columns2 },
   { key: "third", label: "Third width", hint: "Three side by side", icon: Columns3 },
   { key: "tall", label: "Tall", hint: "Half width, taller", icon: RectangleVertical },
 ];
+
+/**
+ * Which shapes each widget is allowed to take.
+ *
+ * The brief sets these per widget rather than globally, and the reason is that
+ * a size is not a neutral container — content has a shape it works in, and
+ * offering a shape it does not work in is offering a way to break the board.
+ *
+ *   graphs   horizontal only. A chart squeezed into a third of the width stops
+ *            being readable long before it stops fitting: the x axis is time,
+ *            and time needs length.
+ *   timer    square, half or full. It is a dial and two fields; there is
+ *            nothing in it that a third of the width can hold, and nothing
+ *            that rewards extra height.
+ *   rhythm   the square-format grid, so it may be square or run vertically —
+ *            it is a calendar of dots and it tiles either way.
+ *
+ * Anything not named here keeps every option, which is the brief's own
+ * "everything else can stay with size options".
+ */
+const HORIZONTAL: WidgetSize[] = ["wide", "threeQuarter", "square"];
+const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
+  river: HORIZONTAL,
+  chart: HORIZONTAL,
+  balance: HORIZONTAL,
+  focus: ["wide", "square", "third"],
+  rhythm: ["square", "third", "tall"],
+};
+
+function sizeOptionsFor(widgetKey: string) {
+  const allowed = ALLOWED_SIZES[widgetKey];
+  return allowed ? SIZE_OPTIONS.filter((o) => allowed.includes(o.key)) : SIZE_OPTIONS;
+}
 
 /** How long a press has to be held before it counts as "hold", in ms. Long
  *  enough not to fire while scrolling, short enough not to feel broken. */
@@ -270,7 +316,15 @@ export function WidgetFrame({
   }
 
   const entry = widgets.find((w) => w.key === widgetKey);
-  const size = entry?.size ?? "wide";
+  /*
+    A stored size the widget is no longer allowed to take falls back to the
+    first shape it is. Accounts were arranged before these rules existed, so
+    without this a chart could still be sitting in a shape the menu will not
+    offer — rendered one way and described another.
+  */
+  const options = sizeOptionsFor(widgetKey);
+  const stored = entry?.size ?? "wide";
+  const size = options.some((o) => o.key === stored) ? stored : options[0].key;
   const { ref: measureRef, span } = useRowSpan();
 
   function setSize(next: WidgetSize) {
@@ -365,7 +419,7 @@ export function WidgetFrame({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52 bg-card">
-          {SIZE_OPTIONS.map((option) => (
+          {options.map((option) => (
             <DropdownMenuItem
               key={option.key}
               onSelect={() => setSize(option.key)}
