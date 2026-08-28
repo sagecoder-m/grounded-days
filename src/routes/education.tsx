@@ -475,7 +475,7 @@ function History({ tasks }: { tasks: Task[] }) {
   return (
     <section>
       <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-serif text-lg">History</h2>
+        <h2 className="font-serif text-lg">See how far you&rsquo;ve come</h2>
         <button
           onClick={toggle}
           aria-expanded={shown}
@@ -484,7 +484,9 @@ function History({ tasks }: { tasks: Task[] }) {
           {shown ? "Hide" : "Unhide"}
         </button>
       </div>
-      <p className="text-sm italic text-ink-soft">I want to show you how far you&rsquo;ve come.</p>
+      <p className="text-sm italic text-ink-soft">
+        Everything you have finished, and every block you have sat through.
+      </p>
 
       {shown && (
         <div className="mt-3 space-y-2">

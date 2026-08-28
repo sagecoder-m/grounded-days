@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarDays, Check, Plus, Trash2 } from "lucide-react";
 
 import { actions, type Goal } from "@/lib/store";
@@ -17,7 +17,17 @@ type Tint = "sage" | "clay" | "brown" | "tan";
  * Goals created before steps existed keep the number they were given and show a
  * plain bar until their first step is added, so nothing resets to zero.
  */
-export function GoalCard({ goal, tint = "sage" }: { goal: Goal; tint?: Tint }) {
+export function GoalCard({
+  goal,
+  tint = "sage",
+  footer,
+}: {
+  goal: Goal;
+  tint?: Tint;
+  /** Extra content inside the card, below the steps. Personal uses it for the
+   *  daily habits feeding this goal; the other areas have none. */
+  footer?: ReactNode;
+}) {
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
 
@@ -159,6 +169,7 @@ export function GoalCard({ goal, tint = "sage" }: { goal: Goal; tint?: Tint }) {
           Add a step
         </button>
       )}
+      {footer}
     </div>
   );
 }

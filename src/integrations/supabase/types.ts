@@ -513,6 +513,7 @@ export type Database = {
       habits: {
         Row: {
           created_at: string
+          goal_id: string | null
           id: string
           name: string
           updated_at: string
@@ -521,6 +522,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          goal_id?: string | null
           id?: string
           name: string
           updated_at?: string
@@ -529,6 +531,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          goal_id?: string | null
           id?: string
           name?: string
           updated_at?: string

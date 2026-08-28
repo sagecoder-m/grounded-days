@@ -78,6 +78,7 @@ const SPAN: Record<WidgetSize, string> = {
     without anything reserving space for them.
   */
   tall: "@2xl/board:col-span-6",
+  taller: "@2xl/board:col-span-6",
 };
 
 /**
@@ -93,6 +94,7 @@ const SPAN: Record<WidgetSize, string> = {
  */
 const INNER: Partial<Record<WidgetSize, string>> = {
   tall: "@2xl/board:min-h-[26rem] [&>*]:h-full [&>*>*]:h-full",
+  taller: "@2xl/board:min-h-[38rem] [&>*]:h-full [&>*>*]:h-full",
 };
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
@@ -106,6 +108,12 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
   { key: "square", label: "Half width", hint: "Two side by side", icon: Columns2 },
   { key: "third", label: "Third width", hint: "Three side by side", icon: Columns3 },
   { key: "tall", label: "Tall", hint: "Half width, taller", icon: RectangleVertical },
+  {
+    key: "taller",
+    label: "Full height",
+    hint: "Half width, taller again",
+    icon: RectangleVertical,
+  },
 ];
 
 /**
@@ -115,30 +123,38 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
  * a size is not a neutral container — content has a shape it works in, and
  * offering a shape it does not work in is offering a way to break the board.
  *
- *   graphs   horizontal only. A chart squeezed into a third of the width stops
- *            being readable long before it stops fitting: the x axis is time,
- *            and time needs length.
- *   timer    square, half or full. It is a dial and two fields; there is
- *            nothing in it that a third of the width can hold, and nothing
- *            that rewards extra height.
- *   rhythm   the square-format grid, so it may be square or run vertically —
- *            it is a calendar of dots and it tiles either way.
+ *   graphs      horizontal only — full, three quarters, half. A chart squeezed
+ *               into a third stops being readable long before it stops
+ *               fitting: the x axis is time, and time needs length.
+ *   timer       square, half or full. A dial and two fields; nothing a third
+ *               can hold and nothing that rewards height.
+ *   your rhythm the square-format one, so it runs vertically: tall, taller, or
+ *               square. It is the river, and it is the widget the brief names.
  *
- * Anything not named here keeps every option, which is the brief's own
- * "everything else can stay with size options".
+ * Anything not listed keeps every option, which is the brief's own "everything
+ * else can stay with size options".
+ *
+ * The order here is the order the menu shows, and the first entry is what a
+ * widget falls back to if the size an account already stored is no longer one
+ * of its options — so each list leads with the shape that suits it best.
  */
 const HORIZONTAL: WidgetSize[] = ["wide", "threeQuarter", "square"];
 const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
-  river: HORIZONTAL,
+  river: ["tall", "taller", "square"],
   chart: HORIZONTAL,
   balance: HORIZONTAL,
-  focus: ["wide", "square", "third"],
-  rhythm: ["square", "third", "tall"],
+  movement: HORIZONTAL,
+  focus: ["square", "third", "wide"],
 };
 
 function sizeOptionsFor(widgetKey: string) {
   const allowed = ALLOWED_SIZES[widgetKey];
-  return allowed ? SIZE_OPTIONS.filter((o) => allowed.includes(o.key)) : SIZE_OPTIONS;
+  if (!allowed) return SIZE_OPTIONS;
+  // Mapped over `allowed`, not filtered from SIZE_OPTIONS, so the preference
+  // order above is the order shown and the fallback is the first of them.
+  return allowed
+    .map((key) => SIZE_OPTIONS.find((o) => o.key === key))
+    .filter((o): o is (typeof SIZE_OPTIONS)[number] => Boolean(o));
 }
 
 /** How long a press has to be held before it counts as "hold", in ms. Long

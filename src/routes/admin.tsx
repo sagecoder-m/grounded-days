@@ -624,6 +624,7 @@ function AccountsPanel({
           )}
         </div>
         <CreateAccountCard />
+        <SeedDemoCard />
       </div>
     </section>
   );
@@ -670,6 +671,95 @@ function CopyRow({ label, value }: { label: string; value: string }) {
       >
         <Copy className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+/**
+ * Fill an account with sample data, for showing the app to someone.
+ *
+ * A demo of a planner with nothing in it demonstrates nothing: every page shows
+ * its empty state, every chart says "not enough data yet", and what you wanted
+ * to show — what a fortnight of use looks like — is precisely what is missing.
+ *
+ * Behind a typed confirmation because it replaces that account's content. That
+ * is the intended behaviour (re-seeding should leave one demo, not two of
+ * everything) and exactly why it must be impossible to do by accident with a
+ * real tester's address in the box.
+ */
+function SeedDemoCard() {
+  const [email, setEmail] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+
+  const armed = email.trim().length > 0 && confirm.trim().toLowerCase() === "replace";
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!armed) return;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "seed", email: email.trim() },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      const total = Object.values((data?.counts ?? {}) as Record<string, number>).reduce(
+        (sum, n) => sum + n,
+        0,
+      );
+      setDone(`${total} rows written to ${email.trim()}`);
+      setConfirm("");
+      toast.success("Sample data written");
+    } catch (err) {
+      toast.error("Couldn't fill that account", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-soft space-y-4 p-4 md:p-6">
+      <div>
+        <h3 className="text-sm text-ink-soft">Fill an account with sample data</h3>
+        <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+          Habits, goals, projects, courses, tasks, calendar, journal and focus sessions — a
+          plausible fortnight, so every page has something to show. Dates are relative to today, so
+          it never looks stale.
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>Account email</Label>
+          <Input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="demo@…"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>
+            This <strong>replaces</strong> that account&rsquo;s content. Type <code>replace</code>{" "}
+            to confirm.
+          </Label>
+          <Input value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </div>
+        <Button type="submit" disabled={!armed || busy} className="w-full rounded-full">
+          {busy ? "Writing…" : "Fill this account"}
+        </Button>
+      </form>
+
+      {done && (
+        <p className="rounded-2xl border border-dashed border-tan bg-secondary/60 p-3 text-xs">
+          {done}
+        </p>
+      )}
     </div>
   );
 }

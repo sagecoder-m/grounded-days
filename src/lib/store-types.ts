@@ -44,6 +44,13 @@ export interface Habit {
   position: number;
   createdAt: number;
   log: Record<string, boolean>; // date -> completed
+  /**
+   * The goal this habit works towards, if any.
+   *
+   * Optional and normally empty. A habit standing on its own is the common case
+   * — "drink water" does not need an ambition behind it to be worth doing.
+   */
+  goalId?: string;
 }
 
 /** One concrete, tickable piece of a goal. */
@@ -201,7 +208,7 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  * in every account's settings, so it stays rather than being renamed for tidiness
  * and needing a migration. The menu has always labelled it "Half width".
  */
-export type WidgetSize = "square" | "wide" | "tall" | "third" | "threeQuarter";
+export type WidgetSize = "square" | "wide" | "tall" | "third" | "threeQuarter" | "taller";
 
 /**
  * Light, dark, or whatever the device says.

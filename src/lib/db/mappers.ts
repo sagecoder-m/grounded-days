@@ -127,7 +127,13 @@ export function rowToGoalStep(row: Tables<"goal_steps">): GoalStepWithParent {
 }
 
 export function rowToHabit(row: Tables<"habits">): HabitBase {
-  return { id: row.id, name: row.name, position: row.position, createdAt: toEpoch(row.created_at) };
+  return {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    createdAt: toEpoch(row.created_at),
+    goalId: row.goal_id ?? undefined,
+  };
 }
 
 export function rowToHabitLog(row: Tables<"habit_logs">): HabitLogEntry {
@@ -234,7 +240,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "day", enabled: true, size: "third" },
   { key: "upcoming", enabled: true, size: "third" },
   { key: "focus", enabled: true, size: "third" },
-  { key: "river", enabled: true, size: "wide" },
+  { key: "river", enabled: true, size: "tall" },
   { key: "chart", enabled: false, size: "wide" },
   { key: "goals", enabled: false, size: "wide" },
   { key: "rhythm", enabled: false, size: "wide" },
@@ -242,7 +248,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "movement", enabled: false, size: "square" },
 ];
 
-const WIDGET_SIZES = ["square", "wide", "tall", "third", "threeQuarter"] as const;
+const WIDGET_SIZES = ["square", "wide", "tall", "third", "threeQuarter", "taller"] as const;
 
 /**
  * Widgets that are furniture rather than content, and so do not move.

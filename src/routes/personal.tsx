@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { actions, useAppState } from "@/lib/store";
+import type { Goal, Habit } from "@/lib/store-types";
 import { dateKey } from "@/components/task-grid";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
@@ -36,7 +37,6 @@ function PersonalPage() {
   const personalTasks = state.tasks
     .filter((t) => t.area === "personal")
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-  const personalProjects = state.projects.filter((p) => p.area === "personal");
   /*
     Personal has no projects any more, so nothing is filed away out of sight and
     every open task belongs in this one list — the projectId filter that used to
@@ -204,12 +204,15 @@ function PersonalPage() {
                       key={h.id}
                       className="group grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1.5 rounded-2xl border border-border bg-background px-3 py-2 md:grid-cols-[1fr_repeat(7,minmax(0,44px))_auto] md:gap-2"
                     >
-                      <InlineText
-                        value={h.name}
-                        onSave={(v) => v && actions.updateHabit(h.id, { name: v })}
-                        showIcon
-                        className="text-sm font-medium"
-                      />
+                      <div className="min-w-0">
+                        <InlineText
+                          value={h.name}
+                          onSave={(v) => v && actions.updateHabit(h.id, { name: v })}
+                          showIcon
+                          className="text-sm font-medium"
+                        />
+                        <HabitGoalPicker habit={h} goals={personalGoals} />
+                      </div>
                       <div className="col-span-full md:col-span-7 grid grid-cols-7 gap-2 md:contents">
                         {days.map((d) => {
                           // Local, not toISOString(): that converts to UTC
@@ -333,7 +336,11 @@ function PersonalPage() {
                 drag={goalDrag.drag}
                 setDrag={goalDrag.setDrag}
               >
-                <GoalCard goal={g} tint="sage" />
+                <GoalCard
+                  goal={g}
+                  tint="sage"
+                  footer={<GoalHabits goal={g} habits={state.habits} days={days} />}
+                />
               </ReorderableCard>
             ))}
           </div>
@@ -351,7 +358,7 @@ function PersonalPage() {
       */}
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-serif text-lg">Other tasks</h2>
+          <h2 className="font-serif text-lg">See how far you&rsquo;ve come</h2>
           <AddTaskDialog
             area="personal"
             trigger={
@@ -380,7 +387,7 @@ function PersonalPage() {
           {doneTasks.length > 0 && (
             <>
               <p className="px-1 pt-4 text-[11px] uppercase tracking-[0.08em] text-ink-soft">
-                How far you&rsquo;ve come
+                Done
               </p>
               {doneTasks.map((t) => (
                 <TaskRow
@@ -395,49 +402,88 @@ function PersonalPage() {
           )}
         </div>
       </section>
-
-      <OlderProjects projects={personalProjects} />
     </div>
   );
 }
 
 /**
- * Projects an account made back when this page had them.
+ * Which goal a habit is working towards.
  *
- * The brief removes projects here — "goals = projects" — and a container that
- * simply stops being rendered is a container whose contents look deleted. Their
- * tasks were never lost (loose personal tasks show above regardless), but the
- * grouping was, so anyone who had one deserves to see where it went. Shown only
- * to accounts that actually have any, so it disappears for good on its own.
+ * The brief's line for this page is that goals align with daily habits, and
+ * until now that was a claim the data could not back: the app held both and
+ * connected neither, so walking outside every day for a month moved no goal
+ * anywhere. This is the connection, and it is deliberately the smallest one
+ * that could work — a habit points at one goal, or at nothing.
+ *
+ * A bare select rather than a dialog. Attaching a habit to a goal is a
+ * half-second decision you make in passing, and anything with a confirm step
+ * would cost more than the link is worth. Reads as quiet text until you use it.
  */
-function OlderProjects({ projects }: { projects: { id: string; name: string }[] }) {
-  if (projects.length === 0) return null;
+function HabitGoalPicker({ habit, goals }: { habit: Habit; goals: Goal[] }) {
+  if (goals.length === 0) return null;
+  const linked = goals.find((g) => g.id === habit.goalId);
 
   return (
-    <section>
-      <h2 className="font-serif text-lg">Older projects</h2>
-      <p className="mt-1 max-w-lg text-sm leading-relaxed text-ink-soft">
-        Personal works in goals now — a goal here is what a project was. These are still yours;
-        their tasks are in the list above. Delete one when you have moved what you want out of it.
-      </p>
-      <div className="mt-3 space-y-2">
-        {projects.map((p) => (
-          <div
-            key={p.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-tan px-4 py-3"
-          >
-            <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-            <button
-              onClick={() => actions.deleteProject(p.id)}
-              className="shrink-0 text-ink-soft transition-colors hover:text-[color:var(--clay)]"
-              aria-label={`Delete ${p.name}`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
+    <label className="group/goal relative inline-flex max-w-full items-center">
+      <span
+        className={`truncate text-[11px] underline decoration-dotted underline-offset-4 ${
+          linked ? "text-ink-soft" : "text-ink-soft opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {linked ? `towards ${linked.name}` : "link to a goal"}
+      </span>
+      <select
+        value={habit.goalId ?? ""}
+        onChange={(e) => actions.updateHabit(habit.id, { goalId: e.target.value || undefined })}
+        aria-label={`Goal for ${habit.name}`}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      >
+        <option value="">On its own</option>
+        {goals.map((g) => (
+          <option key={g.id} value={g.id}>
+            {g.name}
+          </option>
         ))}
-      </div>
-    </section>
+      </select>
+    </label>
+  );
+}
+
+/**
+ * The habits feeding one goal, and how this week has gone for them.
+ *
+ * Seven dots per habit, no count and no percentage. The question this answers
+ * is "is the practice behind this actually happening", which a row of dots
+ * answers instantly and a number turns into a mark out of seven.
+ */
+function GoalHabits({ goal, habits, days }: { goal: Goal; habits: Habit[]; days: Date[] }) {
+  const mine = habits.filter((h) => h.goalId === goal.id);
+  if (mine.length === 0) return null;
+
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+      <p className="text-[11px] uppercase tracking-[0.08em] text-ink-soft">Daily habits</p>
+      {mine.map((h) => (
+        <div key={h.id} className="flex items-center justify-between gap-3">
+          <span className="min-w-0 flex-1 truncate text-xs">{h.name}</span>
+          <span className="flex shrink-0 gap-1">
+            {days.map((d) => {
+              const iso = dateKey(d);
+              return (
+                <span
+                  key={iso}
+                  title={format(d, "EEE, MMM d")}
+                  className="h-2 w-2 rounded-full"
+                  style={{
+                    backgroundColor: h.log[iso] ? "var(--sage)" : "var(--surface-2)",
+                  }}
+                />
+              );
+            })}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 

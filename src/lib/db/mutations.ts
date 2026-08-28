@@ -282,10 +282,16 @@ export const actions = {
     );
   },
 
-  updateHabit(id: string, patch: Partial<{ name: string }>) {
+  updateHabit(id: string, patch: Partial<{ name: string; goalId: string | undefined }>) {
     const { userId } = requireStoreContext();
+    // "goalId" in patch rather than !== undefined: undefined is how this app
+    // spells "no goal", so the presence of the key is what says the caller
+    // means to change it. Testing the value would make unlinking unreachable.
+    const row: { name?: string; goal_id?: string | null } = {};
+    if ("name" in patch) row.name = patch.name;
+    if ("goalId" in patch) row.goal_id = patch.goalId ?? null;
     void write([{ key: qk.habits(userId), update: listPatch<HabitBase>(id, patch) }], () =>
-      supabase.from("habits").update({ name: patch.name }).eq("id", id),
+      supabase.from("habits").update(row).eq("id", id),
     );
   },
 

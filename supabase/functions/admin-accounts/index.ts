@@ -16,6 +16,7 @@ import {
   requireUser,
   serviceClient,
 } from "../_shared/supabase.ts";
+import { seedDemoData } from "./seed.ts";
 
 interface CreatePayload {
   action: "create";
@@ -27,7 +28,20 @@ interface ListPayload {
   action: "list";
 }
 
-type Payload = CreatePayload | ListPayload;
+/**
+ * Fill one account with sample data, by email.
+ *
+ * By email rather than by id because the admin knows the demo's address and
+ * would otherwise have to go and look up a uuid — and because an email typo
+ * fails to find anyone, where a mistyped uuid could plausibly match a real
+ * tester and wipe them. The lookup is exact and the account must already exist.
+ */
+interface SeedPayload {
+  action: "seed";
+  email: string;
+}
+
+type Payload = CreatePayload | ListPayload | SeedPayload;
 
 async function requireAdmin(req: Request): Promise<string> {
   const user = await requireUser(req);
@@ -88,6 +102,25 @@ Deno.serve(async (req) => {
       });
       if (error) throw new HttpError(400, error.message);
       return jsonResponse({ id: data.user.id, email: data.user.email });
+    }
+
+    if (payload.action === "seed") {
+      const email = payload.email?.trim().toLowerCase();
+      if (!email) throw new HttpError(400, "An email is required");
+
+      const { data, error } = await serviceClient().auth.admin.listUsers({
+        page: 1,
+        perPage: 500,
+      });
+      if (error) throw new HttpError(500, error.message);
+      const target = data.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (!target) throw new HttpError(404, `No account for ${email}`);
+
+      // Replaces that account's content. Said plainly in the HQ panel too — it
+      // is the whole point (a re-seed should leave one demo, not two), but it
+      // is destructive and must never be a surprise.
+      const counts = await seedDemoData(target.id);
+      return jsonResponse({ email, counts });
     }
 
     throw new HttpError(400, "Unknown action");
