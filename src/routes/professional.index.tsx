@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ChevronRight, Pause, Play, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Pause, Play, Plus } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
 import { areaProjectProgress, lastProjectId, projectProgress } from "@/lib/project-progress";
@@ -8,6 +8,7 @@ import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { AddProjectDialog } from "@/components/add-project-dialog";
 import { SoftProgress } from "@/components/soft-progress";
 import { HowFarYouveCome, newestFirst, type HowFarGroup } from "@/components/how-far";
+import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/professional/")({
@@ -149,8 +150,22 @@ function ProjectRow({ project }: { project: ReturnType<typeof useAppState>["proj
   const subCount = project.subprojects.length;
 
   return (
+    /*
+      "group" was missing here too — same bug as the course card: the delete
+      button below is a .reveal-control with no hoverable ancestor, so on a
+      mouse it existed but could never be reached.
+
+      flex-col below @sm, flex-row above it — not flex-wrap. Wrap kept the
+      title, progress bar and buttons as three items on one flex line, and
+      when the title ran to two lines on a phone, "items-center" centered the
+      progress bar against the middle of that taller title block, so the bar
+      floated beside the second title line instead of sitting under the title
+      the way it does on a wide screen. Stacking outright on narrow screens
+      removes the vertical-centering math that caused it; row layout only
+      resumes once there is width for the title to stay on one line.
+    */
     <div
-      className={`float-row flex flex-wrap items-center gap-4 rounded-2xl border bg-card px-5 py-4 ${
+      className={`group float-row flex flex-col gap-3 rounded-2xl border bg-card px-5 py-4 @sm:flex-row @sm:items-center @sm:gap-4 ${
         paused ? "border-dashed border-tan" : "border-border"
       }`}
     >
@@ -169,29 +184,35 @@ function ProjectRow({ project }: { project: ReturnType<typeof useAppState>["proj
         </p>
       </div>
 
-      <div className="w-32 shrink-0">
-        <SoftProgress value={progress} tint={paused ? "tan" : "brown"} />
-        <div className="mt-1 text-right text-[10px] tabular-nums text-ink-soft">{progress}%</div>
-      </div>
+      {/* Progress and the two controls travel together as one unit — on a
+          phone they form their own row under the title; from @sm up
+          they sit inline to its right, same as before. */}
+      <div className="flex items-center justify-between gap-4 @sm:justify-end">
+        <div className="w-32 shrink-0">
+          <SoftProgress value={progress} tint={paused ? "tan" : "brown"} />
+          <div className="mt-1 text-right text-[10px] tabular-nums text-ink-soft">{progress}%</div>
+        </div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          onClick={() =>
-            actions.updateProject(project.id, { status: paused ? "active" : "paused" })
-          }
-          className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
-          aria-label={paused ? "Resume project" : "Pause project"}
-          title={paused ? "Resume" : "Pause"}
-        >
-          {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-        </button>
-        <button
-          onClick={() => actions.deleteProject(project.id)}
-          className="reveal-control grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:text-[color:var(--clay)]"
-          aria-label="Delete project"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={() =>
+              actions.updateProject(project.id, { status: paused ? "active" : "paused" })
+            }
+            className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft transition-colors hover:bg-secondary hover:text-ink"
+            aria-label={paused ? "Resume project" : "Pause project"}
+            title={paused ? "Resume" : "Pause"}
+          >
+            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+          </button>
+          <ConfirmDeleteButton
+            itemLabel={project.name}
+            consequence="Its sub-projects, goals and tasks go with it. This cannot be undone."
+            onConfirm={() => actions.deleteProject(project.id)}
+            className="reveal-control grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:text-[color:var(--clay)]"
+            iconClassName="h-3.5 w-3.5"
+            aria-label="Delete project"
+          />
+        </div>
       </div>
     </div>
   );

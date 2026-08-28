@@ -4,6 +4,7 @@ import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { actions, useAppState } from "@/lib/store";
 import type { Goal, Habit, Task } from "@/lib/store-types";
 import { HowFarYouveCome } from "@/components/how-far";
+import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { dateKey } from "@/components/task-grid";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
@@ -13,7 +14,7 @@ import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useMounted } from "@/lib/use-mounted";
 import { toast } from "sonner";
@@ -269,8 +270,10 @@ function PersonalPage() {
                             );
                           })}
                         </div>
-                        <button
-                          onClick={() => {
+                        <ConfirmDeleteButton
+                          itemLabel={h.name}
+                          consequence="Its logged days go with it — though Undo can bring both back right after."
+                          onConfirm={() => {
                             // Capture the logged days before they go, so Undo can
                             // put the history back and not just the name.
                             const dates = Object.keys(h.log).filter((d) => h.log[d]);
@@ -289,9 +292,7 @@ function PersonalPage() {
                           }}
                           className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
                           aria-label={`Remove habit "${h.name}"`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        />
                       </div>
                     ))}
                   </div>
@@ -493,66 +494,7 @@ function GoalHabits({ goal, habits, days }: { goal: Goal; habits: Habit[]; days:
   );
 }
 
-/**
- * A personal project: a name, the tasks under it, and a bar that fills as they
- * are ticked. Deliberately flatter than the Professional version — no
- * sub-projects, because "move apartment" does not need a work breakdown.
- */
-function PersonalProject({ projectId, name }: { projectId: string; name: string }) {
-  const state = useAppState();
-  const tasks = state.tasks.filter((t) => t.projectId === projectId);
-  const done = tasks.filter((t) => t.done).length;
-  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-
-  return (
-    <div className="group card-soft space-y-3 p-4 md:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <InlineText
-            value={name}
-            onSave={(v) => v && actions.updateProject(projectId, { name: v })}
-            showIcon
-            className="font-serif text-lg"
-          />
-          <div className="mt-2 flex items-center gap-3">
-            <SoftProgress value={pct} tint="sage" className="max-w-xs flex-1" />
-            <span className="text-xs tabular-nums text-ink-soft">
-              {tasks.length ? `${done}/${tasks.length}` : "no tasks yet"}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <AddTaskDialog
-            area="personal"
-            projectId={projectId}
-            trigger={
-              <Button variant="outline" size="sm" className="rounded-full border-tan">
-                <Plus className="h-3 w-3" /> Task
-              </Button>
-            }
-          />
-          <button
-            onClick={() => actions.deleteProject(projectId)}
-            className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
-            aria-label={`Delete project "${name}"`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {tasks.length > 0 && (
-        <div className="space-y-2">
-          {tasks.map((t) => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              showArea={false}
-              onDelete={() => actions.deleteTask(t.id)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// PersonalProject used to render here: a leftover from before Personal
+// dropped projects for goals (see the note above pickOneThing-era history in
+// git log). Nothing in this file calls it any more — Personal has no projects
+// concept left to render — so it is dead code, removed rather than wired up.

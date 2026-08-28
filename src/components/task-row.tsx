@@ -2,9 +2,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AreaChip } from "./area-chip";
 import { actions, type Task } from "@/lib/store";
 import { addDays, format, isBefore, isToday, parseISO } from "date-fns";
-import { Trash2 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { InlineText } from "./inline-text";
+import { ConfirmDeleteButton } from "./confirm-delete";
 
 function niceDate(d?: string) {
   if (!d) return null;
@@ -153,13 +154,13 @@ export function TaskRow({
         </div>
       </div>
       {!readOnly && onDelete && (
-        <button
-          onClick={onDelete}
-          className="reveal-control text-ink-soft hover:text-[color:var(--clay)] p-1"
+        <ConfirmDeleteButton
+          itemLabel={task.title}
+          onConfirm={onDelete}
+          className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
+          iconClassName="h-4 w-4"
           aria-label="Delete task"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        />
       )}
     </div>
   );

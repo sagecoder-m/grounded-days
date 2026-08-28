@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
 import type { Course, Goal, Task } from "@/lib/store-types";
@@ -14,6 +14,7 @@ import { AddGoalDialog } from "@/components/add-goal-dialog";
 import { AddCourseDialog } from "@/components/add-course-dialog";
 import { InlineText } from "@/components/inline-text";
 import { HowFarYouveCome, newestFirst } from "@/components/how-far";
+import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -311,7 +312,11 @@ function CourseCard({
   const outstanding = mine.filter((t) => !t.done);
 
   return (
-    <div className="card-soft flex h-full flex-col gap-3 p-4 pr-10">
+    // "group" was missing here: the delete button below is a .reveal-control,
+    // which is invisible and unclickable on a mouse until a "group" ancestor
+    // is hovered. Without it the button existed but could never be reached —
+    // which is the whole bug reported: courses could not be deleted at all.
+    <div className="group card-soft flex h-full flex-col gap-3 p-4 pr-10">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <InlineText
@@ -361,14 +366,14 @@ function CourseCard({
         />
         {/* Deleting a course keeps its assignments — the foreign key sets their
             course_id to null rather than cascading. */}
-        <button
-          onClick={() => actions.deleteCourse(course.id)}
+        <ConfirmDeleteButton
+          itemLabel={course.name}
+          consequence="Its assignments stay, unfiled."
+          onConfirm={() => actions.deleteCourse(course.id)}
           className="reveal-control text-ink-soft transition-colors hover:text-[color:var(--clay)]"
-          aria-label={`Remove ${course.name}. Its assignments stay.`}
-          title="Remove course — assignments stay"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+          iconClassName="h-3.5 w-3.5"
+          aria-label={`Remove ${course.name}`}
+        />
       </div>
     </div>
   );

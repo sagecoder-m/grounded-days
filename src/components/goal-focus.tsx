@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { actions } from "@/lib/store";
 import type { Goal } from "@/lib/store-types";
@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { InlineText } from "@/components/inline-text";
 import { FocusOverlay } from "@/components/focus-overlay";
+import { ConfirmDeleteButton } from "@/components/confirm-delete";
 
 /**
  * One goal and its tasks, full screen and nothing else.
@@ -100,14 +101,12 @@ export function GoalFocus({
                 step.done ? "text-ink-soft line-through decoration-1" : ""
               }`}
             />
-            <button
-              type="button"
-              onClick={() => actions.deleteGoalStep(step.id)}
+            <ConfirmDeleteButton
+              itemLabel={step.title}
+              onConfirm={() => actions.deleteGoalStep(step.id)}
               aria-label="Delete step"
               className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            />
           </div>
         ))}
       </div>

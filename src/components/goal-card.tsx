@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { CalendarDays, Check, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Check, Plus } from "lucide-react";
 
 import { actions, type Goal } from "@/lib/store";
 import { SoftProgress } from "./soft-progress";
 import { InlineText } from "./inline-text";
+import { ConfirmDeleteButton } from "./confirm-delete";
 
 type Tint = "sage" | "clay" | "brown" | "tan";
 
@@ -61,13 +62,13 @@ export function GoalCard({
             className="mt-1 text-xs text-ink-soft"
           />
         </div>
-        <button
-          onClick={() => actions.deleteGoal(goal.id)}
+        <ConfirmDeleteButton
+          itemLabel={goal.name}
+          consequence="Its steps go with it. This cannot be undone."
+          onConfirm={() => actions.deleteGoal(goal.id)}
           className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
           aria-label="Delete goal"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        />
       </div>
 
       <div className="flex items-center gap-3">
@@ -131,13 +132,13 @@ export function GoalCard({
               onSave={(v) => v && actions.renameGoalStep(step.id, v)}
               className={`flex-1 text-sm ${step.done ? "text-ink-soft line-through" : ""}`}
             />
-            <button
-              onClick={() => actions.deleteGoalStep(step.id)}
+            <ConfirmDeleteButton
+              itemLabel={step.title}
+              onConfirm={() => actions.deleteGoalStep(step.id)}
               className="reveal-control p-1 text-ink-soft hover:text-[color:var(--clay)]"
+              iconClassName="h-3.5 w-3.5"
               aria-label={`Remove step "${step.title}"`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            />
           </li>
         ))}
       </ul>

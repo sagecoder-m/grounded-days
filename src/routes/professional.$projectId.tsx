@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
 import type { Goal, Project, Subproject } from "@/lib/store-types";
@@ -11,6 +11,7 @@ import { GoalFocus } from "@/components/goal-focus";
 import { SoftProgress } from "@/components/soft-progress";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
+import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -78,7 +79,14 @@ function ProjectPage() {
           <ArrowLeft className="h-3.5 w-3.5" /> All projects
         </Link>
 
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+        {/*
+          Same bug as the project row on the shelf page, same fix: stacked
+          below @sm rather than flex-wrap, which centered the progress block
+          against the vertical middle of a title that had wrapped to two
+          lines — the bar floated beside the second title line on a phone
+          instead of sitting under the whole title the way it does on desktop.
+        */}
+        <div className="mt-3 flex flex-col gap-3 @sm:flex-row @sm:items-end @sm:justify-between @sm:gap-4">
           <div className="min-w-0 flex-1">
             <div className="font-serif text-2xl md:text-3xl">
               <InlineText
@@ -227,16 +235,17 @@ function SubprojectPanel({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => {
+          <ConfirmDeleteButton
+            itemLabel={subproject.name}
+            consequence="Its goals and tasks go with it. This cannot be undone."
+            onConfirm={() => {
               actions.deleteSubproject(project.id, subproject.id);
               onClose();
             }}
             className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:text-[color:var(--clay)]"
+            iconClassName="h-3.5 w-3.5"
             aria-label="Delete sub-project"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          />
         </div>
       </div>
 
