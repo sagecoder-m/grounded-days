@@ -82,7 +82,7 @@ function JournalPage() {
         beside the box puts the cursor at the top of the page where it belongs.
       */}
       <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div className="space-y-8">
+        <div>
           <Editor
             key={selected}
             date={selected}
@@ -90,8 +90,6 @@ function JournalPage() {
             mood={entry?.mood}
             gratitude={entry?.gratitude ?? ""}
           />
-
-          <WeeklyReview />
         </div>
 
         <aside className="space-y-6">
@@ -109,6 +107,12 @@ function JournalPage() {
           />
 
           <RecentEntries selected={selected} />
+
+          {/* The week's shape, under the entries rather than below the box.
+              It is a reading of the week, so it belongs with the other things
+              you look at rather than with the one thing you write in — and it
+              was leaving a column of empty page beside it. */}
+          <WeeklyReview />
         </aside>
       </div>
     </div>
@@ -429,7 +433,7 @@ function WeeklyReview() {
         </div>
       ) : (
         <div className="card-soft space-y-4 p-5">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4">
             <Stat label="tasks done" value={review.tasksDone} />
             <Stat label="habit days" value={review.habitTicks} />
             <Stat label="goal steps" value={review.stepsDone} />
