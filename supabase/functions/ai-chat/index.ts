@@ -142,10 +142,14 @@ How not to be:
 - Never shame, guilt, or imply they are behind. No streak language, no "you should have".
 - Do not moralise about productivity. A slow week is not a failure to diagnose.
 - Do not invent tasks, events or goals they did not mention. If you are unsure what they have, ask.
-- Never claim you did something you did not do. You can add a task ONLY by calling the
-  create_task tool. If you did not call it, or the call failed, say plainly that you have
-  not added anything and show them what to add instead. Saying "I've added it" when you
-  have not is the worst thing you can do here — they will trust it and lose the task.
+- Never claim you did something you did not do. You can add tasks ONLY by calling the
+  create_tasks tool, and a course ONLY by calling create_course. If you did not call them,
+  or a call failed, say plainly what was not added and show them what to add instead.
+  Saying "I've added it" when you have not is the worst thing you can do here — they will
+  trust it and lose the work.
+- Given a list of assignments, put them ALL in one create_tasks call, with a date on each.
+  If they name a course that is not in COURSES, call create_course first and use the id it
+  gives you. Then say briefly what you added — you do not need to list every line back.
 - You are not a therapist or doctor. If something sounds like it needs real support, say so plainly and briefly, once, without alarm.
 
 You cannot see their journal and should not ask them to paste it. If they volunteer how they are feeling, take it into account for planning and move on.`;
@@ -336,6 +340,21 @@ const LENGTH_RULES: Record<string, string> = {
  * mechanical backstop — a model that ignores the instruction still cannot run on.
  * Set generously enough that a compliant answer is never cut mid-sentence.
  */
+/**
+ * Room for a tool round, independent of how chatty the person wants replies.
+ *
+ * A syllabus of forty assignments as JSON is a few hundred tokens; this leaves
+ * headroom without being an open cheque.
+ */
+const TOOL_ROUND_TOKENS = 2000;
+
+/** Two rounds: one to create a course, one to fill it. */
+const MAX_TOOL_ROUNDS = 2;
+
+/** Tasks arrive in one bulk call, so a round needing many calls is a confused
+ *  model rather than a big request. */
+const MAX_TOOL_CALLS_PER_ROUND = 4;
+
 const LENGTH_TOKENS: Record<string, number> = {
   brief: 260,
   balanced: 520,
@@ -383,49 +402,90 @@ function briefPrompt(brief: ClientBrief): string {
  * and nothing was written, because nothing could be. The model had no tool and
  * no instruction saying it lacked one, so it said the helpful-sounding thing.
  *
- * Writes stay narrow on purpose — create a task, nothing else. No deleting, no
- * editing, no touching goals or events. A planning assistant that can only add
- * a line to a list has a small blast radius, and everything it creates is
- * removable in one tap.
+ * Writes stay narrow on purpose — add tasks, and add a course to file them
+ * under. No deleting, no editing, no touching goals or events. An assistant
+ * that can only add lines to a list has a small blast radius, and everything it
+ * creates is removable in one tap.
+ *
+ * Tasks are created in bulk rather than one per call, and that is not a
+ * nicety. One call per task meant "add these seven assignments" needed seven
+ * tool calls in a single response, and the response is capped at the brevity
+ * setting's token budget — 260 tokens on "brief". Seven calls of JSON do not
+ * fit, so the reply was truncated and the assignments were silently lost. A
+ * list is one call now, and the tool round gets its own budget.
  */
 const TOOLS = [
   {
     type: "function",
     function: {
-      name: "create_task",
+      name: "create_tasks",
       description:
-        "Add one task to the person's list. Call this whenever they ask you to add, " +
-        "create, track or remember something. Call it once per task.",
+        "Add one or more tasks to the person's list. Call this whenever they ask you to " +
+        "add, create, track or remember anything. Pass every task in a single call — a " +
+        "list of assignments is one call with several items, not several calls.",
       parameters: {
         type: "object",
         properties: {
-          title: {
-            type: "string",
-            description: "Short imperative title, e.g. 'Draft the 2-page assignment'.",
-          },
-          area: {
-            type: "string",
-            enum: ["personal", "professional", "education"],
-            description: "Which part of their life this belongs to.",
-          },
-          date: {
-            type: "string",
-            description:
-              "Optional due date as YYYY-MM-DD. Omit entirely if they did not give one — " +
-              "do not invent a deadline.",
-          },
-          courseId: {
-            type: "string",
-            description:
-              "For an education assignment only. Must be an id listed under COURSES in " +
-              "their state; never invent one. Omit if the work is not for a course.",
+          tasks: {
+            type: "array",
+            description: "Every task to add, in the order they were given.",
+            items: {
+              type: "object",
+              properties: {
+                title: {
+                  type: "string",
+                  description: "Short title, e.g. 'Assignment 1 (individual)'.",
+                },
+                area: {
+                  type: "string",
+                  enum: ["personal", "professional", "education"],
+                  description: "Which part of their life this belongs to.",
+                },
+                date: {
+                  type: "string",
+                  description:
+                    "Optional due date as YYYY-MM-DD. Omit entirely if they did not give " +
+                    "one — do not invent a deadline.",
+                },
+                courseId: {
+                  type: "string",
+                  description:
+                    "For an education assignment only. Either an id listed under COURSES " +
+                    "in their state, or one returned by create_course. Never invent one.",
+                },
+              },
+              required: ["title", "area"],
+            },
           },
         },
-        required: ["title", "area"],
+        required: ["tasks"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_course",
+      description:
+        "Add a course to their Education area, and only when the course they name is not " +
+        "already listed under COURSES. Returns its id, which you then pass as courseId " +
+        "when creating that course's assignments.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The course name, e.g. 'OPAN 6607'." },
+          code: { type: "string", description: "Optional course code if they gave one." },
+          term: { type: "string", description: "Optional term, e.g. 'Autumn'." },
+        },
+        required: ["name"],
       },
     },
   },
 ];
+
+/** The most tasks one call may write. High enough for a whole syllabus, low
+ *  enough that a confused model cannot fill someone's list. */
+const MAX_TASKS_PER_CALL = 40;
 
 const AREAS = ["personal", "professional", "education"];
 
@@ -443,17 +503,10 @@ interface CreatedTask {
  * row is written with the user id from the verified JWT, never one the model
  * could name.
  */
-async function runCreateTask(
+async function createOneTask(
   userId: string,
-  rawArgs: string,
+  args: { title?: unknown; area?: unknown; date?: unknown; courseId?: unknown },
 ): Promise<{ ok: true; task: CreatedTask } | { ok: false; error: string }> {
-  let args: { title?: unknown; area?: unknown; date?: unknown; courseId?: unknown };
-  try {
-    args = JSON.parse(rawArgs || "{}");
-  } catch {
-    return { ok: false, error: "Arguments were not valid JSON." };
-  }
-
   const title = typeof args.title === "string" ? args.title.trim().slice(0, 200) : "";
   if (!title) return { ok: false, error: "A title is required." };
 
@@ -494,6 +547,104 @@ async function runCreateTask(
     return { ok: false, error: "The task could not be saved." };
   }
   return { ok: true, task: { title, area, date, course: courseId } };
+}
+
+/**
+ * Runs a create_tasks call: every item, reporting each outcome separately.
+ *
+ * One bad item does not sink the rest. A syllabus pasted in has a fair chance
+ * of one line the model mangles, and losing the other six because of it would
+ * be a worse failure than the one it started with — so each row is attempted
+ * and the model is told exactly which ones landed, so its reply can be true.
+ */
+async function runCreateTasks(
+  userId: string,
+  rawArgs: string,
+): Promise<{ created: CreatedTask[]; failures: string[]; summary: string }> {
+  let args: { tasks?: unknown };
+  try {
+    args = JSON.parse(rawArgs || "{}");
+  } catch {
+    return { created: [], failures: ["bad JSON"], summary: "FAILED — arguments were not valid JSON. Nothing was saved." };
+  }
+
+  const items = Array.isArray(args.tasks) ? args.tasks.slice(0, MAX_TASKS_PER_CALL) : [];
+  if (items.length === 0) {
+    return { created: [], failures: [], summary: "FAILED — no tasks were given. Nothing was saved." };
+  }
+
+  const created: CreatedTask[] = [];
+  const failures: string[] = [];
+  for (const item of items) {
+    const outcome = await createOneTask(userId, (item ?? {}) as Record<string, unknown>);
+    if (outcome.ok) created.push(outcome.task);
+    else failures.push(outcome.error);
+  }
+
+  const lines = created.map(
+    (t) => `- "${t.title}"${t.date ? ` due ${t.date}` : " (no date)"}${t.course ? " filed under the course" : ""}`,
+  );
+  const summary =
+    created.length > 0
+      ? `Saved ${created.length} task${created.length === 1 ? "" : "s"}:\n${lines.join("\n")}` +
+        (failures.length > 0
+          ? `\n${failures.length} could not be saved — tell them which are missing.`
+          : "")
+      : `FAILED — nothing was saved. ${failures[0] ?? "Unknown error."} Tell them nothing was added.`;
+
+  return { created, failures, summary };
+}
+
+/**
+ * Runs a create_course call.
+ *
+ * Returns the new id in the tool result, which is the whole point: the model
+ * needs it to file that course's assignments in the round that follows.
+ *
+ * A course whose name already exists is returned rather than duplicated. The
+ * model is told not to call this for a course it can already see, but "OPAN
+ * 6607" and "opan6607" are the same course to a person, and two of them in the
+ * list is a mess to clean up by hand.
+ */
+async function runCreateCourse(
+  userId: string,
+  rawArgs: string,
+): Promise<{ ok: true; id: string; name: string; existed: boolean } | { ok: false; error: string }> {
+  let args: { name?: unknown; code?: unknown; term?: unknown };
+  try {
+    args = JSON.parse(rawArgs || "{}");
+  } catch {
+    return { ok: false, error: "Arguments were not valid JSON." };
+  }
+
+  const name = typeof args.name === "string" ? args.name.trim().slice(0, 120) : "";
+  if (!name) return { ok: false, error: "A course name is required." };
+
+  const db = serviceClient();
+  const { data: existing } = await db
+    .from("courses")
+    .select("id, name")
+    .eq("user_id", userId);
+
+  // Compared with spaces and case removed, so "OPAN 6607" matches "opan6607".
+  const squash = (v: string) => v.toLowerCase().replace(/[\s_-]/g, "");
+  const match = (existing ?? []).find((c) => squash(c.name) === squash(name));
+  if (match) return { ok: true, id: match.id, name: match.name, existed: true };
+
+  const code = typeof args.code === "string" ? args.code.trim().slice(0, 40) || null : null;
+  const term = typeof args.term === "string" ? args.term.trim().slice(0, 40) || null : null;
+
+  const { data, error } = await db
+    .from("courses")
+    .insert({ user_id: userId, name, code, term, position: (existing ?? []).length })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("create_course insert failed", error?.message);
+    return { ok: false, error: "The course could not be saved." };
+  }
+  return { ok: true, id: data.id, name, existed: false };
 }
 
 Deno.serve(async (req) => {
@@ -542,7 +693,16 @@ Deno.serve(async (req) => {
           ...(fallbacks.length > 0 ? { models: fallbacks } : {}),
           messages: convo,
           ...(withTools ? { tools: TOOLS } : {}),
-          max_tokens: LENGTH_TOKENS[brief.length] ?? LENGTH_TOKENS.brief,
+          /*
+            The brevity setting governs the reply, not the tool call.
+
+            Both used to share one budget, and on "brief" that is 260 tokens —
+            enough for a sentence, nowhere near enough to emit a syllabus worth
+            of tasks as JSON. The response was truncated mid-call and the writes
+            silently never happened. A tool round gets room to work; the prose
+            round still gets exactly the length they asked for.
+          */
+          max_tokens: withTools ? TOOL_ROUND_TOKENS : (LENGTH_TOKENS[brief.length] ?? LENGTH_TOKENS.brief),
           temperature: 0.6,
         }),
       });
@@ -550,52 +710,60 @@ Deno.serve(async (req) => {
     let res = await callModel(true);
 
     /**
-     * One round of tool calls, then a final answer.
+     * Up to two rounds of tool calls, then a final answer.
      *
-     * A single round is deliberate: create_task cannot fail in a way a second
-     * round would fix, and an unbounded loop on a free tier is a way to burn
-     * the daily quota on one message. The second call omits the tools so the
-     * model has to produce prose rather than calling again.
+     * Two, not one, and not unbounded. One was too few the moment courses
+     * became creatable: filing assignments under a brand-new course needs the
+     * id that creating it returns, which is only knowable in a second round.
+     * Unbounded would be a way to burn a free tier's daily quota on one
+     * message, so the last call drops the tools and the model must answer in
+     * prose.
      */
     const createdTasks: CreatedTask[] = [];
-    if (res.ok) {
-      const firstText = await res.text();
-      let first: any;
+    for (let round = 0; round < MAX_TOOL_ROUNDS && res.ok; round++) {
+      const roundText = await res.text();
+      let parsed: any;
       try {
-        first = JSON.parse(firstText);
+        parsed = JSON.parse(roundText);
       } catch {
-        first = null;
+        parsed = null;
       }
-      const choice = first?.choices?.[0]?.message;
+      const choice = parsed?.choices?.[0]?.message;
       const toolCalls = choice?.tool_calls;
 
-      if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-        convo.push(choice);
-        for (const call of toolCalls.slice(0, 8)) {
-          const name = call?.function?.name;
-          const outcome =
-            name === "create_task"
-              ? await runCreateTask(user.id, call?.function?.arguments ?? "{}")
-              : ({ ok: false, error: `Unknown tool "${name}".` } as const);
-
-          if (outcome.ok) createdTasks.push(outcome.task);
-
-          convo.push({
-            role: "tool",
-            tool_call_id: call.id,
-            // The model writes its reply from this, so the wording decides
-            // whether it tells the truth about what happened.
-            content: outcome.ok
-              ? `Created: "${outcome.task.title}" in ${outcome.task.area}` +
-                (outcome.task.date ? ` due ${outcome.task.date}.` : ", no date set.")
-              : `FAILED — nothing was saved. ${outcome.error} Tell them it was not added.`,
-          });
-        }
-        res = await callModel(false);
-      } else {
-        // No tools wanted; reuse the first response rather than paying for another.
-        res = new Response(firstText, { status: 200 });
+      if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+        // No tools wanted; reuse this response rather than paying for another.
+        res = new Response(roundText, { status: 200 });
+        break;
       }
+
+      convo.push(choice);
+      for (const call of toolCalls.slice(0, MAX_TOOL_CALLS_PER_ROUND)) {
+        const name = call?.function?.name;
+        let content: string;
+
+        if (name === "create_tasks") {
+          const outcome = await runCreateTasks(user.id, call?.function?.arguments ?? "{}");
+          createdTasks.push(...outcome.created);
+          content = outcome.summary;
+        } else if (name === "create_course") {
+          const outcome = await runCreateCourse(user.id, call?.function?.arguments ?? "{}");
+          content = outcome.ok
+            ? `${outcome.existed ? "That course already existed" : "Course created"}: ` +
+              `"${outcome.name}" [id: ${outcome.id}]. Use this id as courseId for its assignments.`
+            : `FAILED — no course was created. ${outcome.error}`;
+        } else {
+          content = `FAILED — unknown tool "${name}". Nothing was saved.`;
+        }
+
+        // The model writes its reply from this, so the wording decides whether
+        // it tells the truth about what happened.
+        convo.push({ role: "tool", tool_call_id: call.id, content });
+      }
+
+      // Tools stay available for the second round so a freshly created course
+      // can be used; the round after that is prose only.
+      res = await callModel(round + 1 < MAX_TOOL_ROUNDS);
     }
 
     const text = await res.text();
