@@ -298,13 +298,22 @@ function toWidgets(value: unknown): Settings["widgets"] {
     if (!fallback) return [];
     const num = (v: unknown, or: number) =>
       typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : or;
+    /*
+      Pinned furniture is read from the defaults and not from the row at all.
+
+      Not defensiveness for its own sake: a stored position for the header was
+      reachable in practice. A drag that pushed its neighbours aside could
+      displace it, and the displaced position was then saved — so the greeting
+      ended up halfway down the board, under a chart and a timer, with no
+      control anywhere to put it back. Whatever a row says about it now, the
+      header is at the top, full width.
+    */
+    if (PINNED_WIDGETS.has(e.key)) return [{ ...fallback, enabled: true }];
+
     return [
       {
         key: e.key,
-        // Pinned furniture is on the board by definition. A stored false would
-        // otherwise be able to delete the page's own header, and there would be
-        // no control anywhere to bring it back.
-        enabled: PINNED_WIDGETS.has(e.key) || e.enabled !== false,
+        enabled: e.enabled !== false,
         x: num(e.x, fallback.x),
         y: num(e.y, fallback.y),
         // Zero would be a tile with no area, so a stored 0 falls back too.

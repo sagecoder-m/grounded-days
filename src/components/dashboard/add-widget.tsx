@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 
 import type { WidgetPlacement } from "@/lib/store-types";
 import {
@@ -22,19 +22,50 @@ import { MOVABLE_WIDGETS } from "./widget-registry";
 export function AddWidgetMenu({
   placements,
   onAdd,
+  onReset,
 }: {
   placements: WidgetPlacement[];
   onAdd: (key: string) => void;
+  /** Puts every widget back where it started, keeping which ones are on. */
+  onReset: () => void;
 }) {
   const on = new Set(placements.filter((p) => p.enabled).map((p) => p.key));
   // MOVABLE_WIDGETS, not WIDGETS: pinned furniture is never off the board, so
   // offering to add it would be offering something that cannot happen.
   const available = MOVABLE_WIDGETS.filter((w) => !on.has(w.key));
 
-  if (available.length === 0) {
-    return <p className="text-xs italic text-ink-soft">Every widget is on the board</p>;
-  }
+  return (
+    <div className="flex items-center gap-2">
+      {/*
+        A way back to a board that makes sense.
 
+        Free positioning means a board can be got into a state nobody wants —
+        and until the collision bug was fixed, it could get there on its own.
+        Without this the only remedy is dragging every widget back by hand.
+        Positions only: which widgets are on the board is a separate decision
+        and stays as it was.
+      */}
+      <button
+        type="button"
+        onClick={onReset}
+        title="Put every widget back where it started"
+        className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-tan hover:text-ink"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        Reset layout
+      </button>
+      {available.length > 0 && <AddMenu available={available} onAdd={onAdd} />}
+    </div>
+  );
+}
+
+function AddMenu({
+  available,
+  onAdd,
+}: {
+  available: typeof MOVABLE_WIDGETS;
+  onAdd: (key: string) => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

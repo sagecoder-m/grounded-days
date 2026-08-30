@@ -11,6 +11,7 @@ import { DashboardCanvas } from "@/components/dashboard/dashboard-canvas";
 import { AddWidgetMenu } from "@/components/dashboard/add-widget";
 import { widgetSpec } from "@/components/dashboard/widget-registry";
 import { placeBelow } from "@/components/dashboard/layout-engine";
+import { DEFAULT_WIDGETS } from "@/lib/store";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
 import { FirstThing, isNewAccount } from "@/components/first-thing";
@@ -156,6 +157,20 @@ function Overview() {
     [settings.widgets],
   );
 
+  /**
+   * Put every widget back where it started, keeping which ones are on.
+   *
+   * Positions only. Which widgets someone wants on their board is a separate
+   * decision from where they ended up sitting, and a reset that silently
+   * switched things back on would be undoing a choice nobody asked to undo.
+   */
+  const resetLayout = useCallback(() => {
+    const enabledByKey = new Map(settings.widgets.map((w) => [w.key, w.enabled]));
+    actions.reorderWidgets(
+      DEFAULT_WIDGETS.map((d) => ({ ...d, enabled: enabledByKey.get(d.key) ?? d.enabled })),
+    );
+  }, [settings.widgets]);
+
   /** Puts a widget back on the board, below everything already placed. */
   const addWidget = useCallback(
     (key: string) => {
@@ -180,7 +195,7 @@ function Overview() {
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
 
       <div className="mb-3 flex items-center justify-end">
-        <AddWidgetMenu placements={settings.widgets} onAdd={addWidget} />
+        <AddWidgetMenu placements={settings.widgets} onAdd={addWidget} onReset={resetLayout} />
       </div>
 
       {/*
