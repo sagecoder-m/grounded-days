@@ -7,7 +7,7 @@ import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
-import { BoardReflowProvider, MasonryCell } from "@/components/widget-frame";
+import { BoardCell } from "@/components/widget-frame";
 import { useFlip } from "@/lib/use-flip";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
@@ -166,26 +166,17 @@ function Overview() {
   // across it.
   const [drag, setDrag] = useState<DragState | null>(null);
 
-  /**
-   * Counts the times a tile changed height, so the animation below has something
-   * to fire on.
-   *
-   * Reordering was the only movement the board animated, because the order
-   * string was the only thing it watched. Everything else moved instantly:
-   * ticking the last task off Today shortens that tile, dense packing pulls the
-   * tiles after it upward, and they arrive there between one frame and the next.
-   * A tile that teleports is read as a mistake — and, worse, as one you just
-   * made — when it is only the board closing a gap.
-   *
-   * A counter rather than the spans themselves. What travels matters, not how
-   * far: the animation measures that for itself.
-   */
-  const [reflow, setReflow] = useState(0);
-  const onReflow = useCallback(() => setReflow((n) => n + 1), []);
+  /*
+    Animate the shuffle, keyed on the order alone.
 
-  // Animate the shuffle. Keyed on the order and on reflow, so it fires when the
-  // board actually changes and not on every unrelated render.
-  useFlip(`${orderedWidgets.join(",")}|${reflow}`, {
+    It used to watch a reflow counter as well, because under masonry a tile
+    could travel without the order changing at all: ticking the last task off
+    Today shortened that tile and dense packing pulled everything after it
+    upward, between one frame and the next. With rows, a tile only moves when
+    the order does — its row is where it is regardless of what its neighbours
+    weigh — so the order string is once again the whole story.
+  */
+  useFlip(orderedWidgets.join(","), {
     selector: "[data-section]",
     idAttribute: "data-section",
     skipId: drag?.key ?? null,
@@ -256,25 +247,28 @@ function Overview() {
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
       <div
         /*
-          Masonry, not rows.
+          Rows, not masonry.
 
-          Rows that share a height line up neatly, but a row is only as short as
-          its tallest tile — put the agenda next to the timer and the timer gets a
-          near-empty card the height of a full day's list. Packing tightly is the
-          better trade here: every tile is the size of its own contents, and the
-          ragged column ends read as a board rather than as a fault.
+          This packed like masonry until the brief asked for the opposite —
+          "everything should always fit to scale, ALWAYS ALIGNED". Masonry gave
+          every tile exactly its own content's height and let column ends fall
+          where they may, which reads as ragged rather than as a board.
 
-          CSS has no masonry that ships in Chrome or Safari yet, so this is the
-          row-span technique: rows are 1px, row-gap is 0, and each tile measures
-          itself and spans as many of those rows as its height needs. The spacing
-          between stacked tiles lives inside that span, which is why row-gap has
-          to be zero.
+          So: real rows, each as tall as the tallest tile in it, and every other
+          tile in that row stretched to match (see INNER in widget-frame). The
+          cost is the one masonry was avoiding — a timer beside a full day's
+          list gets the list's height and some empty card with it — and that is
+          the trade the brief asks for.
+
+          auto-rows-fr keeps the two rows a tall tile spans equal to each other,
+          so a tall really is two squares high and the squares beside it line up
+          top and bottom. Not grid-flow-dense: dense reorders tiles to backfill
+          gaps, which would silently undo the arrangement someone dragged.
         */
-        className="grid grid-flow-row-dense auto-rows-[1px] gap-x-6 gap-y-0 @2xl/board:grid-cols-12"
+        className="grid auto-rows-fr items-stretch gap-6 @2xl/board:grid-cols-12"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
-        <BoardReflowProvider onReflow={onReflow}>
         {/* Furniture: full width, no handle, no size menu, nothing to drop on.
             Rendered outside ReorderableSection so it carries no data-section
             attribute and therefore cannot be a drag target at all. */}
@@ -282,9 +276,9 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <MasonryCell key={key} className="@container @2xl/board:col-span-12">
+            <BoardCell key={key} className="@container @2xl/board:col-span-12">
               {section}
-            </MasonryCell>
+            </BoardCell>
           );
         })}
 
@@ -305,7 +299,6 @@ function Overview() {
             </ReorderableSection>
           );
         })}
-        </BoardReflowProvider>
       </div>
     </div>
   );

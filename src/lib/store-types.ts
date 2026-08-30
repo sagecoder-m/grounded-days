@@ -214,11 +214,20 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
 /**
  * How much of the Overview board a widget takes.
  *
- * "square" is a historical name for half width — it is the value already stored
- * in every account's settings, so it stays rather than being renamed for tidiness
- * and needing a migration. The menu has always labelled it "Half width".
+ * Four shapes, sized in units of one square so the board always divides evenly:
+ *
+ *   long    the full row      (12 columns, one unit tall)
+ *   half    half the row      (6 columns, one unit tall)
+ *   square  a third of the row (4 columns, one unit tall — genuinely 1:1)
+ *   tall    a third of the row, two units tall — exactly two squares stacked
+ *
+ * There were six before, and three of them ("threeQuarter", "third",
+ * "taller") described widths that did not divide into anything the others
+ * used, so rows could not line up. "square" was also a misnomer: it meant half
+ * width and was labelled as such in the menu, which left no name for an actual
+ * square. Old values are mapped forward on read — see LEGACY_SIZES in mappers.
  */
-export type WidgetSize = "square" | "wide" | "tall" | "third" | "threeQuarter" | "taller";
+export type WidgetSize = "long" | "half" | "square" | "tall";
 
 /**
  * Light, dark, or whatever the device says.

@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Columns2,
   Columns3,
@@ -60,93 +53,69 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * changing back.
  */
 const SPAN: Record<WidgetSize, string> = {
-  wide: "@2xl/board:col-span-12",
-  /* Three quarters, which only reads as three quarters when something can sit
-     in the remaining quarter — so it falls back to full width until the board
-     is wide enough for a third-width tile to be legible beside it. */
-  threeQuarter: "@2xl/board:col-span-12 @3xl/board:col-span-9",
-  square: "@2xl/board:col-span-6",
-  third: "@2xl/board:col-span-6 @3xl/board:col-span-4",
+  long: "@2xl/board:col-span-12",
+  half: "@2xl/board:col-span-6",
   /*
-    Half width with a floor under its height.
-
-    Tall used to mean "span three grid rows", which no longer means anything now
-    that rows are 1px and a tile's height comes from measuring its own content.
-    So it is a minimum instead: the tile is at least this tall and its content
-    stretches to fill, which is the same thing visually and survives the change
-    to masonry. Two or three ordinary tiles pack alongside it on their own,
-    without anything reserving space for them.
+    A third of the row, and one unit tall — the unit every other shape is
+    measured in. Below @3xl a third is under 300px, which is narrower than the
+    content wants, so it widens to a half; two across still line up.
   */
-  tall: "@2xl/board:col-span-6",
-  taller: "@2xl/board:col-span-6",
+  square: "@2xl/board:col-span-6 @3xl/board:col-span-4",
+  /*
+    A third wide and two units tall, so a tall tile is exactly two squares
+    stacked — including the gap between them, since spanning two rows absorbs
+    the row-gap that would have sat in the middle. That is what keeps a row of
+    squares level with the top and bottom of a tall beside them.
+  */
+  tall: "@2xl/board:col-span-6 @2xl/board:row-span-2 @3xl/board:col-span-4",
 };
 
-/**
- * Extra classes for the measured box rather than the frame.
- *
- * Tall's minimum height has to live here, on the element whose height is being
- * measured. Put on the frame it would fight the row span computed from that
- * measurement — the frame would be forced taller than the rows it was given and
- * would overlap whatever the grid packed underneath.
- *
- * The h-full chain goes with it so the card actually fills the floor rather than
- * leaving a gap inside its own tile.
- */
-const INNER: Partial<Record<WidgetSize, string>> = {
-  tall: "@2xl/board:min-h-[26rem] [&>*]:h-full [&>*>*]:h-full",
-  taller: "@2xl/board:min-h-[38rem] [&>*]:h-full [&>*>*]:h-full",
-};
+/** Every tile fills the height its row was given, so a row reads as one band
+ *  rather than as tiles of assorted heights sharing a baseline. */
+const INNER = "h-full [&>*]:h-full [&>*>*]:h-full";
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
-  { key: "wide", label: "Full width", hint: "Spans the row", icon: RectangleHorizontal },
-  {
-    key: "threeQuarter",
-    label: "Three quarters",
-    hint: "Room for one third beside it",
-    icon: RectangleHorizontal,
-  },
-  { key: "square", label: "Half width", hint: "Two side by side", icon: Columns2 },
-  { key: "third", label: "Third width", hint: "Three side by side", icon: Columns3 },
-  { key: "tall", label: "Tall", hint: "Half width, taller", icon: RectangleVertical },
-  {
-    key: "taller",
-    label: "Full height",
-    hint: "Half width, taller again",
-    icon: RectangleVertical,
-  },
+  { key: "long", label: "Long", hint: "Spans the row", icon: RectangleHorizontal },
+  { key: "half", label: "Half", hint: "Two side by side", icon: Columns2 },
+  { key: "square", label: "Square", hint: "Three side by side", icon: Columns3 },
+  { key: "tall", label: "Tall", hint: "A square, twice the height", icon: RectangleVertical },
 ];
 
 /**
- * Which shapes each widget is allowed to take.
+ * Which shapes each widget is allowed to take, by what it contains.
  *
- * The brief sets these per widget rather than globally, and the reason is that
- * a size is not a neutral container — content has a shape it works in, and
+ * A size is not a neutral container — content has a shape it works in, and
  * offering a shape it does not work in is offering a way to break the board.
+ * The brief sets this by content type rather than per widget:
  *
- *   graphs      horizontal only — full, three quarters, half. A chart squeezed
- *               into a third stops being readable long before it stops
- *               fitting: the x axis is time, and time needs length.
- *   timer       square, half or full. A dial and two fields; nothing a third
- *               can hold and nothing that rewards height.
- *   your rhythm a graph like the others, so it follows the same rule. It was
- *               briefly given the vertical sizes and a river squeezed into a
- *               half-width column is simply a bad chart: the x axis is twelve
- *               weeks, and twelve weeks needs width to be twelve of anything.
- *
- * Anything not listed keeps every option, which is the brief's own "everything
- * else can stay with size options".
+ *   LIST    long, half, tall. The only content that may be tall, because it is
+ *           the only content where more height means more of the thing you came
+ *           for — another few rows of the day. Not square: a square list shows
+ *           three items and a scrollbar, which is worse than no list.
+ *   CHART   long, half, square. Never tall: a chart's x axis is time, and time
+ *           needs length, so height added to a narrow chart is empty space
+ *           above the plot rather than more chart.
+ *   TIMER   half, square. A dial and two fields — nothing a full row can use
+ *           and nothing that rewards height.
  *
  * The order here is the order the menu shows, and the first entry is what a
- * widget falls back to if the size an account already stored is no longer one
- * of its options — so each list leads with the shape that suits it best.
+ * widget falls back to when the size an account stored is not one of its
+ * options — so each list leads with the shape that suits it best.
  */
-const HORIZONTAL: WidgetSize[] = ["wide", "threeQuarter", "square"];
+const LIST: WidgetSize[] = ["long", "half", "tall"];
+const CHART: WidgetSize[] = ["long", "half", "square"];
+const TIMER: WidgetSize[] = ["half", "square"];
+
 const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
-  river: HORIZONTAL,
-  chart: HORIZONTAL,
-  balance: HORIZONTAL,
-  movement: HORIZONTAL,
-  focus: ["square", "third", "wide"],
+  day: LIST,
+  upcoming: LIST,
+  river: CHART,
+  chart: CHART,
+  rhythm: CHART,
+  balance: CHART,
+  movement: CHART,
+  goals: CHART,
+  focus: TIMER,
 };
 
 function sizeOptionsFor(widgetKey: string) {
@@ -201,106 +170,26 @@ function isControl(target: EventTarget | null) {
   );
 }
 
-/** Vertical breathing room between stacked tiles, in px. Lives in the row span
- *  rather than in row-gap, because row-gap would apply to every one of the 1px
- *  rows and blow the layout apart. Matches the 1.5rem column gap. */
-const GUTTER = 24;
-
 /**
- * A tile telling the board that its height changed.
+ * A plain grid cell, for content that is not a resizable widget — the pinned
+ * greeting. Same placement, none of the menu.
  *
- * The board packs densely, which is what closes the gaps — and the price is that
- * a tile which grows or shrinks can push, pull, or swap the ones after it. That
- * is not avoidable while the gaps stay closed, but a jump-cut is: the Overview
- * already animates reordering, and reflow was the one kind of movement that
- * still teleported, because it changes no order and so changed nothing the
- * animation was watching. A tile arriving somewhere new with no travel reads as
- * a glitch, or worse as something you did.
- *
- * Optional, so a frame outside a board still renders.
+ * This used to measure itself and span that many 1px rows, which is how the
+ * board packed like masonry: every tile exactly as tall as its own contents,
+ * column ends left ragged. The brief asks for the opposite — "everything
+ * should always fit to scale, ALWAYS ALIGNED" — so rows are rows again, a row
+ * is as tall as the tallest tile in it, and the shorter ones stretch to match.
+ * The ResizeObserver, the reflow context and the 1px row trick all went with
+ * it; the grid works out heights on its own now.
  */
-const BoardReflow = createContext<(() => void) | null>(null);
-
-export function BoardReflowProvider({
-  onReflow,
-  children,
-}: {
-  onReflow: () => void;
-  children: ReactNode;
-}) {
-  return <BoardReflow.Provider value={onReflow}>{children}</BoardReflow.Provider>;
-}
-
-/**
- * Movement below this is not movement. Content wobbles by a pixel for reasons
- * nobody can see — a font settling, a number changing width, a subpixel rounding
- * — and at 1px rows every one of those re-packed the whole board.
- */
-const SPAN_NOISE_PX = 3;
-
-/**
- * Measures a tile and tells the grid how many 1px rows it occupies.
- *
- * This is what makes the board pack like masonry instead of like a table. The
- * grid cannot know a tile's height — the tile's own content decides it, and that
- * changes as tasks are ticked and charts load — so the height is observed and
- * translated into a row span.
- *
- * useLayoutEffect rather than useEffect: it runs before paint, so the first
- * frame is already correct rather than showing every tile at 1px and snapping.
- * The Overview sits behind auth and is never meaningfully server-rendered, so
- * there is no SSR pass to worry about here.
- */
-function useRowSpan() {
-  const ref = useRef<HTMLDivElement>(null);
-  const [span, setSpan] = useState(1);
-  /** Read inside the observer callback, where the state value would be the one
-   *  captured when the effect ran. */
-  const latest = useRef(1);
-  const onReflow = useContext(BoardReflow);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const measure = () => {
-      const next = Math.max(1, Math.ceil(el.getBoundingClientRect().height + GUTTER));
-      if (Math.abs(next - latest.current) < SPAN_NOISE_PX) return;
-      // The first measurement is the tile appearing, not moving. Nothing was on
-      // screen to travel from, and animating it would make every page load
-      // shuffle itself.
-      const appearing = latest.current === 1;
-      latest.current = next;
-      setSpan(next);
-      if (!appearing) onReflow?.();
-    };
-    measure();
-    // Content decides the height and content moves: a chart finishing its
-    // animation, a task list shrinking, the window narrowing and text rewrapping.
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [onReflow]);
-
-  return { ref, span };
-}
-
-/**
- * A grid cell that sizes itself, for content that is not a resizable widget —
- * the pinned greeting. Same packing, none of the menu.
- */
-export function MasonryCell({
+export function BoardCell({
   className = "",
   children,
 }: {
   className?: string;
   children: ReactNode;
 }) {
-  const { ref, span } = useRowSpan();
-  return (
-    <section className={className} style={{ gridRowEnd: `span ${span}` }}>
-      <div ref={ref}>{children}</div>
-    </section>
-  );
+  return <section className={className}>{children}</section>;
 }
 
 export function WidgetFrame({
@@ -341,9 +230,8 @@ export function WidgetFrame({
     offer — rendered one way and described another.
   */
   const options = sizeOptionsFor(widgetKey);
-  const stored = entry?.size ?? "wide";
+  const stored = entry?.size ?? "long";
   const size = options.some((o) => o.key === stored) ? stored : options[0].key;
-  const { ref: measureRef, span } = useRowSpan();
 
   function setSize(next: WidgetSize) {
     actions.reorderWidgets(widgets.map((w) => (w.key === widgetKey ? { ...w, size: next } : w)));
@@ -372,8 +260,6 @@ export function WidgetFrame({
       // actually has. Without it, half-width widgets keep asking the viewport
       // how much room they have and get the wrong answer.
       className={`@container relative ${SPAN[size]}`}
-      // Height in 1px grid rows, measured rather than declared — see useRowSpan.
-      style={{ gridRowEnd: `span ${span}` }}
       onContextMenu={(e) => {
         // The app's own menu instead of the browser's. Right-click is the
         // desktop half of the same gesture the hold covers on touch.
@@ -399,11 +285,7 @@ export function WidgetFrame({
       onPointerUp={cancelHold}
       onPointerCancel={cancelHold}
     >
-      {/* The measured box is the content, not the frame: the frame's own height
-          is what we are computing, so measuring it would be circular. */}
-      <div ref={measureRef} className={INNER[size]}>
-        {children}
-      </div>
+      <div className={INNER}>{children}</div>
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         {/* Anchored to the widget's top-right rather than the cursor. A menu that

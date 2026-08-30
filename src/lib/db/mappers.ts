@@ -235,21 +235,41 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   // are kept but switched off — turning one on is easier than evaluating nine
   // before you have used any of them.
   //
-  // Thirds across the top and the river full width beneath divide evenly into
-  // the six-column board, so the default arrangement has no gaps.
-  { key: "greeting", enabled: true, size: "wide" },
-  { key: "day", enabled: true, size: "third" },
-  { key: "upcoming", enabled: true, size: "third" },
-  { key: "focus", enabled: true, size: "third" },
-  { key: "river", enabled: true, size: "wide" },
-  { key: "chart", enabled: false, size: "wide" },
-  { key: "goals", enabled: false, size: "wide" },
-  { key: "rhythm", enabled: false, size: "wide" },
+  // Three squares across the top and the river long beneath divide evenly into
+  // the twelve-column board, so the default arrangement has no gaps.
+  { key: "greeting", enabled: true, size: "long" },
+  { key: "day", enabled: true, size: "square" },
+  { key: "upcoming", enabled: true, size: "square" },
+  { key: "focus", enabled: true, size: "square" },
+  { key: "river", enabled: true, size: "long" },
+  { key: "chart", enabled: false, size: "long" },
+  { key: "goals", enabled: false, size: "long" },
+  { key: "rhythm", enabled: false, size: "long" },
   { key: "balance", enabled: false, size: "square" },
   { key: "movement", enabled: false, size: "square" },
 ];
 
-const WIDGET_SIZES = ["square", "wide", "tall", "third", "threeQuarter", "taller"] as const;
+const WIDGET_SIZES = ["long", "half", "square", "tall"] as const;
+
+/**
+ * The six old size names, mapped onto the four.
+ *
+ * Stored settings still carry these, and a row is only rewritten when someone
+ * changes something — so this is not a one-off migration step but the
+ * permanent reading of an old value, and it has to stay.
+ *
+ * "square" is the one that cannot be taken at face value: it used to mean half
+ * width and was labelled "Half width" in the menu, so an account storing it
+ * means half, not the new actual square. Reading it as a square would silently
+ * shrink tiles people had deliberately made wide.
+ */
+const LEGACY_SIZES: Record<string, WidgetSize> = {
+  wide: "long",
+  threeQuarter: "long",
+  square: "half",
+  third: "square",
+  taller: "tall",
+};
 
 /**
  * Widgets that are furniture rather than content, and so do not move.
@@ -308,11 +328,11 @@ function toWidgets(value: unknown): Settings["widgets"] {
       {
         key,
         enabled: enabled !== false,
-        // Defaults to wide so a row written before sizes existed keeps looking
-        // exactly as it did.
+        // Current name, then an old one mapped forward, then long — which is
+        // what a row written before sizes existed at all rendered as.
         size: (WIDGET_SIZES as readonly string[]).includes(size as string)
           ? (size as WidgetSize)
-          : "wide",
+          : (LEGACY_SIZES[size as string] ?? "long"),
       },
     ];
   });
