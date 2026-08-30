@@ -408,7 +408,7 @@ function Overview() {
 
     if (key === "upcoming" && w("upcoming"))
       return (
-        <section key={key}>
+        <section key={key} className="flex h-full min-h-0 flex-col">
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-serif text-lg">Upcoming</h2>
           </div>
@@ -427,6 +427,7 @@ function Overview() {
             to={upcomingRange.to}
             emptyText="Nothing in the next few days."
             floating
+            fit
           />
         </section>
       );

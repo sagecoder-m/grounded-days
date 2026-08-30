@@ -5,6 +5,8 @@ import { CalendarDays, Plus } from "lucide-react";
 import { AddTaskDialog } from "./add-task-dialog";
 import { AreaChip } from "./area-chip";
 import { TaskRow } from "./task-row";
+import { Link } from "@tanstack/react-router";
+import { FitRows } from "@/components/dashboard/fit-rows";
 import { actions, type Task } from "@/lib/store";
 import type { Area, CalEvent } from "@/lib/store-types";
 
@@ -55,6 +57,7 @@ export function TaskGrid({
   includeOverdue = false,
   showGroupLabels = true,
   floating = false,
+  fit = false,
 }: {
   tasks: Task[];
   /** Omit for a tasks-only grid. */
@@ -97,6 +100,15 @@ export function TaskGrid({
   showGroupLabels?: boolean;
   /** Lift every row off the surface. See TaskRow — the Overview's treatment. */
   floating?: boolean;
+  /**
+   * Show only the days that fit the height available, then say how many were
+   * left out.
+   *
+   * Opt-in, because it only makes sense where the height is fixed and chosen —
+   * a widget on the board. On a page that scrolls, hiding days to fit a box
+   * that has no bottom would be hiding them for no reason.
+   */
+  fit?: boolean;
 }) {
   const overdue = useMemo(() => {
     if (!includeOverdue) return [];
@@ -194,9 +206,26 @@ export function TaskGrid({
           days you most need to see pushed furthest down the page. items-start so
           a heavy Thursday does not stretch a light Friday to match it.
         */
-        <div className="grid items-start gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3">
+        <FitRows
+          className="grid items-start gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3"
+          moreClassName="col-span-full"
+          renderMore={
+            fit
+              ? (hidden) => (
+                  <Link
+                    to="/calendar"
+                    className="block px-1 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+                  >
+                    {hidden > 0
+                      ? `+${hidden} more ${hidden === 1 ? "day" : "days"} · see the whole calendar`
+                      : "See the whole calendar"}
+                  </Link>
+                )
+              : undefined
+          }
+        >
           {groups.map((group) => (
-            <div key={group.date} className="space-y-2">
+            <div key={group.date} data-fit-row={fit ? "" : undefined} className="space-y-2">
               {showGroupLabels && (
                 <p
                   suppressHydrationWarning
@@ -212,15 +241,15 @@ export function TaskGrid({
 
               {group.tasks.map((task) => (
                 <TaskRow
-              key={task.id}
-              task={task}
-              floating={floating}
-              onDelete={() => actions.deleteTask(task.id)}
-            />
+                  key={task.id}
+                  task={task}
+                  floating={floating}
+                  onDelete={() => actions.deleteTask(task.id)}
+                />
               ))}
             </div>
           ))}
-        </div>
+        </FitRows>
       )}
     </div>
   );

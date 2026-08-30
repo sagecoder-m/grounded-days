@@ -7,6 +7,7 @@ import { dateKey } from "@/components/task-grid";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FitRows } from "@/components/dashboard/fit-rows";
 import type { Area, Task } from "@/lib/store-types";
 
 const AREA_VAR: Record<Area, string> = {
@@ -74,7 +75,7 @@ export function TodayGlance() {
       page, not a filing cabinet. So the rail is a heading, the rows are the
       cards, and the surface behind them is the page.
     */
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       {/* The date rail: a serif numeral with the month and weekday beside it,
           and the day's shape on the right. */}
       <div className="flex items-center justify-between gap-4 px-1 pb-3">
@@ -99,47 +100,52 @@ export function TodayGlance() {
         </span>
       </div>
 
-      {/* Spaced rather than divided. Hairlines make a list read as one block,
-          and a block is the thing that overwhelms — see .float-row. */}
-      <div className="space-y-2">
-        {nothing && (
-          <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
-            A clear day. That counts as a good one.
-          </p>
-        )}
+      {nothing ? (
+        <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
+          A clear day. That counts as a good one.
+        </p>
+      ) : (
+        /* Spaced rather than divided. Hairlines make a list read as one block,
+           and a block is the thing that overwhelms — see .float-row.
 
-        {timed.map((event) => (
-          <AgendaRow
-            key={event.id}
-            time={format(new Date(event.startsAt!), "h:mm a")}
-            dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
-            title={event.title}
-            note={conflicts.has(event.id) ? "overlaps" : undefined}
-            synced={event.source !== "local"}
-          />
-        ))}
-
-        {allDay.map((event) => (
-          <AgendaRow
-            key={event.id}
-            time="all day"
-            dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
-            title={event.title}
-            synced={event.source !== "local"}
-          />
-        ))}
-
-        {tasks.map((task) => (
-          <TaskAgendaRow key={task.id} task={task} today={iso} />
-        ))}
-      </div>
-
-      <Link
-        to="/calendar"
-        className="mt-3 block px-1 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
-      >
-        See the whole calendar
-      </Link>
+           FitRows shows as many of these as the tile is tall enough for and
+           says how many it left out, so a full day never runs off the bottom
+           of a box someone deliberately made short. */
+        <FitRows
+          className="space-y-2"
+          renderMore={(hidden) => (
+            <Link
+              to="/calendar"
+              className="mt-2 block px-1 text-center text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              {hidden > 0 ? `+${hidden} more · see the whole calendar` : "See the whole calendar"}
+            </Link>
+          )}
+        >
+          {[
+            ...timed.map((event) => (
+              <AgendaRow
+                key={event.id}
+                time={format(new Date(event.startsAt!), "h:mm a")}
+                dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
+                title={event.title}
+                note={conflicts.has(event.id) ? "overlaps" : undefined}
+                synced={event.source !== "local"}
+              />
+            )),
+            ...allDay.map((event) => (
+              <AgendaRow
+                key={event.id}
+                time="all day"
+                dot={event.area ? AREA_VAR[event.area] : "var(--tan)"}
+                title={event.title}
+                synced={event.source !== "local"}
+              />
+            )),
+            ...tasks.map((task) => <TaskAgendaRow key={task.id} task={task} today={iso} />),
+          ]}
+        </FitRows>
+      )}
     </div>
   );
 }
@@ -176,6 +182,8 @@ function AgendaRow({
 }) {
   return (
     <div
+      // Marks this as one measurable row for FitRows.
+      data-fit-row
       /* No float-row: an event is not interactive here — nothing to tick, edit
          or open — and a row that lifts under the pointer promises something to
          press. Tasks lift because they answer; events sit still because they
@@ -202,7 +210,10 @@ function AgendaRow({
 function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
   const late = Boolean(task.date && task.date < today);
   return (
-    <div className="group float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5">
+    <div
+      data-fit-row
+      className="group float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5"
+    >
       <span
         className={`w-14 shrink-0 text-right text-xs ${
           late ? "text-[color:var(--clay)]" : "text-ink-soft"
