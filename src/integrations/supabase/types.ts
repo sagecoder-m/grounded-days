@@ -10,10 +10,50 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          created_at: string
+          email: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       admin_users: {
         Row: {
           created_at: string
@@ -26,150 +66,6 @@ export type Database = {
         Update: {
           created_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      client_errors: {
-        Row: {
-          created_at: string
-          id: number
-          message: string
-          route: string
-          stack: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: never
-          message: string
-          route: string
-          stack?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: never
-          message?: string
-          route?: string
-          stack?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      usage_events: {
-        Row: {
-          created_at: string
-          event: string
-          id: number
-          route: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          event: string
-          id?: never
-          route: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          event?: string
-          id?: never
-          route?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      calendar_connections: {
-        Row: {
-          account_email: string | null
-          account_id: string
-          created_at: string
-          default_area: string | null
-          feed_url: string | null
-          id: string
-          last_synced_at: string | null
-          provider: string
-          status: string
-          status_detail: string | null
-          sync_cursor: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          account_email?: string | null
-          account_id: string
-          created_at?: string
-          default_area?: string | null
-          feed_url?: string | null
-          id?: string
-          last_synced_at?: string | null
-          provider: string
-          status?: string
-          status_detail?: string | null
-          sync_cursor?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          account_email?: string | null
-          account_id?: string
-          created_at?: string
-          default_area?: string | null
-          feed_url?: string | null
-          id?: string
-          last_synced_at?: string | null
-          provider?: string
-          status?: string
-          status_detail?: string | null
-          sync_cursor?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      share_links: {
-        Row: {
-          areas: string[]
-          created_at: string
-          expires_at: string | null
-          id: string
-          label: string | null
-          last_viewed_at: string | null
-          revoked_at: string | null
-          token_hash: string
-          updated_at: string
-          user_id: string
-          view_count: number
-        }
-        Insert: {
-          areas: string[]
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          label?: string | null
-          last_viewed_at?: string | null
-          revoked_at?: string | null
-          token_hash: string
-          updated_at?: string
-          user_id: string
-          view_count?: number
-        }
-        Update: {
-          areas?: string[]
-          created_at?: string
-          expires_at?: string | null
-          id?: string
-          label?: string | null
-          last_viewed_at?: string | null
-          revoked_at?: string | null
-          token_hash?: string
-          updated_at?: string
-          user_id?: string
-          view_count?: number
         }
         Relationships: []
       }
@@ -235,79 +131,145 @@ export type Database = {
           },
         ]
       }
-      journal_entries: {
+      calendar_connections: {
         Row: {
-          body: string
+          account_email: string | null
+          account_id: string
           created_at: string
-          date: string
-          gratitude: string | null
+          default_area: string | null
+          feed_url: string | null
           id: string
-          mood: string | null
+          last_synced_at: string | null
+          provider: string
+          status: string
+          status_detail: string | null
+          sync_cursor: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          body?: string
+          account_email?: string | null
+          account_id: string
           created_at?: string
-          date: string
-          gratitude?: string | null
+          default_area?: string | null
+          feed_url?: string | null
           id?: string
-          mood?: string | null
+          last_synced_at?: string | null
+          provider: string
+          status?: string
+          status_detail?: string | null
+          sync_cursor?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          body?: string
+          account_email?: string | null
+          account_id?: string
           created_at?: string
-          date?: string
-          gratitude?: string | null
+          default_area?: string | null
+          feed_url?: string | null
           id?: string
-          mood?: string | null
+          last_synced_at?: string | null
+          provider?: string
+          status?: string
+          status_detail?: string | null
+          sync_cursor?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
       }
-      goal_steps: {
+      calendar_credentials: {
         Row: {
-          created_at: string
-          done: boolean
-          goal_id: string
-          id: string
-          position: number
-          title: string
+          access_token: string | null
+          access_token_expires_at: string | null
+          connection_id: string
+          refresh_token: string
+          scope: string | null
           updated_at: string
-          user_id: string
         }
         Insert: {
-          created_at?: string
-          done?: boolean
-          goal_id: string
-          id?: string
-          position?: number
-          title: string
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connection_id: string
+          refresh_token: string
+          scope?: string | null
           updated_at?: string
-          user_id: string
         }
         Update: {
-          created_at?: string
-          done?: boolean
-          goal_id?: string
-          id?: string
-          position?: number
-          title?: string
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          connection_id?: string
+          refresh_token?: string
+          scope?: string | null
           updated_at?: string
-          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "goal_steps_goal_id_fkey"
-            columns: ["goal_id"]
-            isOneToOne: false
-            referencedRelation: "goals"
+            foreignKeyName: "calendar_credentials_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: true
+            referencedRelation: "calendar_connections"
             referencedColumns: ["id"]
           },
         ]
+      }
+      calendar_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          provider: string
+          redirect_to: string | null
+          state: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          provider: string
+          redirect_to?: string | null
+          state: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          provider?: string
+          redirect_to?: string | null
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      client_errors: {
+        Row: {
+          created_at: string
+          id: number
+          message: string
+          route: string
+          stack: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          message: string
+          route: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          message?: string
+          route?: string
+          stack?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       courses: {
         Row: {
@@ -431,6 +393,47 @@ export type Database = {
         }
         Relationships: []
       }
+      goal_steps: {
+        Row: {
+          created_at: string
+          done: boolean
+          goal_id: string
+          id: string
+          position: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          goal_id: string
+          id?: string
+          position?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          goal_id?: string
+          id?: string
+          position?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_steps_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           area: string
@@ -438,12 +441,12 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          position: number
           progress: number
-          target_date: string | null
           project_id: string | null
           subproject_id: string | null
+          target_date: string | null
           updated_at: string
-          position: number
           user_id: string
         }
         Insert: {
@@ -452,27 +455,26 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          position?: number
           progress?: number
-          target_date?: string | null
           project_id?: string | null
           subproject_id?: string | null
+          target_date?: string | null
           updated_at?: string
-          position?: number
           user_id: string
         }
         Update: {
           area?: string
-          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
+          position?: number
           progress?: number
-          target_date?: string | null
           project_id?: string | null
           subproject_id?: string | null
+          target_date?: string | null
           updated_at?: string
-          position?: number
           user_id?: string
         }
         Relationships: [
@@ -554,8 +556,8 @@ export type Database = {
           goal_id: string | null
           id: string
           name: string
-          updated_at: string
           position: number
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -563,8 +565,8 @@ export type Database = {
           goal_id?: string | null
           id?: string
           name: string
-          updated_at?: string
           position?: number
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -572,8 +574,49 @@ export type Database = {
           goal_id?: string | null
           id?: string
           name?: string
-          updated_at?: string
           position?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habits_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "goals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entries: {
+        Row: {
+          body: string
+          created_at: string
+          date: string
+          gratitude: string | null
+          id: string
+          mood: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          date: string
+          gratitude?: string | null
+          id?: string
+          mood?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          date?: string
+          gratitude?: string | null
+          id?: string
+          mood?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -585,21 +628,20 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          position: number
           status: string
           updated_at: string
-          position: number
           user_id: string
         }
         Insert: {
           area?: string
-          course_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name: string
+          position?: number
           status?: string
           updated_at?: string
-          position?: number
           user_id: string
         }
         Update: {
@@ -608,10 +650,52 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          position?: number
           status?: string
           updated_at?: string
-          position?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      share_links: {
+        Row: {
+          areas: string[]
+          created_at: string
+          expires_at: string | null
+          id: string
+          label: string | null
+          last_viewed_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          updated_at: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          areas: string[]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          updated_at?: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          areas?: string[]
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          label?: string | null
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number
         }
         Relationships: []
       }
@@ -698,6 +782,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "tasks_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -712,6 +803,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      usage_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: number
+          route: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: never
+          route: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: never
+          route?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_security: {
         Row: {
@@ -799,30 +914,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
       admin_activity_weeks: {
-        Args: Record<PropertyKey, never>
-        Returns: { user_id: string; week_start: string }[]
+        Args: never
+        Returns: {
+          user_id: string
+          week_start: string
+        }[]
       }
       change_passcode: {
-        Args: { old_passcode: string; new_passcode: string }
+        Args: { new_passcode: string; old_passcode: string }
         Returns: boolean
       }
-      has_passcode: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      set_passcode: {
-        Args: { new_passcode: string }
+      has_passcode: { Args: never; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
+      record_share_view: { Args: { link_id: string }; Returns: undefined }
+      set_connection_area: {
+        Args: { p_area: string; p_connection_id: string }
         Returns: undefined
       }
-      verify_passcode: {
-        Args: { candidate: string }
-        Returns: Json
-      }
+      set_passcode: { Args: { new_passcode: string }; Returns: undefined }
+      verify_passcode: { Args: { candidate: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
@@ -951,6 +1062,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },

@@ -859,8 +859,19 @@ export const actions = {
           update: listPatch<CalendarConnection>(connectionId, { defaultArea: area }),
         },
       ],
+      /*
+        An RPC rather than a table update, because this changes two things and
+        the client is only allowed to change one of them. Events mirrored from
+        a provider are read-only to the browser — RLS restricts writes to
+        `source = 'local'` — so updating the connection alone left every event
+        already synced carrying the area it had at sync time. The label read
+        correctly in settings and wrongly everywhere it was used.
+      */
       () =>
-        supabase.from("calendar_connections").update({ default_area: area }).eq("id", connectionId),
+        supabase.rpc("set_connection_area", {
+          p_connection_id: connectionId,
+          p_area: area,
+        }),
       { alsoInvalidate: [qk.events(userId)] },
     );
   },
