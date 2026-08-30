@@ -32,7 +32,6 @@ import type {
   Settings,
   Subproject,
   Theme,
-  WidgetSize,
   WeekStart,
   Task,
 } from "@/lib/store-types";
@@ -226,62 +225,33 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
 
 // ------------------------------------------------------------------- settings
 
-// Order matters: this is the Overview's top-to-bottom layout. Progress and the
-// chart sit above the task list so the first thing seen is movement already
-// made, not work outstanding. Keep in step with the migration's column default.
+/**
+ * The board as it arrives before anyone has arranged it.
+ *
+ * Grid units on a 36-column board: 12 is a third, 18 a half, 36 the width.
+ * Five on, five off — turning one on is easier than evaluating ten before you
+ * have used any of them.
+ *
+ * The arrangement is the one that was asked for: the greeting across the top,
+ * the two lists side by side beneath it, and the timer above the river in the
+ * third column. It is a starting point, not a rule — every one of these can be
+ * dragged anywhere from the first second.
+ */
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
-  // Four on by default. A day needs what is on today, what is coming, something
-  // to focus with, and one picture of how it has been going. The rest are kept
-  // but switched off — turning one on is easier than evaluating nine before you
-  // have used any of them.
-  //
-  // Everything is a square except the timer, so three sit across a row and the
-  // rows cannot fail to line up.
-  { key: "greeting", enabled: true, size: "long" },
-  { key: "day", enabled: true, size: "tall" },
-  { key: "upcoming", enabled: true, size: "tall" },
-  { key: "focus", enabled: true, size: "smallHalf" },
-  { key: "river", enabled: true, size: "square" },
-  { key: "chart", enabled: false, size: "long" },
-  { key: "goals", enabled: false, size: "square" },
-  { key: "rhythm", enabled: false, size: "square" },
-  { key: "balance", enabled: false, size: "square" },
-  { key: "movement", enabled: false, size: "square" },
+  { key: "greeting", enabled: true, x: 0, y: 0, w: 36, h: 5 },
+  { key: "day", enabled: true, x: 0, y: 5, w: 12, h: 18 },
+  { key: "upcoming", enabled: true, x: 12, y: 5, w: 12, h: 18 },
+  { key: "focus", enabled: true, x: 24, y: 5, w: 12, h: 7 },
+  { key: "river", enabled: true, x: 24, y: 12, w: 12, h: 11 },
+  { key: "chart", enabled: false, x: 0, y: 23, w: 36, h: 11 },
+  { key: "goals", enabled: false, x: 0, y: 34, w: 18, h: 9 },
+  { key: "rhythm", enabled: false, x: 18, y: 34, w: 18, h: 9 },
+  { key: "balance", enabled: false, x: 0, y: 43, w: 12, h: 11 },
+  { key: "movement", enabled: false, x: 12, y: 43, w: 18, h: 9 },
 ];
 
-const WIDGET_SIZES = ["long", "half", "square", "tall", "smallHalf"] as const;
+const DEFAULT_BY_KEY = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w]));
 
-/**
- * Every size name this app has ever stored, mapped onto the two that remain.
- *
- * There have been three vocabularies: wide/square/tall/third/threeQuarter/taller,
- * then long/half/square/tall, now square/smallHalf. A settings row is only
- * rewritten when someone changes something, so all of them can still be sitting
- * in the database and this mapping is permanent rather than a migration step.
- *
- * Everything becomes a square except the timer's own shape. Note that the old
- * "square" meant *half width* — it is only a coincidence that it lands on a
- * name it used to have, and it is not the same shape.
- */
-const LEGACY_SIZES: Record<string, WidgetSize> = {
-  wide: "long",
-  threeQuarter: "long",
-  // The old "square" meant *half width* — the menu said so. It is not the
-  // shape that carries the name now.
-  square: "half",
-  third: "square",
-  taller: "tall",
-};
-
-/**
- * Widgets that are furniture rather than content, and so do not move.
- *
- * The greeting is the page's header — the date and "Good afternoon, Demi". It is
- * not a panel you arrange around, it is the thing that tells you where you are,
- * and a header that can be dragged into the middle of the page is a header that
- * can be lost. It stays first, stays full width, and has no drag handle or size
- * menu; it can still be switched off in Profile for anyone who does not want it.
- */
 export const PINNED_WIDGETS = new Set(["greeting"]);
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -301,40 +271,42 @@ export const DEFAULT_SETTINGS: Settings = {
 /**
  * widgets is jsonb, so it arrives as unknown-shaped Json and needs coercing.
  *
- * Anything in DEFAULT_WIDGETS the stored array does not mention is appended,
- * which is what makes a new widget reach accounts that already exist.
+ * Two jobs. Anything in DEFAULT_WIDGETS the stored array does not mention is
+ * appended, which is what makes a new widget reach accounts that already exist
+ * — without it, a widget added after your row was written never appears for
+ * you, not even switched off, and each one needs a hand-written UPDATE that
+ * only reaches rows existing the moment it runs.
  *
- * It used to return the stored array verbatim, and the consequence was quiet:
- * a widget added after your settings row was written never appeared for you —
- * not switched off in Profile, but absent from the list entirely, with no way
- * to turn it on. Each new widget therefore needed a hand-written UPDATE in its
- * migration, and that only reaches rows existing the moment it runs. One
- * account still had the nine-widget Overview and no river for exactly this
- * reason: its row was written by a client carrying the older list, after the
- * migration that would have fixed it had already run.
- *
- * Appended rather than merged in default order, so nobody's arrangement is
- * rewritten underneath them — the same reasoning the migrations used. A new
- * widget arrives with the enabled and size it has in DEFAULT_WIDGETS, so one
- * meant to be on by default is on, and one meant to be available-but-quiet
- * shows up switched off.
+ * The other job is the shape change. Rows still carry one of the old named
+ * sizes ("long", "tall", "square", "wide", "third"...) instead of x/y/w/h,
+ * because a settings row is only rewritten when someone changes something. A
+ * name cannot say where a widget sits, so there is nothing to convert it into
+ * — such a row is given the default arrangement for that widget and becomes a
+ * real placement the first time it is dragged. This is permanent, not a
+ * migration step.
  */
 function toWidgets(value: unknown): Settings["widgets"] {
   if (!Array.isArray(value)) return DEFAULT_WIDGETS;
+
   const cleaned = value.flatMap((entry) => {
     if (typeof entry !== "object" || entry === null) return [];
-    const { key, enabled } = entry as { key?: unknown; enabled?: unknown };
-    if (typeof key !== "string") return [];
-    const size = (entry as { size?: unknown }).size;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.key !== "string") return [];
+    const fallback = DEFAULT_BY_KEY.get(e.key);
+    // A widget nobody has a default for is one that has been retired. Dropped
+    // rather than kept, since there is nothing left to render for it.
+    if (!fallback) return [];
+    const num = (v: unknown, or: number) =>
+      typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.round(v)) : or;
     return [
       {
-        key,
-        enabled: enabled !== false,
-        // Current name, then an old one mapped forward, then long — which is
-        // what a row written before sizes existed at all rendered as.
-        size: (WIDGET_SIZES as readonly string[]).includes(size as string)
-          ? (size as WidgetSize)
-          : (LEGACY_SIZES[size as string] ?? "square"),
+        key: e.key,
+        enabled: e.enabled !== false,
+        x: num(e.x, fallback.x),
+        y: num(e.y, fallback.y),
+        // Zero would be a tile with no area, so a stored 0 falls back too.
+        w: Math.max(1, num(e.w, fallback.w)),
+        h: Math.max(1, num(e.h, fallback.h)),
       },
     ];
   });
@@ -382,7 +354,14 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
 
 /** Widgets is a jsonb column, so the array needs widening to Json. */
 export function widgetsToJson(widgets: Settings["widgets"]): Json {
-  return widgets.map((w) => ({ key: w.key, enabled: w.enabled, size: w.size }));
+  return widgets.map((w) => ({
+    key: w.key,
+    enabled: w.enabled,
+    x: w.x,
+    y: w.y,
+    w: w.w,
+    h: w.h,
+  }));
 }
 
 /** Partial domain settings -> partial column patch. */

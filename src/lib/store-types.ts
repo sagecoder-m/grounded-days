@@ -204,21 +204,29 @@ export type AssistantTone = "gentle" | "neutral" | "direct";
 export type AssistantLength = "brief" | "balanced" | "thorough";
 
 /**
- * How much of the Overview board a widget takes.
+ * Where a widget sits on the board, and how big it is.
  *
- * Measured in units, where one unit is a square: a third of the row wide, and
- * the same again tall. Every shape is a whole number of units, which is what
- * lets a column of small tiles stack up level with a tall one beside it.
+ * Free position and size, in grid units, rather than one of a handful of named
+ * shapes. Named shapes were the wrong model: every one of them was a rule about
+ * what a widget was allowed to be, and the board spent its life enforcing rules
+ * instead of doing what it was told. x/y/w/h says only where you put it.
  *
- *   long       the full row, one unit tall. For charts — an x axis is time,
- *              and time needs length.
- *   half       half the row, one unit tall.
- *   square     a third of the row, one unit. The board's unit, and genuinely 1:1.
- *   tall       a third of the row, three units. For lists, and the shape that
- *              makes stacking work: three squares fit beside one of these.
- *   smallHalf  a third of the row, only as tall as its contents. The timer.
+ * Units, not pixels, so the board scales with the window without the saved
+ * layout going stale — see BOARD_COLS in the dashboard's layout engine.
  */
-export type WidgetSize = "long" | "half" | "square" | "tall" | "smallHalf";
+export interface WidgetPlacement {
+  /** Which widget this is. Also its identity on the board: one of each. */
+  key: string;
+  enabled: boolean;
+  /** Grid units from the left edge. */
+  x: number;
+  /** Grid units from the top. */
+  y: number;
+  /** Width in grid units. */
+  w: number;
+  /** Height in grid units. */
+  h: number;
+}
 
 /**
  * Light, dark, or whatever the device says.
@@ -243,7 +251,7 @@ export interface Settings {
   /** Free text the client writes for the assistant. Capped at 600 chars. */
   assistantNotes: string;
   /** Size is optional on read for rows written before it existed. */
-  widgets: { key: string; enabled: boolean; size: WidgetSize }[];
+  widgets: WidgetPlacement[];
 }
 
 export interface AppState {

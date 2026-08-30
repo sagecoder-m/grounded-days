@@ -68,7 +68,12 @@ const WIDGET_LABELS: Record<string, string> = {
 };
 
 const THEMES: { key: Theme; label: string; hint: string; icon: LucideIcon }[] = [
-  { key: "system", label: "Follow my device", hint: "Changes when your device does", icon: Monitor },
+  {
+    key: "system",
+    label: "Follow my device",
+    hint: "Changes when your device does",
+    icon: Monitor,
+  },
   { key: "light", label: "Light", hint: "Cream, always", icon: Sun },
   { key: "dark", label: "Dark", hint: "Easier at night", icon: Moon },
 ];
@@ -159,8 +164,8 @@ function ProfilePage() {
             reached by a two-state toggle, and it is the one worth keeping, since
             it follows a device that already dims itself in the evening. */}
         <p className="text-sm text-ink-soft">
-          There&rsquo;s a quicker switch next to Lock. This is where you can hand the choice back
-          to your device.
+          There&rsquo;s a quicker switch next to Lock. This is where you can hand the choice back to
+          your device.
         </p>
         <div className="flex flex-wrap gap-3">
           {THEMES.map((t) => (
@@ -420,111 +425,45 @@ function AssistantSection({ settings }: { settings: Settings }) {
   );
 }
 
-const SIZE_LABELS: Record<string, string> = {
-  wide: "Full width",
-  square: "Half width",
-  third: "Third width",
-  tall: "Tall",
-};
-
+/**
+ * Which widgets are on the board.
+ *
+ * Switches only. This used to reorder them too — a drag handle, up and down
+ * arrows, and a "Position 3 · Half width" line under each name — and none of
+ * that survives free positioning: a widget's place is now an x and a y it was
+ * dragged to, so there is no order for a list to express and no named size to
+ * report. Arranging happens on the board, which is the only place it can be
+ * seen.
+ */
 function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [working, setWorking] = useState<Settings["widgets"] | null>(null);
-  const shown = (working ?? widgets).filter((w) => w.key in WIDGET_LABELS);
-
-  function commit(next: Settings["widgets"]) {
-    setWorking(null);
-    setDragIndex(null);
-    actions.reorderWidgets(next);
-  }
-
-  function move(index: number, dir: -1 | 1) {
-    // Pinned widgets have no position to change, and moving a movable one is not
-    // allowed to reorder around them either — the Overview ignores their saved
-    // index entirely, so a control that appeared to work would be lying.
-    if (PINNED_WIDGETS.has(shown[index].key)) return;
-    const next = [...shown];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    actions.reorderWidgets(next);
-  }
+  const shown = widgets.filter((w) => w.key in WIDGET_LABELS);
 
   return (
-    <section className="card-soft p-6 space-y-4">
+    <section className="card-soft space-y-4 p-6">
       <h2 className="font-serif text-lg">Overview widgets</h2>
       <p className="text-sm text-ink-soft">
-        Drag by the handle to re-order — or use the arrows. Switches control what appears. On the
-        Overview itself you can right-click a widget (or press and hold on a phone) to change its
-        size.
+        What appears on the board. Move and resize them on the Overview itself — drag a widget to
+        reposition it, or pull any edge or corner to change its size.
       </p>
+
       <div className="space-y-2">
-        {shown.map((w, i) => (
+        {shown.map((w) => (
           <div
             key={w.key}
-            draggable={!PINNED_WIDGETS.has(w.key)}
-            onDragStart={(e) => {
-              if (PINNED_WIDGETS.has(w.key)) return;
-              setDragIndex(i);
-              setWorking([...shown]);
-              e.dataTransfer.effectAllowed = "move";
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (dragIndex === null || dragIndex === i) return;
-              if (PINNED_WIDGETS.has(shown[i].key)) return;
-              const next = [...shown];
-              const [moved] = next.splice(dragIndex, 1);
-              next.splice(i, 0, moved);
-              setDragIndex(i);
-              setWorking(next);
-            }}
-            onDragEnd={() => commit(shown)}
-            className={`flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3 transition-opacity ${dragIndex === i ? "opacity-50" : ""}`}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3"
           >
-            <div className="flex items-center gap-3">
-              {PINNED_WIDGETS.has(w.key) ? (
-                // Same width as the grip plus the arrow stack it replaces, so
-                // the labels of pinned and movable rows still line up.
-                <Pin className="ml-0.5 h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
-              ) : (
-                <>
-                  <GripVertical
-                    className="h-4 w-4 cursor-grab active:cursor-grabbing text-ink-soft"
-                    aria-hidden
-                  />
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => move(i, -1)}
-                      className="text-ink-soft hover:text-ink"
-                      aria-label="Move up"
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => move(i, 1)}
-                      className="text-ink-soft hover:text-ink"
-                      aria-label="Move down"
-                    >
-                      <ArrowDown className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </>
-              )}
-              <div>
-                <div className="text-sm font-medium">{WIDGET_LABELS[w.key] ?? w.key}</div>
-                <div className="text-[11px] text-ink-soft">
-                  {PINNED_WIDGETS.has(w.key)
-                    ? "Always at the top, full width"
-                    : `Position ${i + 1} \u00b7 ${SIZE_LABELS[w.size] ?? "Full width"}`}
-                </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{WIDGET_LABELS[w.key] ?? w.key}</div>
+              <div className="text-[11px] text-ink-soft">
+                {w.enabled ? "On the board" : "Not on the board"}
               </div>
             </div>
             <Switch
               checked={w.enabled}
+              aria-label={WIDGET_LABELS[w.key] ?? w.key}
               onCheckedChange={(v) =>
                 actions.reorderWidgets(
-                  shown.map((x) => (x.key === w.key ? { ...x, enabled: v } : x)),
+                  widgets.map((x) => (x.key === w.key ? { ...x, enabled: v } : x)),
                 )
               }
             />

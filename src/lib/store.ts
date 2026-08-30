@@ -62,7 +62,7 @@ export type {
   Task,
   Theme,
   WeekStart,
-  WidgetSize,
+  WidgetPlacement,
 } from "./store-types";
 
 export { actions, deleteAllUserData } from "./db/mutations";

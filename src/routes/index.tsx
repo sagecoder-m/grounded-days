@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { format, parseISO, addDays } from "date-fns";
-import { actions, PINNED_WIDGETS, useAppState } from "@/lib/store";
+import { actions, useAppState } from "@/lib/store";
+import type { Settings } from "@/lib/store-types";
 import { waitingAWhile, WAITING_MIN } from "@/lib/user-insights";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
-import { ReorderableSection, type DragState } from "@/components/reorderable-section";
 import { TodayGlance } from "@/components/today-glance";
 import { FocusTimer } from "@/components/focus-timer";
-import { BoardCell } from "@/components/widget-frame";
-import { useFlip } from "@/lib/use-flip";
+import { DashboardCanvas } from "@/components/dashboard/dashboard-canvas";
+import { AddWidgetMenu } from "@/components/dashboard/add-widget";
+import { widgetSpec } from "@/components/dashboard/widget-registry";
+import { placeBelow } from "@/components/dashboard/layout-engine";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
 import { FirstThing, isNewAccount } from "@/components/first-thing";
@@ -110,33 +112,6 @@ function Overview() {
   const settings = state.settings;
   const w = (k: string) => settings.widgets.find((x) => x.key === k)?.enabled ?? true;
   /**
-   * Pinned widgets first, in their own fixed order, then everything else in
-   * whatever order the person arranged.
-   *
-   * Partitioned here rather than relying on the saved array, so a drag that
-   * happens to land at index 0 cannot push the header down the page. The saved
-   * order for a pinned key is simply never consulted.
-   */
-  const enabled = settings.widgets.filter((x) => x.enabled).map((x) => x.key);
-  const pinnedWidgets = enabled.filter((k) => PINNED_WIDGETS.has(k));
-  const savedOrder = enabled.filter((k) => !PINNED_WIDGETS.has(k));
-
-  /**
-   * The order being shown while a drag is in progress.
-   *
-   * Reordering used to happen on release: until then a thin line marked where
-   * the tile would land and nothing moved, which is what made dragging feel
-   * dead. Now the order updates as the cursor passes over each tile, so the
-   * board rearranges under your hand and you are looking at the result rather
-   * than a promise of it.
-   *
-   * Local, not written through. actions.reorderWidgets is a database write, and
-   * doing one per pointer move would be dozens of round trips for a single
-   * gesture. The write happens once, on release.
-   */
-  const [preview, setPreview] = useState<string[] | null>(null);
-
-  /**
    * Whether someone with an empty account has asked to see the board anyway.
    *
    * Session-only and deliberately not persisted: by their next visit they will
@@ -159,62 +134,40 @@ function Overview() {
   const [backlogDismissed, setBacklogDismissed] = useState(false);
   const waiting = useMemo(() => waitingAWhile(state), [state]);
   const showBacklog = !backlogDismissed && waiting.length >= WAITING_MIN;
-  const orderedWidgets = preview ?? savedOrder;
-
-  // Which section is being dragged and what it is hovering over. Held here
-  // rather than per-section so one section can react to another being dragged
-  // across it.
-  const [drag, setDrag] = useState<DragState | null>(null);
-
-  /*
-    Animate the shuffle, keyed on the order alone.
-
-    It used to watch a reflow counter as well, because under masonry a tile
-    could travel without the order changing at all: ticking the last task off
-    Today shortened that tile and dense packing pulled everything after it
-    upward, between one frame and the next. With rows, a tile only moves when
-    the order does — its row is where it is regardless of what its neighbours
-    weigh — so the order string is once again the whole story.
-  */
-  useFlip(orderedWidgets.join(","), {
-    selector: "[data-section]",
-    idAttribute: "data-section",
-    skipId: drag?.key ?? null,
-  });
-
-  /** Move `key` to where `over` currently sits, without touching anything else. */
-  function reorderPreview(key: string, over: string) {
-    setPreview((current) => {
-      const order = [...(current ?? savedOrder)];
-      const from = order.indexOf(key);
-      const to = order.indexOf(over);
-      if (from < 0 || to < 0 || from === to) return current;
-      order.splice(to, 0, ...order.splice(from, 1));
-      return order;
-    });
-  }
 
   /**
-   * Write the arrangement, once.
+   * Save an arrangement, once, when a gesture ends.
    *
-   * Rebuilt from the full saved list rather than from the preview, because the
-   * preview only holds enabled, unpinned keys — hidden widgets and the pinned
-   * header have to keep their entries or a drag would quietly delete them.
+   * The canvas moves tiles on every pointer frame and keeps that to itself;
+   * this is called on release. Writing mid-drag would be hundreds of round
+   * trips for one gesture, and round-tripping through React would put the tile
+   * behind the cursor.
    */
-  function commitPreview() {
-    const order = preview;
-    setPreview(null);
-    setDrag(null);
-    if (!order) return;
-    const byKey = new Map(settings.widgets.map((w) => [w.key, w]));
-    const moved = order.map((k) => byKey.get(k)).filter((w) => w !== undefined);
-    const untouched = settings.widgets.filter((w) => !order.includes(w.key));
-    actions.reorderWidgets([...untouched, ...moved]);
-  }
+  const persistLayout = useCallback((next: Settings["widgets"]) => {
+    actions.reorderWidgets(next);
+  }, []);
 
-  /** Ends a drag that finished outside any section, so nothing gets stuck — and
-   *  keeps whatever arrangement the cursor had already produced. */
-  const endDrag = () => commitPreview();
+  const removeWidget = useCallback(
+    (key: string) => {
+      actions.reorderWidgets(
+        settings.widgets.map((w) => (w.key === key ? { ...w, enabled: false } : w)),
+      );
+    },
+    [settings.widgets],
+  );
+
+  /** Puts a widget back on the board, below everything already placed. */
+  const addWidget = useCallback(
+    (key: string) => {
+      const spec = widgetSpec(key);
+      if (!spec) return;
+      const spot = placeBelow(settings.widgets, spec.preferred.w, spec.preferred.h);
+      actions.reorderWidgets(
+        settings.widgets.map((w) => (w.key === key ? { ...w, enabled: true, ...spot } : w)),
+      );
+    },
+    [settings.widgets],
+  );
 
   if (oneThing) return <OneThing state={state} onClose={() => setOneThing(false)} />;
 
@@ -223,87 +176,24 @@ function Overview() {
   }
 
   return (
-    /*
-      A two-column grid rather than a stack, so a widget's shape is the person's
-      choice as well as its order. auto-rows-min keeps each row only as tall as
-      it needs, and grid-flow-dense lets a half-width widget fill the gap beside
-      an earlier one instead of leaving a hole.
-
-      The columns are keyed to the board's own width, not the window's. This was
-      lg:grid-cols-2 — a 1024px *window* — which meant that on any narrower
-      window every size collapsed to one column and choosing "Half width" did
-      nothing at all: the menu took the choice and the layout ignored it. The
-      window is the wrong thing to measure anyway, since the side rail can be
-      expanded or collapsed and takes 280px when it is open. @2xl is 42rem of
-      actual board, which starts at roughly a 1016px window with the rail open
-      and an 800px one with it collapsed.
-
-      Six columns rather than two or three, because both halves and thirds have
-      to divide evenly into it: a half is three columns and a third is two. With
-      a 3-column grid there is no way to express "half", and with 2 there is no
-      way to express "third".
-    */
-    <div className="@container/board min-w-0">
+    <div className="min-w-0">
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
-      <div
-        /*
-          Rows, not masonry.
 
-          This packed like masonry until the brief asked for the opposite —
-          "everything should always fit to scale, ALWAYS ALIGNED". Masonry gave
-          every tile exactly its own content's height and let column ends fall
-          where they may, which reads as ragged rather than as a board.
-
-          So: real rows, each as tall as the tallest tile in it, and every other
-          tile in that row stretched to match (see FILL_ROW in widget-frame). The
-          cost is the one masonry was avoiding — a timer beside a full day's
-          list gets the list's height and some empty card with it — and that is
-          the trade the brief asks for.
-
-          Rows size to their own content, NOT auto-rows-fr. fr on implicit rows
-          makes every row equal to the tallest one in the whole board, so a row
-          holding one short chart was padded out to the height of the row
-          holding a full day's task list — a screen of empty ground between two
-          widgets, which is what "weird spacing" was.
-
-          Not grid-flow-dense: dense reorders tiles to backfill gaps, which
-          would silently undo the arrangement someone dragged.
-        */
-        className="board-grid grid items-stretch gap-6 @2xl/board:grid-cols-12"
-        onPointerUp={endDrag}
-        onPointerLeave={endDrag}
-      >
-        {/* Furniture: full width, no handle, no size menu, nothing to drop on.
-            Rendered outside ReorderableSection so it carries no data-section
-            attribute and therefore cannot be a drag target at all. */}
-        {pinnedWidgets.map((key) => {
-          const section = renderSection(key);
-          if (!section) return null;
-          return (
-            <BoardCell key={key} className="@container min-w-0 @2xl/board:col-span-12">
-              {section}
-            </BoardCell>
-          );
-        })}
-
-        {orderedWidgets.map((key) => {
-          const section = renderSection(key);
-          if (!section) return null;
-          return (
-            <ReorderableSection
-              key={key}
-              sectionKey={key}
-              widgets={settings.widgets}
-              drag={drag}
-              setDrag={setDrag}
-              onDragOver={reorderPreview}
-              onDrop={commitPreview}
-            >
-              {section}
-            </ReorderableSection>
-          );
-        })}
+      <div className="mb-3 flex items-center justify-end">
+        <AddWidgetMenu placements={settings.widgets} onAdd={addWidget} />
       </div>
+
+      {/*
+        The board. Everything about where a tile sits and how big it is lives in
+        settings.widgets as x/y/w/h, and the canvas is the only thing that reads
+        or writes it — this component just says which widget draws what.
+      */}
+      <DashboardCanvas
+        placements={settings.widgets}
+        onPersist={persistLayout}
+        onRemove={removeWidget}
+        render={renderSection}
+      />
     </div>
   );
 
