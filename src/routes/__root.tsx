@@ -21,7 +21,10 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-serif text-foreground">404</h1>
         <p className="mt-4 text-lg text-ink-soft">This page took a quiet detour.</p>
-        <Link to="/" className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground">
+        <Link
+          to="/"
+          className="mt-6 inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground"
+        >
           Back to overview
         </Link>
       </div>
@@ -40,8 +43,18 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-2xl">Something felt off</h1>
         <p className="mt-2 text-sm text-ink-soft">Take a breath. You can try again.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button onClick={() => { router.invalidate(); reset(); }} className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground">Try again</button>
-          <Link to="/" className="rounded-full border px-5 py-2 text-sm">Go home</Link>
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="rounded-full bg-primary px-5 py-2 text-sm text-primary-foreground"
+          >
+            Try again
+          </button>
+          <Link to="/" className="rounded-full border px-5 py-2 text-sm">
+            Go home
+          </Link>
         </div>
       </div>
     </div>
@@ -54,10 +67,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "grounded — a calm space for habits & goals" },
-      { name: "description", content: "A gentle, ADHD-friendly personal care platform for building habits across Personal, Professional, and Education." },
+      {
+        name: "description",
+        content:
+          "A gentle, ADHD-friendly personal care platform for building habits across Personal, Professional, and Education.",
+      },
       { name: "author", content: "grounded" },
       { property: "og:title", content: "grounded — calm habits, gently held" },
-      { property: "og:description", content: "One clear thing at a time. Track habits, goals, and focus with warmth." },
+      {
+        property: "og:description",
+        content: "One clear thing at a time. Track habits, goals, and focus with warmth.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -78,7 +98,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    /*
+      suppressHydrationWarning because this element is deliberately changed
+      before React ever sees it. The boot script in the head writes the theme
+      class and colorScheme onto <html> so the first painted frame is the right
+      one — which means the served markup and the hydrated markup differ here by
+      design, on every load, and React would otherwise log a mismatch for it
+      each time. It suppresses this element's own attributes only; children are
+      still checked normally.
+    */
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Before anything else in the head: this decides whether the first
             painted frame is cream or dark. Run after the stylesheet and it is
