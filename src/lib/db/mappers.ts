@@ -238,16 +238,27 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
  * dragged anywhere from the first second.
  */
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
+  // The greeting across the top, the attention chart and Upcoming down the
+  // left, the timer over the river in the middle, and the day's list running
+  // full height on the right. Grid units on a 36-column board.
+  //
+  // This is an arrangement that was built by hand on the board and then read
+  // back out of it, rather than one guessed at in code — which is why the
+  // widths are 15/11/10 and not tidy thirds. It is a starting point, not a
+  // rule: every one of these can be dragged and resized from the first second.
   { key: "greeting", enabled: true, x: 0, y: 0, w: 36, h: 5 },
-  { key: "day", enabled: true, x: 0, y: 5, w: 12, h: 18 },
-  { key: "upcoming", enabled: true, x: 12, y: 5, w: 12, h: 18 },
-  { key: "focus", enabled: true, x: 24, y: 5, w: 12, h: 7 },
-  { key: "river", enabled: true, x: 24, y: 12, w: 12, h: 11 },
-  { key: "chart", enabled: false, x: 0, y: 23, w: 36, h: 11 },
-  { key: "goals", enabled: false, x: 0, y: 34, w: 18, h: 9 },
-  { key: "rhythm", enabled: false, x: 18, y: 34, w: 18, h: 9 },
-  { key: "balance", enabled: false, x: 0, y: 43, w: 12, h: 11 },
-  { key: "movement", enabled: false, x: 12, y: 43, w: 18, h: 9 },
+  { key: "balance", enabled: true, x: 0, y: 5, w: 15, h: 9 },
+  { key: "focus", enabled: true, x: 15, y: 5, w: 11, h: 7 },
+  { key: "day", enabled: true, x: 26, y: 5, w: 10, h: 19 },
+  { key: "river", enabled: true, x: 15, y: 12, w: 11, h: 11 },
+  { key: "upcoming", enabled: true, x: 0, y: 14, w: 14, h: 19 },
+  // Off by default, and parked below everything else so that switching one on
+  // in Profile does not drop it on top of something. Adding one from the board
+  // gives it a fresh spot underneath anyway (see placeBelow).
+  { key: "chart", enabled: false, x: 0, y: 33, w: 36, h: 11 },
+  { key: "goals", enabled: false, x: 0, y: 44, w: 18, h: 9 },
+  { key: "rhythm", enabled: false, x: 18, y: 44, w: 18, h: 9 },
+  { key: "movement", enabled: false, x: 0, y: 53, w: 18, h: 9 },
 ];
 
 const DEFAULT_BY_KEY = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w]));
