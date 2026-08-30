@@ -199,6 +199,10 @@
   --ink-soft: oklch(0.5 0.03 74); /* #6E6151 */
   --border-c: oklch(0.868 0.026 82); /* #E2D8C6 */
 
+  /* Behind an open dialog. Warm rather than neutral black, so a cream page
+     dims toward its own colour instead of going grey. */
+  --scrim: oklch(0.28 0.018 66 / 30%);
+
   --background: var(--beige);
   --foreground: var(--ink);
   --card: var(--cream);
@@ -273,6 +277,10 @@
   --ink-soft: oklch(0.68 0.03 74); /* #A49684 */
   --border-c: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
+
+  /* Heavier than the light scrim: the page under it is already dark, so a
+     30% veil would barely separate the dialog from what it covers. */
+  --scrim: oklch(0.12 0.01 66 / 55%);
 
   /*
    * The soft accent fills, which are pale tints chosen to sit under dark text.
@@ -375,6 +383,58 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
+}
+
+/*
+ * Frosted glass, for anything that floats above the page.
+ *
+ * A dialog or a popover is a different kind of surface from a card: a card is
+ * part of the page, a popover is temporarily in front of it, and drawing both
+ * as the same opaque cream panel loses that difference — the calendar's date
+ * grid read as another box stacked on the box it opened from.
+ *
+ * Tinting from --card rather than a fixed white keeps the light and dark
+ * palettes in charge; the blur is what carries the effect, and saturation is
+ * nudged up because blurring a cream page washes it toward grey.
+ */
+/* The prefixed -webkit- form is deliberately NOT written here. Lightning CSS
+   adds whatever prefix the browser targets need, and writing both by hand made
+   it collapse the pair down to the -webkit- one alone — which Chrome then
+   ignored, so the blur silently never rendered. Declare it once; let the build
+   prefix it. */
+@utility frosted {
+  background-color: color-mix(in oklch, var(--card) 78%, transparent);
+  border: 1px solid color-mix(in oklch, var(--tan) 55%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(20px) saturate(1.4);
+}
+
+/* Safari before 18 and Firefox with the feature disabled paint no blur at all,
+   which would leave 78% cream over live text — unreadable rather than merely
+   unfrosted. They get the flat card instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .frosted {
+    background-color: var(--card);
+    border-color: var(--border);
+  }
+}
+
+/*
+ * The scrim behind a dialog.
+ *
+ * Was 80% black, which on a cream page is a stage blackout — the calm goes out
+ * of the app the moment anything opens. A warm near-black at low strength plus
+ * a small blur pushes the page back without putting the lights out.
+ *
+ * It cannot be mixed from --ink: ink is the text colour, so it flips to
+ * near-white in dark mode and the scrim would brighten the page it is meant to
+ * dim. --scrim is its own token, dark in both palettes, and carries a little
+ * more weight in dark mode where the page beneath it is already low-contrast.
+ */
+@utility frosted-scrim {
+  background-color: var(--scrim);
+  backdrop-filter: blur(5px);
 }
 
 @utility chip {

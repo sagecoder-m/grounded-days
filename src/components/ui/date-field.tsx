@@ -82,13 +82,9 @@ export function DateField({
           </span>
         </button>
       </PopoverTrigger>
-      {/* The requested look: frosted rather than a flat card, so the grid
-          reads as floating above the page instead of another opaque panel
-          stacked on the one it opened from. */}
-      <PopoverContent
-        align={align}
-        className="w-auto border-tan/60 bg-card/75 p-2 shadow-lg backdrop-blur-xl"
-      >
+      {/* Frosting now comes from PopoverContent itself, so this only has to
+          say it is grid-sized rather than the default 18rem column. */}
+      <PopoverContent align={align} className="w-auto p-2">
         <Calendar
           mode="single"
           selected={selected}
