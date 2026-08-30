@@ -703,7 +703,12 @@
   .group\/step:hover .reveal-control,
   .group\/inline:hover .reveal-control,
   .group\/section:hover .reveal-control,
-  .group\/widget:hover .reveal-control,
+  /* Direct child only. A widget is full of rows that have reveal-controls of
+     their own, and a descendant selector here lit up every one of them the
+     moment the pointer entered the tile — a day's list sprouting a "not today"
+     button on all eleven rows at once. The widget's own controls are its
+     direct children; the rows' controls belong to the rows. */
+  .group\/widget:hover > .reveal-control,
   .reveal-control:focus-visible {
     opacity: 1;
     pointer-events: auto;

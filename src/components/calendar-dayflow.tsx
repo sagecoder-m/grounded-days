@@ -14,7 +14,7 @@
  * own permission resolver refuses the drag before any callback fires — verified
  * by dragging a synced event and observing that onEventDrop is never reached.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { createDragPlugin } from "@dayflow/plugin-drag";
@@ -34,6 +34,7 @@ import type { Area, CalEvent, CalView } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
+import { useResolvedTheme } from "@/lib/use-theme";
 import {
   buildCalendarTypes,
   fromDayFlowEvent,
@@ -382,6 +383,28 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
     // view is correct, since that view may no longer exist.
     `${narrow ? "narrow" : "wide"}:${state.settings.weekStartsOn}:${connectionSignature}`,
   );
+
+  /*
+    Tell DayFlow which theme it is in.
+
+    Pointing its CSS variables at this app's tokens gets the chrome right, and
+    that is genuinely all it gets: DayFlow also resolves event colours in
+    JavaScript — resolveColors(), getLineColor(), getSelectedBgColor() — from a
+    theme mode it keeps internally, and that mode defaults to light and never
+    hears about the toggle. So the calendar sat in a dark app rendering
+    light-mode event chips on a light-mode surface, which is exactly what it
+    looked like: one cream panel in the middle of a dark page.
+
+    Not "auto", which would take the mode from the operating system and put us
+    straight back to the calendar disagreeing with the app whenever someone's
+    machine is set the other way. The app's own resolved theme is the answer,
+    including when that answer came from the OS via "Follow my device".
+  */
+  const resolvedTheme = useResolvedTheme(state.settings.theme);
+  useEffect(() => {
+    // setTheme lives on the app instance, not on the hook's return value.
+    calendar?.app?.setTheme?.(resolvedTheme);
+  }, [calendar, resolvedTheme]);
 
   // The events passed above are only the first-render snapshot as far as
   // DayFlow is concerned; this is what keeps it in step with the query.
