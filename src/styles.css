@@ -453,6 +453,35 @@
 }
 
 /*
+ * The Overview board's row unit.
+ *
+ * Rows have to be a fixed height, not "as tall as their contents", or a column
+ * of small tiles cannot stack beside a tall one: each small tile lands in a row
+ * of its own, and every row is as tall as the longest list in it. Give rows one
+ * height and a list spans three of them while a timer, a graph and a chart
+ * occupy those same three rows in the next column.
+ *
+ * The unit is one column wide, so a one-row tile is genuinely square without
+ * needing aspect-ratio. cqw is the board's own width — the same container the
+ * @2xl/@3xl column rules are keyed to — so the unit and the columns can never
+ * disagree about how wide a third is. The subtraction is the gaps: two of them
+ * at three across, one at two across.
+ *
+ * Below @2xl the board is one column and rows go back to sizing themselves,
+ * because a fixed square on a phone would crop content to no purpose.
+ */
+@container board (min-width: 42rem) {
+  .board-grid {
+    grid-auto-rows: calc((100cqw - 1.5rem) / 2);
+  }
+}
+@container board (min-width: 48rem) {
+  .board-grid {
+    grid-auto-rows: calc((100cqw - 3rem) / 3);
+  }
+}
+
+/*
  * Compact is a zoom, not a padding tweak.
  *
  * It used to be exactly two rules — the .density-p pair below — which meant it

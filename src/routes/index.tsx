@@ -269,7 +269,7 @@ function Overview() {
           Not grid-flow-dense: dense reorders tiles to backfill gaps, which
           would silently undo the arrangement someone dragged.
         */
-        className="grid items-stretch gap-6 @2xl/board:grid-cols-12"
+        className="board-grid grid items-stretch gap-6 @2xl/board:grid-cols-12"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >

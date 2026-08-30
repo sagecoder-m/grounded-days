@@ -237,19 +237,19 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   //
   // Everything is a square except the timer, so three sit across a row and the
   // rows cannot fail to line up.
-  { key: "greeting", enabled: true, size: "square" },
-  { key: "day", enabled: true, size: "square" },
-  { key: "upcoming", enabled: true, size: "square" },
+  { key: "greeting", enabled: true, size: "long" },
+  { key: "day", enabled: true, size: "tall" },
+  { key: "upcoming", enabled: true, size: "tall" },
   { key: "focus", enabled: true, size: "smallHalf" },
   { key: "river", enabled: true, size: "square" },
-  { key: "chart", enabled: false, size: "square" },
+  { key: "chart", enabled: false, size: "long" },
   { key: "goals", enabled: false, size: "square" },
   { key: "rhythm", enabled: false, size: "square" },
   { key: "balance", enabled: false, size: "square" },
   { key: "movement", enabled: false, size: "square" },
 ];
 
-const WIDGET_SIZES = ["square", "smallHalf"] as const;
+const WIDGET_SIZES = ["long", "half", "square", "tall", "smallHalf"] as const;
 
 /**
  * Every size name this app has ever stored, mapped onto the two that remain.
@@ -264,13 +264,13 @@ const WIDGET_SIZES = ["square", "smallHalf"] as const;
  * name it used to have, and it is not the same shape.
  */
 const LEGACY_SIZES: Record<string, WidgetSize> = {
-  wide: "square",
-  threeQuarter: "square",
+  wide: "long",
+  threeQuarter: "long",
+  // The old "square" meant *half width* — the menu said so. It is not the
+  // shape that carries the name now.
+  square: "half",
   third: "square",
-  taller: "square",
-  long: "square",
-  half: "square",
-  tall: "square",
+  taller: "tall",
 };
 
 /**

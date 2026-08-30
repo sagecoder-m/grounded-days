@@ -206,19 +206,19 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
 /**
  * How much of the Overview board a widget takes.
  *
- *   square     a third of the row, and actually square — aspect-ratio 1:1
- *   smallHalf  the same width, only as tall as its contents
+ * Measured in units, where one unit is a square: a third of the row wide, and
+ * the same again tall. Every shape is a whole number of units, which is what
+ * lets a column of small tiles stack up level with a tall one beside it.
  *
- * Two shapes, down from six. The others (long, half, tall, and before them
- * threeQuarter/third/taller) are gone: a board where every tile is the same
- * square is a board whose rows cannot fail to line up, which is what all the
- * earlier shapes kept getting wrong. smallHalf is the single exception, and it
- * exists for the timer — a dial and two fields have nothing to do with the
- * bottom half of a square.
- *
- * Old values all map to square on read; see LEGACY_SIZES in mappers.
+ *   long       the full row, one unit tall. For charts — an x axis is time,
+ *              and time needs length.
+ *   half       half the row, one unit tall.
+ *   square     a third of the row, one unit. The board's unit, and genuinely 1:1.
+ *   tall       a third of the row, three units. For lists, and the shape that
+ *              makes stacking work: three squares fit beside one of these.
+ *   smallHalf  a third of the row, only as tall as its contents. The timer.
  */
-export type WidgetSize = "square" | "smallHalf";
+export type WidgetSize = "long" | "half" | "square" | "tall" | "smallHalf";
 
 /**
  * Light, dark, or whatever the device says.

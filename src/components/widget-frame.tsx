@@ -1,5 +1,14 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Columns3, EyeOff, LayoutGrid, Rows2, type LucideIcon } from "lucide-react";
+import {
+  Columns2,
+  Columns3,
+  EyeOff,
+  LayoutGrid,
+  RectangleHorizontal,
+  RectangleVertical,
+  Rows2,
+  type LucideIcon,
+} from "lucide-react";
 
 import {
   DropdownMenu,
@@ -46,19 +55,32 @@ import { FitToBox } from "@/components/fit-to-box";
  * changing back.
  */
 const SPAN: Record<WidgetSize, string> = {
+  /* Charts. An x axis is time and time needs length, so this is the shape a
+     chart is normally in. One unit tall, like everything else. */
+  long: "@2xl/board:col-span-12",
+  half: "@2xl/board:col-span-6",
   /*
-    A square, and actually square — aspect-square, not just "a third wide and
-    however tall its row turned out". It read as a tall column before, because
-    a third-width tile in a row with a long list took that list's height.
-
-    aspect-ratio resolves height from the tile's own width, which is settled by
-    the column, so nothing here depends on what a neighbour weighs.
+    The board's unit, and genuinely square — the row height is set to a third
+    of the board (see .board-grid in styles.css), so four columns by one row
+    comes out 1:1 on its own, with no aspect-ratio needed and no dependence on
+    what a neighbour weighs. Below @3xl a third is under 300px, narrower than
+    the content wants, so it widens to a half and two sit across.
   */
-  square: "aspect-square @2xl/board:col-span-6 @3xl/board:col-span-4",
+  square: "@2xl/board:col-span-6 @3xl/board:col-span-4",
   /*
-    The same width, and only as tall as what is in it.
+    Three units tall, and the shape that makes stacking work.
 
-    self-start is the point: a square fills its row, and the timer given that
+    A column of small tiles could not stack beside a list while rows were sized
+    by their contents: each small tile landed in a row of its own, and every row
+    was as tall as the list in it. With a fixed unit, a list spans three rows
+    and a timer, a graph and a chart occupy those same three rows in the next
+    column — level at the top and the bottom.
+  */
+  tall: "@2xl/board:col-span-6 @2xl/board:row-span-3 @3xl/board:col-span-4",
+  /*
+    A third wide, and only as tall as what is in it.
+
+    self-start is the point: a square fills its unit, and the timer given that
     treatment put a dial in the top third and left the rest empty — which reads
     as a widget that is broken rather than one that is small.
   */
@@ -74,20 +96,61 @@ const SELF_SIZED = new Set<WidgetSize>(["smallHalf"]);
 const FILL_ROW = "h-full [&>*]:h-full [&>*>*]:h-full";
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
+  { key: "long", label: "Long", hint: "Spans the row", icon: RectangleHorizontal },
+  { key: "half", label: "Half", hint: "Two side by side", icon: Columns2 },
   { key: "square", label: "Square", hint: "Three side by side", icon: Columns3 },
+  { key: "tall", label: "Tall", hint: "Three squares high", icon: RectangleVertical },
   { key: "smallHalf", label: "Small half", hint: "Only as tall as it needs", icon: Rows2 },
 ];
 
 /**
- * Every widget may take either shape.
+ * Which shapes each widget is allowed to take, by what it contains.
  *
- * There used to be a per-content allow-list here — lists could be tall, charts
- * could not — because six shapes included several that suited only some
- * content. With two shapes there is nothing left to withhold: a square is the
- * board's unit, and small half is a square that stops early.
+ * A size is not a neutral container — content has a shape it works in, and
+ * offering one it does not work in is offering a way to break the board.
+ *
+ *   CHART  long, half, square. Horizontal, because an x axis is time and time
+ *          needs length: a chart squeezed narrow stops being readable long
+ *          before it stops fitting. Never tall — height added to a narrow chart
+ *          is empty space above the plot, not more chart.
+ *   LIST   tall, long, half. Tall is the point: a list is the only content
+ *          where height buys more of what you came for, and it is the shape a
+ *          column of small tiles stacks beside.
+ *   TIMER  smallHalf, square. A dial and two fields; nothing a full row can use
+ *          and nothing that rewards height.
+ *
+ * Charts and the timer both keep square, and that is deliberate: square is the
+ * tile that fits the narrow column beside a tall list, so a graph, a chart and
+ * a timer can stack up in it three-high.
+ *
+ * The order here is the order the menu shows, and the first entry is what a
+ * widget falls back to when the size an account stored is not one of its
+ * options — so each list leads with the shape that suits it best.
  */
-function sizeOptionsFor(_widgetKey: string) {
-  return SIZE_OPTIONS;
+const CHART: WidgetSize[] = ["long", "half", "square"];
+const LIST: WidgetSize[] = ["tall", "long", "half"];
+const TIMER: WidgetSize[] = ["smallHalf", "square"];
+
+const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
+  day: LIST,
+  upcoming: LIST,
+  river: CHART,
+  chart: CHART,
+  rhythm: CHART,
+  balance: CHART,
+  movement: CHART,
+  goals: CHART,
+  focus: TIMER,
+};
+
+function sizeOptionsFor(widgetKey: string) {
+  const allowed = ALLOWED_SIZES[widgetKey];
+  if (!allowed) return SIZE_OPTIONS;
+  // Mapped over `allowed`, not filtered from SIZE_OPTIONS, so the preference
+  // order above is the order shown and the fallback is the first of them.
+  return allowed
+    .map((key) => SIZE_OPTIONS.find((o) => o.key === key))
+    .filter((o): o is (typeof SIZE_OPTIONS)[number] => Boolean(o));
 }
 
 /** How long a press has to be held before it counts as "hold", in ms. Long
