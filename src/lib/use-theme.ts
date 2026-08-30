@@ -40,8 +40,51 @@ export function resolveTheme(theme: Theme): ResolvedTheme {
   return theme === "system" ? systemTheme() : theme;
 }
 
+/** How long the crossfade lasts. Slow enough to read as a change of light
+ *  rather than a repaint, short enough not to feel like waiting. */
+const TRANSITION_MS = 420;
+
+/**
+ * Paint the change rather than cut to it.
+ *
+ * The transition lives on a class that is added for the length of the fade and
+ * then removed, instead of sitting permanently on every element. A standing
+ * `transition: background-color` on the whole document would also animate every
+ * hover, every card that appears, and every row that changes state — the theme
+ * switch is the only moment this is wanted.
+ *
+ * Skipped on the very first application: there is nothing to fade *from* on a
+ * page that has not been painted yet, and fading in from the boot script's
+ * colours is a flash by another name.
+ */
+let painted = false;
+
+function crossfade() {
+  if (!painted) {
+    painted = true;
+    return;
+  }
+  const root = document.documentElement;
+  root.classList.add("theme-transition");
+  window.setTimeout(() => root.classList.remove("theme-transition"), TRANSITION_MS);
+}
+
 function apply(resolved: ResolvedTheme) {
+  crossfade();
+  /*
+    Both classes, and the light one is not decorative.
+
+    DayFlow ships its own dark theme scoped to `:root:not(.light):not(.dark)` —
+    keyed to the operating system, not to this app. Writing only `dark` meant
+    that in light mode on a machine set to dark, the root carried neither class
+    and DayFlow's block took effect: a slate-blue calendar inside a cream app.
+    Its context-menu half is worse, because it defines the variables on
+    `.df-context-menu` itself, and a variable set on a nearer element beats one
+    inherited from `:root` no matter what the layer order says. Marking light
+    explicitly switches both blocks off.
+  */
   document.documentElement.classList.toggle("dark", resolved === "dark");
+  document.documentElement.classList.toggle("light", resolved === "light");
   // Native controls — scrollbars, form widgets, the address bar on mobile —
   // read this rather than the class, and a dark page with a bright white
   // scrollbar down the side looks like a rendering fault.
@@ -107,7 +150,16 @@ export function useResolvedTheme(theme: Theme): ResolvedTheme {
  * cream page, which is the flash. It reads the cache written above and nothing
  * else, so it cannot be slow and cannot fail in a way that matters — a throw
  * inside the try leaves the page light, which is where it started.
+ *
+ * It writes `light` as well as `dark`, for the same reason apply() does: the
+ * calendar's own stylesheet treats "neither class" as permission to use its
+ * dark theme.
+ *
+ * With no cache it assumes light, which is the app's default. It used to ask
+ * the operating system, which was right while "system" was the default and
+ * wrong now — it made a first visit on a dark machine paint dark and then
+ * correct itself to light a moment later.
  */
 export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem(${JSON.stringify(
   THEME_CACHE_KEY,
-)});if(!t)t=matchMedia("${DARK_QUERY}").matches?"dark":"light";if(t==="dark"){document.documentElement.classList.add("dark")}document.documentElement.style.colorScheme=t}catch(e){}`;
+)})||"light";var e=document.documentElement;e.classList.add(t==="dark"?"dark":"light");e.style.colorScheme=t}catch(e){}`;

@@ -269,7 +269,7 @@ export const DEFAULT_SETTINGS: Settings = {
   displayName: "friend",
   density: "comfy",
   accent: "sage",
-  theme: "system",
+  theme: "light",
   defaultCalView: "week",
   navLayout: "sidebar",
   weekStartsOn: 1,
@@ -351,7 +351,11 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     accent: oneOf<AccentVariant>(["sage", "clay", "brown", "tan"], row.accent, "sage"),
     // Rows written before the column existed read as null through the client,
     // NOT NULL default notwithstanding — same case as week_starts_on.
-    theme: oneOf<Theme>(["light", "dark", "system"], row.theme, "system"),
+    // Light, not system. A row written before this column existed reads as null
+    // through the client despite the NOT NULL default, and the app's own
+    // default is light — falling back to "system" put those accounts on
+    // whatever their machine happened to be set to.
+    theme: oneOf<Theme>(["light", "dark", "system"], row.theme, "light"),
     defaultCalView: oneOf<CalView>(["week", "month", "year"], row.default_cal_view, "week"),
     navLayout: oneOf<NavLayout>(["sidebar", "top"], row.nav_layout, "sidebar"),
     // Numeric rather than a string union, so oneOf() does not apply. A row

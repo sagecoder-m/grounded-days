@@ -55,23 +55,11 @@
     /* Year-view density ramp. DayFlow ships a blue scale; this walks the sage
        family instead so a dense month reads as "full", not "alert". */
     --df-heat-1: var(--sage-soft);
+    /* Two steps between sage-soft and sage that have no token of their own. */
     --df-heat-2: oklch(0.83 0.038 131);
     --df-heat-3: oklch(0.762 0.047 132);
     --df-heat-4: var(--sage);
     --df-heat-5: var(--sage-deep);
-
-    /* Portaled UI — context menus and the range picker render outside the
-       calendar wrapper, so these have to be mapped too or a right-click drops
-       a slate-900 panel into the middle of a beige page. */
-    --df-context-menu-background: var(--popover);
-    --df-context-menu-border: var(--border);
-    --df-context-menu-foreground: var(--popover-foreground);
-    --df-context-menu-primary: var(--primary);
-    --df-context-menu-primary-foreground: var(--primary-foreground);
-    --df-context-menu-destructive: var(--destructive);
-    --df-context-menu-destructive-foreground: var(--destructive-foreground);
-    --df-context-menu-swatch-border: var(--border);
-    --df-context-menu-swatch-ring: oklch(0.352 0.02 66 / 0.25);
 
     --df-range-picker-background: var(--popover);
     --df-range-picker-border: var(--border);
@@ -220,5 +208,48 @@
   .df-compact-header-date-pill[data-selected="true"] {
     background-color: var(--primary);
     color: var(--primary-foreground);
+  }
+
+  /*
+    The context menu's variables go on the menu itself, not on :root.
+
+    DayFlow declares them on `.df-context-menu`, and a custom property set on
+    an element beats one inherited from an ancestor no matter which layer each
+    came from — layer order settles conflicts between rules matching the *same*
+    element, and these do not. Mapped from :root they never applied at all: the
+    menu was DayFlow's white in light mode and its slate-900 in dark, in a
+    cream app both times.
+  */
+  .df-context-menu {
+    --df-context-menu-background: var(--popover);
+    --df-context-menu-border: var(--border);
+    --df-context-menu-foreground: var(--popover-foreground);
+    --df-context-menu-primary: var(--primary);
+    --df-context-menu-primary-foreground: var(--primary-foreground);
+    --df-context-menu-destructive: var(--destructive);
+    --df-context-menu-destructive-foreground: var(--destructive-foreground);
+    --df-context-menu-swatch-border: var(--border);
+    --df-context-menu-swatch-ring: oklch(0.352 0.02 66 / 0.25);
+  }
+
+  /*
+    Literals that cannot come from a token, restated for dark.
+
+    The heat ramp needs two steps between sage-soft and sage that no token
+    names, and the swatch ring is a shadow colour rather than a surface. A
+    literal does not follow the palette, so without this the year view's
+    density shading kept its light values on a dark page and read as a grid of
+    pale blocks.
+
+    After :root, not before: both selectors are one class deep, so the tie is
+    broken by order and the earlier block simply lost.
+  */
+  .dark {
+    --df-heat-2: oklch(0.42 0.045 131);
+    --df-heat-3: oklch(0.5 0.05 132);
+  }
+
+  .dark .df-context-menu {
+    --df-context-menu-swatch-ring: oklch(0.94 0.015 82 / 0.25);
   }
 }

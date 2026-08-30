@@ -590,6 +590,46 @@
   }
 }
 
+/*
+ * The light/dark crossfade.
+ *
+ * Added to the document for the length of the change and then taken off again,
+ * so nothing here is running during ordinary use. A standing transition on
+ * background-color across the whole document would also animate every hover,
+ * every card that appears and every row that changes state — this is wanted at
+ * exactly one moment.
+ *
+ * !important because it has to beat components with transitions of their own,
+ * several of which deliberately set `transition: none` while being dragged.
+ * Ease-out over four hundred milliseconds: slow enough to read as the light
+ * changing rather than the page repainting, short enough not to feel like a
+ * wait.
+ */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition:
+    background-color 420ms ease-out,
+    border-color 420ms ease-out,
+    color 420ms ease-out,
+    fill 420ms ease-out,
+    stroke 420ms ease-out,
+    box-shadow 420ms ease-out !important;
+  transition-delay: 0ms !important;
+}
+
+/* Someone who has asked for less movement gets the change instantly, which is
+   the correct reading of that preference — the fade is the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition: none !important;
+  }
+}
+
 @utility chip {
   display: inline-flex;
   align-items: center;
