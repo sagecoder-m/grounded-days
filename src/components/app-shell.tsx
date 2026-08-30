@@ -151,6 +151,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   // setting is "system".
   useTheme(settings.theme);
 
+  /*
+    Density goes on the document, not on a div.
+
+    It was set on the wrapper below, and the only thing that ever read it was
+    .density-p — a padding nudge on three components, none of them on the
+    Overview. So choosing Compact changed a couple of card paddings and nothing
+    else, which is why it read as a setting that does not work.
+
+    What it should do is what zooming the browser out does: make everything
+    smaller so more fits on screen. Every size in this app is in rem, and rem
+    resolves against the root element — so the root is the only place a single
+    declaration can scale the whole interface. Hence documentElement, and hence
+    the font-size rule in styles.css rather than a per-component class.
+  */
+  useEffect(() => {
+    document.documentElement.dataset.density = settings.density;
+  }, [settings.density]);
+
   return (
     <div
       data-accent={settings.accent}
@@ -232,7 +250,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 and is unaffected. */}
             <div
               className={`@container mx-auto w-full px-4 py-6 md:px-8 md:py-10 ${
-                isBoard ? "max-w-[96rem]" : "max-w-6xl"
+                isBoard ? "max-w-[1536px]" : "max-w-6xl"
               }`}
             >
               {children}
@@ -330,7 +348,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div
               className={`@container mx-auto w-full px-4 pb-6 pt-4 md:px-8 md:pb-10 md:pt-4 ${
-                isBoard ? "max-w-[96rem]" : "max-w-5xl"
+                isBoard ? "max-w-[1536px]" : "max-w-5xl"
               }`}
             >
               {children}

@@ -515,19 +515,14 @@ function Overview() {
               and the matching was the wrong kind: a panel with rows inside reads
               as a container of things and the rows stop being things. Today has
               been brought to this shape rather than the other way round. */}
-          {/* Capped and scrolling past the cap, for the same reason Today is:
-              a week with a full timetable in it would otherwise set the height
-              of every widget in its row. */}
-          <div className="max-h-[22rem] overflow-y-auto pr-1">
-            <TaskGrid
-              tasks={state.tasks}
-              events={state.events}
-              from={upcomingRange.from}
-              to={upcomingRange.to}
-              emptyText="Nothing in the next few days."
-              floating
-            />
-          </div>
+          <TaskGrid
+            tasks={state.tasks}
+            events={state.events}
+            from={upcomingRange.from}
+            to={upcomingRange.to}
+            emptyText="Nothing in the next few days."
+            floating
+          />
         </section>
       );
 

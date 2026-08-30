@@ -452,6 +452,26 @@
   background-image: var(--gradient-sage);
 }
 
+/*
+ * Compact is a zoom, not a padding tweak.
+ *
+ * It used to be exactly two rules — the .density-p pair below — which meant it
+ * changed the padding of three components and nothing else. Nobody could see
+ * it working, because for all practical purposes it was not.
+ *
+ * Every length in this app is in rem, and rem resolves against the root, so one
+ * declaration here scales the type, the spacing, the cards and the gaps
+ * together. 87.5% is 14px against a 16px default: enough that a third more fits
+ * on screen, gentle enough that nothing becomes hard to read.
+ *
+ * The board's own max-width is deliberately in px rather than rem (see
+ * app-shell), so the board keeps its full width while its contents shrink.
+ * Scaling both would just draw the same layout smaller and fit no more in.
+ */
+:root[data-density="compact"] {
+  font-size: 87.5%;
+}
+
 [data-density="compact"] .density-p {
   padding: 0.75rem;
 }

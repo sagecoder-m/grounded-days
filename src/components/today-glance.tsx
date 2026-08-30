@@ -99,18 +99,9 @@ export function TodayGlance() {
         </span>
       </div>
 
-      {/*
-        Spaced rather than divided. Hairlines make a list read as one block,
-        and a block is the thing that overwhelms — see .float-row.
-
-        Capped, and scrolling past the cap, so one busy day cannot set the
-        height of the whole board. Ten to-dos made this tile tall enough that
-        every widget beside it inherited that height and the two below were
-        pushed off screen — the Overview is meant to be a glance, and a glance
-        you have to scroll is not one. The cap is generous enough that an
-        ordinary day never reaches it.
-      */}
-      <div className="max-h-[22rem] space-y-2 overflow-y-auto pr-1">
+      {/* Spaced rather than divided. Hairlines make a list read as one block,
+          and a block is the thing that overwhelms — see .float-row. */}
+      <div className="space-y-2">
         {nothing && (
           <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
             A clear day. That counts as a good one.
