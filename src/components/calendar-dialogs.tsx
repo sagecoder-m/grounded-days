@@ -18,6 +18,7 @@ import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import {
   Dialog,
   DialogContent,
@@ -283,22 +284,17 @@ export function AddEventDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="ev-start">Start date</Label>
-                <Input
-                  id="ev-start"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
+                <DateField id="ev-start" value={startDate} onChange={setStartDate} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ev-end">End date</Label>
-                <Input
+                <DateField
                   id="ev-end"
-                  type="date"
                   value={endDate}
+                  onChange={setEndDate}
                   min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  placeholder="same day"
+                  placeholder="Same day"
+                  clearable
                 />
               </div>
 
@@ -348,24 +344,14 @@ export function AddEventDialog({
           {kind === "task" && (
             <div className="space-y-1.5">
               <Label htmlFor="task-due">Due date</Label>
-              <Input
-                id="task-due"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <DateField id="task-due" value={startDate} onChange={setStartDate} />
             </div>
           )}
 
           {kind === "goal" && (
             <div className="space-y-1.5">
               <Label htmlFor="goal-target">Target date</Label>
-              <Input
-                id="goal-target"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <DateField id="goal-target" value={startDate} onChange={setStartDate} clearable />
               {/* Said plainly, because an empty date field usually reads as
                   something you forgot rather than something you chose. */}
               <p className="text-xs text-ink-soft">
@@ -451,22 +437,11 @@ export function EditEventDialog({ event, onClose }: { event: CalEvent; onClose: 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="edit-start">Start date</Label>
-              <Input
-                id="edit-start"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+              <DateField id="edit-start" value={date} onChange={setDate} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="edit-end">End date</Label>
-              <Input
-                id="edit-end"
-                type="date"
-                value={endDate}
-                min={date}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <DateField id="edit-end" value={endDate} onChange={setEndDate} min={date} clearable />
             </div>
           </div>
           {endDate && endDate < date && (

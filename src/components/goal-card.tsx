@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { CalendarDays, Check, Plus } from "lucide-react";
 
 import { actions, type Goal } from "@/lib/store";
+import { DateField } from "@/components/ui/date-field";
 import { SoftProgress } from "./soft-progress";
 import { InlineText } from "./inline-text";
 import { ConfirmDeleteButton } from "./confirm-delete";
@@ -94,16 +95,17 @@ export function GoalCard({
       <label className="flex items-center gap-2 text-[11px] text-ink-soft">
         <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
         <span className="shrink-0">Aiming for</span>
-        <input
-          type="date"
-          aria-label="Target date, optional"
+        <DateField
           value={goal.targetDate ?? ""}
-          onChange={(e) =>
+          onChange={(v) =>
             // Empty clears it. goalPatchToRow turns undefined into an explicit
             // null, so clearing actually removes the date.
-            actions.updateGoal(goal.id, { targetDate: e.target.value || undefined })
+            actions.updateGoal(goal.id, { targetDate: v || undefined })
           }
-          className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-[11px] text-ink transition-colors hover:border-border focus:border-border focus:outline-none"
+          placeholder="No date"
+          aria-label="Target date, optional"
+          clearable
+          className="h-auto min-w-0 flex-1 gap-1.5 rounded-lg border-transparent bg-transparent px-1.5 py-0.5 text-[11px] text-ink transition-colors hover:border-border focus:border-border focus:outline-none"
         />
       </label>
 

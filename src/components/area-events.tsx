@@ -3,11 +3,31 @@ import { CalendarDays } from "lucide-react";
 
 import { useAppState } from "@/lib/store";
 import { dateKey } from "@/components/task-grid";
-import type { Area } from "@/lib/store-types";
+import type { Area, CalEvent } from "@/lib/store-types";
 
 /** Same horizon Education's own "Due this week" uses, so an event and an
  *  assignment due the same day are both "this week" by the same yardstick. */
 const HORIZON_DAYS = 7;
+
+/** One event, as a line — no checkbox, on purpose: an event happens to you,
+ *  a task is something you do (see today-glance.tsx's AgendaRow, which this
+ *  mirrors). Exported so Education's own Today section can fold an event
+ *  into the same list as its tasks without re-drawing this row from scratch. */
+export function EventRow({ event, today }: { event: CalEvent; today: string }) {
+  return (
+    <div className="flex items-baseline gap-2.5 py-1">
+      <span className="w-14 shrink-0 text-[11px] text-ink-soft">
+        {event.date === today
+          ? event.allDay || !event.startsAt
+            ? "today"
+            : format(new Date(event.startsAt), "h:mm a")
+          : format(parseISO(event.date), "EEE d")}
+      </span>
+      <CalendarDays className="h-3.5 w-3.5 shrink-0 text-ink-soft" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-sm">{event.title}</span>
+    </div>
+  );
+}
 
 /**
  * The events an area page was missing.
@@ -30,14 +50,23 @@ const HORIZON_DAYS = 7;
  * date-scoped sections — an empty "On your calendar" heading every day would
  * be worse than the section just not being there.
  */
-export function AreaEvents({ area }: { area: Area }) {
+export function AreaEvents({
+  area,
+  excludeToday = false,
+}: {
+  area: Area;
+  /** Education passes this: its own Today section already folds in today's
+   *  events (see the EventRow above), so repeating them here would be the
+   *  same event twice under two different headings on one page. */
+  excludeToday?: boolean;
+}) {
   const state = useAppState();
   const today = dateKey(new Date());
   const horizon = dateKey(addDays(new Date(), HORIZON_DAYS));
 
   const events = state.events
     .filter((e) => e.source === "local" && e.area === area)
-    .filter((e) => e.date >= today && e.date <= horizon)
+    .filter((e) => (excludeToday ? e.date > today : e.date >= today) && e.date <= horizon)
     .sort(
       (a, b) => a.date.localeCompare(b.date) || (a.startsAt ?? "").localeCompare(b.startsAt ?? ""),
     );
@@ -49,17 +78,7 @@ export function AreaEvents({ area }: { area: Area }) {
       <h2 className="mb-3 font-serif text-lg">On your calendar</h2>
       <div className="space-y-1">
         {events.map((e) => (
-          <div key={e.id} className="flex items-baseline gap-2.5 py-1">
-            <span className="w-14 shrink-0 text-[11px] text-ink-soft">
-              {e.date === today
-                ? e.allDay || !e.startsAt
-                  ? "today"
-                  : format(new Date(e.startsAt), "h:mm a")
-                : format(parseISO(e.date), "EEE d")}
-            </span>
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-ink-soft" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-sm">{e.title}</span>
-          </div>
+          <EventRow key={e.id} event={e} today={today} />
         ))}
       </div>
     </section>

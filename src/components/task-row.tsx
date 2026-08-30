@@ -1,4 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateField } from "@/components/ui/date-field";
 import { AreaChip } from "./area-chip";
 import { actions, type Task } from "@/lib/store";
 import { addDays, format, isBefore, isToday, parseISO } from "date-fns";
@@ -123,24 +124,18 @@ export function TaskRow({
             </span>
           )}
           {!readOnly && (
-            <label className="relative inline-flex items-center">
-              <span
-                suppressHydrationWarning
-                className={cn(
-                  "cursor-pointer text-[11px] underline decoration-dotted underline-offset-4",
-                  overdue ? "text-[color:var(--clay)]" : "text-ink-soft",
-                )}
-              >
-                {task.date ? niceDate(task.date) : "add a due date"}
-              </span>
-              <input
-                type="date"
-                value={task.date ?? ""}
-                onChange={(e) => actions.updateTask(task.id, { date: e.target.value || undefined })}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                aria-label="Due date"
-              />
-            </label>
+            <DateField
+              value={task.date ?? ""}
+              onChange={(v) => actions.updateTask(task.id, { date: v || undefined })}
+              label={task.date ? (niceDate(task.date) ?? undefined) : "add a due date"}
+              icon={false}
+              clearable
+              aria-label="Due date"
+              className={cn(
+                "h-auto w-auto gap-0 border-0 bg-transparent p-0 text-[11px] underline decoration-dotted underline-offset-4 hover:bg-transparent focus:border-0",
+                overdue ? "text-[color:var(--clay)]" : "text-ink-soft",
+              )}
+            />
           )}
           {canDefer && (
             <button

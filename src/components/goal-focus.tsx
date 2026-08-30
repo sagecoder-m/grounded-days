@@ -5,6 +5,7 @@ import { actions } from "@/lib/store";
 import type { Goal } from "@/lib/store-types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { InlineText } from "@/components/inline-text";
 import { FocusOverlay } from "@/components/focus-overlay";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
@@ -53,14 +54,12 @@ export function GoalFocus({
            lie about. Undated is a real state and the way back to it. */
         <label className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
           <span>Aiming for</span>
-          <input
-            type="date"
+          <DateField
             value={goal.targetDate ?? ""}
-            onChange={(e) =>
-              actions.updateGoal(goal.id, { targetDate: e.target.value || undefined })
-            }
-            className="rounded-full border border-border bg-transparent px-3 py-1.5 text-xs text-ink"
-            aria-label="Target date"
+            onChange={(v) => actions.updateGoal(goal.id, { targetDate: v || undefined })}
+            placeholder="No date"
+            clearable
+            className="h-auto w-auto gap-1.5 rounded-full border-border bg-transparent px-3 py-1.5 text-xs text-ink"
           />
           {goal.targetDate && (
             <button

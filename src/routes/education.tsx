@@ -4,7 +4,7 @@ import { addDays, format, parseISO } from "date-fns";
 import { CalendarDays, Plus } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
-import type { Course, Goal, Task } from "@/lib/store-types";
+import type { CalEvent, Course, Goal, Task } from "@/lib/store-types";
 import { TaskRow } from "@/components/task-row";
 import { dateKey } from "@/components/task-grid";
 import { GoalFocus } from "@/components/goal-focus";
@@ -15,7 +15,7 @@ import { AddCourseDialog } from "@/components/add-course-dialog";
 import { InlineText } from "@/components/inline-text";
 import { HowFarYouveCome, newestFirst } from "@/components/how-far";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
-import { AreaEvents } from "@/components/area-events";
+import { AreaEvents, EventRow } from "@/components/area-events";
 import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,15 @@ function EducationPage() {
   const courses = state.courses;
 
   const today = dateKey(new Date());
+  // Local only, same reasoning as AreaEvents: a synced Google/Outlook event
+  // carries no area, so it has nothing to match here and stays calendar-only.
+  const todaysEvents = useMemo(
+    () =>
+      state.events.filter(
+        (e) => e.source === "local" && e.area === "education" && e.date === today,
+      ),
+    [state.events, today],
+  );
   const courseDrag = useCardDrag();
   const goalDrag = useCardDrag();
 
@@ -124,9 +133,9 @@ function EducationPage() {
         </div>
 
         <div className="space-y-8">
-          <Today tasks={tasks} today={today} />
+          <Today tasks={tasks} events={todaysEvents} today={today} />
           <DueThisWeek tasks={tasks} today={today} />
-          <AreaEvents area="education" />
+          <AreaEvents area="education" excludeToday />
 
           <section onPointerUp={goalDrag.endDrag} onPointerLeave={goalDrag.endDrag}>
             <div className="mb-3 flex items-baseline justify-between gap-2">
@@ -176,15 +185,26 @@ function EducationPage() {
 }
 
 /**
- * Today's assignments, on the page rather than in a panel.
+ * Today, on the page rather than in a panel — assignments due, and anything
+ * on the calendar for education that is actually happening today.
  *
  * The brief marks this one "transparent", and the word is doing real work: this
  * is the list you glance at, so it should read as writing on the page rather
  * than as another box competing with the boxes around it.
+ *
+ * Events lead the list rather than trailing it. A lecture at 10am is a fixed
+ * point the day has to bend around; an assignment is due whenever you get to
+ * it today, which is a softer kind of commitment — see today-glance.tsx's
+ * AgendaRow for the same ordering on the Overview.
  */
-function Today({ tasks, today }: { tasks: Task[]; today: string }) {
+function Today({ tasks, events, today }: { tasks: Task[]; events: CalEvent[]; today: string }) {
   const due = tasks.filter((t) => t.date === today || (!t.done && t.date && t.date < today));
   const open = due.filter((t) => !t.done);
+  const timed = events
+    .filter((e) => !e.allDay && e.startsAt)
+    .sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""));
+  const allDay = events.filter((e) => e.allDay || !e.startsAt);
+  const nothing = due.length === 0 && events.length === 0;
 
   return (
     <section>
@@ -199,10 +219,16 @@ function Today({ tasks, today }: { tasks: Task[]; today: string }) {
         </Link>
       </div>
 
-      {due.length === 0 ? (
+      {nothing ? (
         <p className="text-sm italic text-ink-soft">Nothing due today.</p>
       ) : (
         <div className="space-y-1">
+          {timed.map((e) => (
+            <EventRow key={e.id} event={e} today={today} />
+          ))}
+          {allDay.map((e) => (
+            <EventRow key={e.id} event={e} today={today} />
+          ))}
           {open.map((t) => (
             <LineItem key={t.id} task={t} today={today} />
           ))}

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -49,7 +50,7 @@ export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-date">Due date</Label>
-            <Input id="t-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateField id="t-date" value={date} onChange={setDate} />
           </div>
           <DialogFooter>
             <Button type="submit" className="rounded-full">Add task</Button>

@@ -44,12 +44,12 @@ function shade(count: number, busiest: number): string {
 function Cell({ day, busiest }: { day: PresenceDay; busiest: number }) {
   if (!day.inRange) {
     // Not yet. Nothing drawn at all, so it cannot be mistaken for an empty day.
-    return <div className="aspect-square rounded-[3px]" aria-hidden />;
+    return <div className="rounded-[3px]" aria-hidden />;
   }
   const filled = day.count > 0;
   return (
     <div
-      className={`aspect-square rounded-[3px] ${filled ? "" : "border border-border/70"}`}
+      className={`rounded-[3px] ${filled ? "" : "border border-border/70"}`}
       style={filled ? { backgroundColor: shade(day.count, busiest) } : undefined}
       title={`${format(parseISO(day.date), "EEEE d MMMM")}${
         filled ? ` — ${day.count === 1 ? "one thing" : `${day.count} things`}` : ""
@@ -67,6 +67,22 @@ export function RhythmGrid({ state }: { state: AppState }) {
   const weeks = useMemo(() => {
     const out: PresenceDay[][] = [];
     for (let i = 0; i < days.length; i += 7) out.push(days.slice(i, i + 7));
+    /*
+      Trims leading weeks nothing was ever recorded in.
+
+      dailyPresence always hands back a fixed twelve-week window, but a
+      recently-started account has no data for most of it — inRange only
+      turns true from the first thing it ever recorded, per that function's
+      own comment. Rendering all twelve columns anyway means ten empty ones
+      and real data jammed against the right edge, which is the shape every
+      pilot account will be in for its first couple of months. Dropping the
+      unrecorded lead lets the grid grow in as an account's real history
+      does, rather than always claiming twelve weeks it cannot back up.
+
+      Left at 1 rather than 0 — if literally nothing is recorded anywhere,
+      `anything` below is already false and this never renders at all.
+    */
+    while (out.length > 1 && out[0].every((d) => !d.inRange)) out.shift();
     return out;
   }, [days]);
 
@@ -74,7 +90,13 @@ export function RhythmGrid({ state }: { state: AppState }) {
     <section>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Your rhythm</h2>
-        <span className="text-xs italic text-ink-soft">The last twelve weeks</span>
+        <span className="text-xs italic text-ink-soft">
+          {weeks.length >= WEEKS
+            ? "The last twelve weeks"
+            : weeks.length === 1
+              ? "This week so far"
+              : `The last ${weeks.length} weeks`}
+        </span>
       </div>
 
       <div className="card-soft p-4 md:p-5">
@@ -95,7 +117,34 @@ export function RhythmGrid({ state }: { state: AppState }) {
                 ))}
               </div>
 
-              <div className="grid min-w-0 flex-1 grid-flow-col grid-rows-7 gap-[3px]">
+              {/*
+                aspect-ratio lives here, on the whole grid, not on each Cell.
+
+                It used to be aspect-square per cell, inside grid-rows-7 (a
+                Tailwind class that means seven 1fr rows) with no explicit
+                height anywhere — so a cell's width needed its own height to
+                resolve first (aspect-square), the row's height needed the
+                grid's total height to resolve (1fr), and the grid's height
+                had nothing to derive from except its cells. That circularity
+                has no single correct browser resolution; what actually
+                rendered was a handful of cells sized however the layout
+                engine broke the tie, stacked into a jagged cluster rather
+                than twelve even columns — worst, and most visible, exactly
+                when this tile is narrow (third-width), because a wide tile
+                had enough slack for the ambiguity to go unnoticed.
+
+                Setting the ratio once on the container this way sidesteps it
+                entirely: the container's own width is never in question (it
+                already fills its flex slot), aspect-ratio resolves the
+                container's height from that with no dependency on its
+                children, and only then do grid-template-columns/rows divide
+                an already-fully-resolved box — which come out square on
+                their own, with nothing left for any single cell to decide.
+              */}
+              <div
+                className="grid min-w-0 flex-1 grid-flow-col grid-rows-7 gap-[3px]"
+                style={{ aspectRatio: `${weeks.length} / 7` }}
+              >
                 {weeks.map((week) =>
                   week.map((day) => <Cell key={day.date} day={day} busiest={busiest} />),
                 )}
