@@ -12,6 +12,16 @@
  */
 export interface WidgetSpec {
   key: string;
+  /**
+   * Furniture, not a widget. Always on the board, always where it is, with no
+   * drag, no resize, no remove and no switch in Profile.
+   *
+   * The greeting is the page's header — the date and "Good afternoon, Elia". It
+   * is the thing that tells you where you are, and a header that can be moved
+   * into the middle of the board, resized to a sliver or switched off is a
+   * header that can be lost.
+   */
+  pinned?: boolean;
   /** What it is called in the Add menu and the Profile list. */
   label: string;
   /** One line, for the Add menu. */
@@ -28,8 +38,8 @@ export const WIDGETS: WidgetSpec[] = [
     key: "greeting",
     label: "Greeting & date",
     hint: "The day, and your name",
+    pinned: true,
     preferred: { w: 36, h: 5 },
-    min: { w: 12, h: 4 },
   },
   {
     key: "day",
@@ -103,3 +113,10 @@ export function widgetSpec(key: string): WidgetSpec | undefined {
 export function widgetLabel(key: string): string {
   return BY_KEY.get(key)?.label ?? key;
 }
+
+export function isPinned(key: string): boolean {
+  return BY_KEY.get(key)?.pinned === true;
+}
+
+/** Everything a person can actually put on or take off the board. */
+export const MOVABLE_WIDGETS = WIDGETS.filter((w) => !w.pinned);

@@ -436,7 +436,13 @@ function AssistantSection({ settings }: { settings: Settings }) {
  * seen.
  */
 function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
-  const shown = widgets.filter((w) => w.key in WIDGET_LABELS);
+  /*
+    Pinned furniture is left out entirely rather than shown with a disabled
+    switch. The greeting is the page's header, not a widget someone chose, and
+    a control that is always on and cannot be turned off is a control that only
+    raises the question of why it is there.
+  */
+  const shown = widgets.filter((w) => w.key in WIDGET_LABELS && !PINNED_WIDGETS.has(w.key));
 
   return (
     <section className="card-soft space-y-4 p-6">

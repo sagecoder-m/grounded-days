@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { WIDGETS } from "./widget-registry";
+import { MOVABLE_WIDGETS } from "./widget-registry";
 
 /**
  * Putting a widget back on the board.
@@ -27,7 +27,9 @@ export function AddWidgetMenu({
   onAdd: (key: string) => void;
 }) {
   const on = new Set(placements.filter((p) => p.enabled).map((p) => p.key));
-  const available = WIDGETS.filter((w) => !on.has(w.key));
+  // MOVABLE_WIDGETS, not WIDGETS: pinned furniture is never off the board, so
+  // offering to add it would be offering something that cannot happen.
+  const available = MOVABLE_WIDGETS.filter((w) => !on.has(w.key));
 
   if (available.length === 0) {
     return <p className="text-xs italic text-ink-soft">Every widget is on the board</p>;

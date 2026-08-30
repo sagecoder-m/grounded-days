@@ -513,6 +513,18 @@
   border-top-left-radius: 6px;
 }
 
+/*
+ * Pinned furniture has no handles at all.
+ *
+ * The engine renders all eight regardless of the item's isResizable flag, so
+ * the header could still be pulled out of shape by a corner even with every
+ * "do not resize" option set on it. display:none removes the hit area as well
+ * as the sight of them, which is the part that actually matters.
+ */
+.react-grid-item.static .react-resizable-handle {
+  display: none;
+}
+
 /* Edges: invisible bands, wide enough to hit. */
 .react-resizable-handle-n,
 .react-resizable-handle-s {

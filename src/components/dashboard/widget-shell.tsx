@@ -1,14 +1,23 @@
 import { forwardRef, type ReactNode } from "react";
-import { GripVertical, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 /**
  * The frame around one widget on the board.
  *
- * Deliberately thin. It owns the card, the header and the controls; it owns no
- * layout — where it sits and how big it is come from the engine, which sets a
- * transform and a width/height on the element this forwards its ref to.
+ * Deliberately invisible. It owns where the tile is and how big it is; it owns
+ * nothing about how the widget looks — every widget already brings its own
+ * heading and its own surface, and some of them deliberately have no card at
+ * all (see the note at the top of today-glance.tsx about a panel of rows
+ * reading as a container of things rather than as the things themselves).
+ *
+ * It had a card, a border and a title bar for a while. That made every widget
+ * look the same as every other one and put a second heading above the one the
+ * widget had already drawn, so the board stopped looking like grounded and
+ * started looking like a generic dashboard. The frame is now chrome-free: the
+ * only thing it adds is the remove control, floated over the corner where it
+ * takes no layout space.
  *
  * forwardRef because the engine positions this element directly, and it passes
  * its own style, className and pointer handlers through — dropping any of them
@@ -17,8 +26,10 @@ import { cn } from "@/lib/utils";
 export const WidgetShell = forwardRef<
   HTMLDivElement,
   {
+    /** Only for the remove button's label — nothing is drawn from it. */
     title: string;
     children: ReactNode;
+    /** Omitted for a pinned widget, which has nothing to remove it with. */
     onRemove?: () => void;
     dragging?: boolean;
     className?: string;
@@ -34,52 +45,46 @@ export const WidgetShell = forwardRef<
       style={style}
       className={cn(
         /*
-          @container so the content can lay itself out against the width the
-          tile actually has. This is what makes a widget adapt when it is
-          resized rather than overflow: its own contents query this box, not
-          the window.
+          @container so the content lays itself out against the width the tile
+          actually has. This is what lets a widget adapt when it is resized
+          rather than overflow: its contents query this box, not the window.
         */
-        "@container group/widget flex flex-col overflow-hidden rounded-2xl border border-border bg-card",
-        // Only the shadow and the ring transition. Never the transform: the
-        // engine drives that, and easing it here would put the tile behind the
-        // cursor while dragging.
-        "transition-[box-shadow,border-color] duration-200 ease-out",
-        dragging
-          ? "z-30 border-tan shadow-[0_8px_30px_rgb(0_0_0/0.18)]"
-          : "shadow-[0_1px_2px_rgb(75_66_55/0.05)] hover:border-tan/70",
+        "@container group/widget relative",
+        /*
+          min-h-0 and the overflow are load-bearing together. Content taller
+          than the tile would otherwise push past the bottom and overlap
+          whatever sits below it, because a tile's height is now the user's
+          choice rather than the content's.
+        */
+        "flex min-h-0 flex-col overflow-hidden",
+        // Only opacity transitions. Never the transform: the engine drives
+        // that, and easing it here would put the tile behind the cursor.
+        "transition-opacity duration-200 ease-out",
+        // A tile being dragged lifts by going slightly translucent rather than
+        // by growing a shadow — there is no card here to cast one.
+        dragging && "opacity-90",
         className,
       )}
       {...rest}
     >
-      <header className="flex shrink-0 items-center gap-2 px-3 pt-2.5">
-        {/* Not the only way to drag — the whole card body works — but the one
-            visible sign that a tile can be moved at all. */}
-        <GripVertical
-          className="h-3.5 w-3.5 shrink-0 text-ink-soft opacity-0 transition-opacity group-hover/widget:opacity-60 pointer-coarse:opacity-40"
-          aria-hidden
-        />
-        <h2 className="min-w-0 flex-1 truncate font-serif text-sm leading-none">{title}</h2>
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            aria-label={`Remove ${title}`}
-            title={`Remove ${title}`}
-            className="reveal-control shrink-0 rounded p-0.5 text-ink-soft transition-colors hover:text-[color:var(--clay)]"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        )}
-      </header>
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${title}`}
+          title={`Remove ${title}`}
+          /*
+            Floated rather than in a header row, so it costs no height and the
+            widget's own heading stays the first thing in the tile. z-10 keeps
+            it above content that reaches the corner.
+          */
+          className="reveal-control absolute right-0 top-0 z-10 rounded-full bg-card/80 p-1 text-ink-soft backdrop-blur-sm transition-colors hover:text-[color:var(--clay)]"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
 
-      {/*
-        min-h-0 is load-bearing. A flex child defaults to min-height:auto and
-        refuses to shrink below its content, so without it a tall list would
-        push past the bottom of a tile the user had deliberately made short —
-        the tile would grow instead of the content adapting, which is the whole
-        thing this board is for.
-      */}
-      <div className="min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-2">{children}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>
   );
 });

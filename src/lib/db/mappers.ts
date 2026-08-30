@@ -301,7 +301,10 @@ function toWidgets(value: unknown): Settings["widgets"] {
     return [
       {
         key: e.key,
-        enabled: e.enabled !== false,
+        // Pinned furniture is on the board by definition. A stored false would
+        // otherwise be able to delete the page's own header, and there would be
+        // no control anywhere to bring it back.
+        enabled: PINNED_WIDGETS.has(e.key) || e.enabled !== false,
         x: num(e.x, fallback.x),
         y: num(e.y, fallback.y),
         // Zero would be a tile with no area, so a stored 0 falls back too.

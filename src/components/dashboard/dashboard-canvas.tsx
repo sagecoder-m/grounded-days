@@ -3,7 +3,7 @@ import GridLayout, { type Layout } from "react-grid-layout";
 
 import type { WidgetPlacement } from "@/lib/store-types";
 import { WidgetShell } from "./widget-shell";
-import { widgetSpec } from "./widget-registry";
+import { isPinned, widgetSpec } from "./widget-registry";
 import {
   BOARD_COLS,
   BOARD_MARGIN,
@@ -92,6 +92,16 @@ export function DashboardCanvas({
           h: p.h,
           minW: spec?.min?.w ?? MIN_W,
           minH: spec?.min?.h ?? MIN_H,
+          /*
+            Pinned furniture. All three flags, not just `static`: static alone
+            still rendered the eight resize handles, so the header could be
+            pulled out of shape even though it could not be dragged. isDraggable
+            and isResizable are what actually withhold the gestures; static is
+            what makes the other tiles lay out around it rather than through it.
+          */
+          static: spec?.pinned === true,
+          isDraggable: spec?.pinned !== true,
+          isResizable: spec?.pinned !== true,
         };
       }),
     [onBoard],
@@ -130,14 +140,17 @@ export function DashboardCanvas({
           each: precision nobody can use, in tiles nobody can read.
         */
         <div className="flex flex-col gap-3.5">
+          {/* The pinned header first regardless of its saved y, then the rest
+              in reading order — it is the page's heading in this layout too. */}
           {[...onBoard]
-            .sort((a, b) => a.y - b.y || a.x - b.x)
+            .sort(
+              (a, b) => Number(isPinned(b.key)) - Number(isPinned(a.key)) || a.y - b.y || a.x - b.x,
+            )
             .map((p) => (
               <WidgetShell
                 key={p.key}
                 title={widgetSpec(p.key)?.label ?? p.key}
-                onRemove={() => onRemove(p.key)}
-                className="min-h-[12rem]"
+                onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
               >
                 {render(p.key)}
               </WidgetShell>
@@ -175,7 +188,7 @@ export function DashboardCanvas({
               <WidgetShell
                 key={p.key}
                 title={widgetSpec(p.key)?.label ?? p.key}
-                onRemove={() => onRemove(p.key)}
+                onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
                 dragging={draggingKey === p.key}
               >
                 {render(p.key)}
