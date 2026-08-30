@@ -240,7 +240,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "greeting", enabled: true, size: "long" },
   { key: "day", enabled: true, size: "square" },
   { key: "upcoming", enabled: true, size: "square" },
-  { key: "focus", enabled: true, size: "square" },
+  { key: "focus", enabled: true, size: "smallHalf" },
   { key: "river", enabled: true, size: "long" },
   { key: "chart", enabled: false, size: "long" },
   { key: "goals", enabled: false, size: "long" },
@@ -249,7 +249,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "movement", enabled: false, size: "square" },
 ];
 
-const WIDGET_SIZES = ["long", "half", "square", "tall"] as const;
+const WIDGET_SIZES = ["long", "half", "square", "tall", "smallHalf"] as const;
 
 /**
  * The six old size names, mapped onto the four.

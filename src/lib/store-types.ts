@@ -216,10 +216,16 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  *
  * Four shapes, sized in units of one square so the board always divides evenly:
  *
- *   long    the full row      (12 columns, one unit tall)
- *   half    half the row      (6 columns, one unit tall)
- *   square  a third of the row (4 columns, one unit tall — genuinely 1:1)
- *   tall    a third of the row, two units tall — exactly two squares stacked
+ *   long      the full row      (12 columns, one unit tall)
+ *   half      half the row      (6 columns, one unit tall)
+ *   square    a third of the row (4 columns, one unit tall — genuinely 1:1)
+ *   tall      a third of the row, two units tall — exactly two squares stacked
+ *   smallHalf a third of the row, only as tall as its contents
+ *
+ * smallHalf exists for the timer and nothing else. The timer is a dial and two
+ * fields: given a square it filled a third of the tile and left the rest empty,
+ * which read as a broken widget rather than a small one. It is the one shape
+ * that does not stretch to its row.
  *
  * There were six before, and three of them ("threeQuarter", "third",
  * "taller") described widths that did not divide into anything the others
@@ -227,7 +233,7 @@ export type AssistantLength = "brief" | "balanced" | "thorough";
  * width and was labelled as such in the menu, which left no name for an actual
  * square. Old values are mapped forward on read — see LEGACY_SIZES in mappers.
  */
-export type WidgetSize = "long" | "half" | "square" | "tall";
+export type WidgetSize = "long" | "half" | "square" | "tall" | "smallHalf";
 
 /**
  * Light, dark, or whatever the device says.

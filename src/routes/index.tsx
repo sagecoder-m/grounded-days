@@ -243,7 +243,7 @@ function Overview() {
       a 3-column grid there is no way to express "half", and with 2 there is no
       way to express "third".
     */
-    <div className="@container/board">
+    <div className="@container/board min-w-0">
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
       <div
         /*
@@ -255,17 +255,21 @@ function Overview() {
           where they may, which reads as ragged rather than as a board.
 
           So: real rows, each as tall as the tallest tile in it, and every other
-          tile in that row stretched to match (see INNER in widget-frame). The
+          tile in that row stretched to match (see FILL_ROW in widget-frame). The
           cost is the one masonry was avoiding — a timer beside a full day's
           list gets the list's height and some empty card with it — and that is
           the trade the brief asks for.
 
-          auto-rows-fr keeps the two rows a tall tile spans equal to each other,
-          so a tall really is two squares high and the squares beside it line up
-          top and bottom. Not grid-flow-dense: dense reorders tiles to backfill
-          gaps, which would silently undo the arrangement someone dragged.
+          Rows size to their own content, NOT auto-rows-fr. fr on implicit rows
+          makes every row equal to the tallest one in the whole board, so a row
+          holding one short chart was padded out to the height of the row
+          holding a full day's task list — a screen of empty ground between two
+          widgets, which is what "weird spacing" was.
+
+          Not grid-flow-dense: dense reorders tiles to backfill gaps, which
+          would silently undo the arrangement someone dragged.
         */
-        className="grid auto-rows-fr items-stretch gap-6 @2xl/board:grid-cols-12"
+        className="grid items-stretch gap-6 @2xl/board:grid-cols-12"
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
       >
@@ -276,7 +280,7 @@ function Overview() {
           const section = renderSection(key);
           if (!section) return null;
           return (
-            <BoardCell key={key} className="@container @2xl/board:col-span-12">
+            <BoardCell key={key} className="@container min-w-0 @2xl/board:col-span-12">
               {section}
             </BoardCell>
           );
@@ -511,14 +515,19 @@ function Overview() {
               and the matching was the wrong kind: a panel with rows inside reads
               as a container of things and the rows stop being things. Today has
               been brought to this shape rather than the other way round. */}
-          <TaskGrid
-            tasks={state.tasks}
-            events={state.events}
-            from={upcomingRange.from}
-            to={upcomingRange.to}
-            emptyText="Nothing in the next few days."
-            floating
-          />
+          {/* Capped and scrolling past the cap, for the same reason Today is:
+              a week with a full timetable in it would otherwise set the height
+              of every widget in its row. */}
+          <div className="max-h-[22rem] overflow-y-auto pr-1">
+            <TaskGrid
+              tasks={state.tasks}
+              events={state.events}
+              from={upcomingRange.from}
+              to={upcomingRange.to}
+              emptyText="Nothing in the next few days."
+              floating
+            />
+          </div>
         </section>
       );
 

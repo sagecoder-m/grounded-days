@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   RectangleHorizontal,
   RectangleVertical,
+  Rows2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -68,17 +69,32 @@ const SPAN: Record<WidgetSize, string> = {
     squares level with the top and bottom of a tall beside them.
   */
   tall: "@2xl/board:col-span-6 @2xl/board:row-span-2 @3xl/board:col-span-4",
+  /*
+    A third wide, and only as tall as what is in it.
+
+    self-start is the whole point: every other shape stretches to its row, and
+    the timer given that treatment filled a third of the tile with a dial and
+    left the rest empty — which reads as a widget that is broken rather than
+    one that is small. This one sits at the top of its row at its natural
+    height and lets the row belong to whatever is beside it.
+  */
+  smallHalf: "@2xl/board:col-span-6 @2xl/board:self-start @3xl/board:col-span-4",
 };
 
-/** Every tile fills the height its row was given, so a row reads as one band
- *  rather than as tiles of assorted heights sharing a baseline. */
-const INNER = "h-full [&>*]:h-full [&>*>*]:h-full";
+/** Sizes that keep their own height instead of filling the row. */
+const SELF_SIZED = new Set<WidgetSize>(["smallHalf"]);
+
+/** A tile fills the height its row was given, so a row reads as one band rather
+ *  than as tiles of assorted heights sharing a baseline. Not for the self-sized
+ *  shapes, which are deliberately only as tall as their contents. */
+const FILL_ROW = "h-full [&>*]:h-full [&>*>*]:h-full";
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
   { key: "long", label: "Long", hint: "Spans the row", icon: RectangleHorizontal },
   { key: "half", label: "Half", hint: "Two side by side", icon: Columns2 },
   { key: "square", label: "Square", hint: "Three side by side", icon: Columns3 },
   { key: "tall", label: "Tall", hint: "A square, twice the height", icon: RectangleVertical },
+  { key: "smallHalf", label: "Small half", hint: "Only as tall as it needs", icon: Rows2 },
 ];
 
 /**
@@ -95,8 +111,9 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
  *   CHART   long, half, square. Never tall: a chart's x axis is time, and time
  *           needs length, so height added to a narrow chart is empty space
  *           above the plot rather than more chart.
- *   TIMER   half, square. A dial and two fields — nothing a full row can use
- *           and nothing that rewards height.
+ *   TIMER   smallHalf, half, square. A dial and two fields — nothing a full row
+ *           can use and nothing that rewards height. smallHalf is its own shape
+ *           and the timer is the only thing offered it.
  *
  * The order here is the order the menu shows, and the first entry is what a
  * widget falls back to when the size an account stored is not one of its
@@ -104,7 +121,7 @@ const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: Lucide
  */
 const LIST: WidgetSize[] = ["long", "half", "tall"];
 const CHART: WidgetSize[] = ["long", "half", "square"];
-const TIMER: WidgetSize[] = ["half", "square"];
+const TIMER: WidgetSize[] = ["smallHalf", "half", "square"];
 
 const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
   day: LIST,
@@ -259,7 +276,10 @@ export function WidgetFrame({
       // @container so a widget's own contents lay out against the width it
       // actually has. Without it, half-width widgets keep asking the viewport
       // how much room they have and get the wrong answer.
-      className={`@container relative ${SPAN[size]}`}
+      // min-w-0 or a long unbroken line inside a tile widens its column past its
+      // share of the board and scrolls the whole page sideways: a grid item's
+      // default min-width is auto, which refuses to shrink below its content.
+      className={`@container relative min-w-0 ${SPAN[size]}`}
       onContextMenu={(e) => {
         // The app's own menu instead of the browser's. Right-click is the
         // desktop half of the same gesture the hold covers on touch.
@@ -285,7 +305,7 @@ export function WidgetFrame({
       onPointerUp={cancelHold}
       onPointerCancel={cancelHold}
     >
-      <div className={INNER}>{children}</div>
+      <div className={SELF_SIZED.has(size) ? undefined : FILL_ROW}>{children}</div>
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         {/* Anchored to the widget's top-right rather than the cursor. A menu that
