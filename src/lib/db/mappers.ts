@@ -276,7 +276,27 @@ export const DEFAULT_SETTINGS: Settings = {
   widgets: DEFAULT_WIDGETS,
 };
 
-/** widgets is jsonb, so it arrives as unknown-shaped Json and needs coercing. */
+/**
+ * widgets is jsonb, so it arrives as unknown-shaped Json and needs coercing.
+ *
+ * Anything in DEFAULT_WIDGETS the stored array does not mention is appended,
+ * which is what makes a new widget reach accounts that already exist.
+ *
+ * It used to return the stored array verbatim, and the consequence was quiet:
+ * a widget added after your settings row was written never appeared for you —
+ * not switched off in Profile, but absent from the list entirely, with no way
+ * to turn it on. Each new widget therefore needed a hand-written UPDATE in its
+ * migration, and that only reaches rows existing the moment it runs. One
+ * account still had the nine-widget Overview and no river for exactly this
+ * reason: its row was written by a client carrying the older list, after the
+ * migration that would have fixed it had already run.
+ *
+ * Appended rather than merged in default order, so nobody's arrangement is
+ * rewritten underneath them — the same reasoning the migrations used. A new
+ * widget arrives with the enabled and size it has in DEFAULT_WIDGETS, so one
+ * meant to be on by default is on, and one meant to be available-but-quiet
+ * shows up switched off.
+ */
 function toWidgets(value: unknown): Settings["widgets"] {
   if (!Array.isArray(value)) return DEFAULT_WIDGETS;
   const cleaned = value.flatMap((entry) => {
@@ -296,7 +316,10 @@ function toWidgets(value: unknown): Settings["widgets"] {
       },
     ];
   });
-  return cleaned.length > 0 ? cleaned : DEFAULT_WIDGETS;
+  if (cleaned.length === 0) return DEFAULT_WIDGETS;
+
+  const present = new Set(cleaned.map((w) => w.key));
+  return [...cleaned, ...DEFAULT_WIDGETS.filter((w) => !present.has(w.key))];
 }
 
 function oneOf<T extends string>(allowed: readonly T[], value: string, fallback: T): T {
