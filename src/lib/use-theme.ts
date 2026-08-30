@@ -40,26 +40,32 @@ export function resolveTheme(theme: Theme): ResolvedTheme {
   return theme === "system" ? systemTheme() : theme;
 }
 
-/** How long the crossfade lasts. Slow enough to read as a change of light
- *  rather than a repaint, short enough not to feel like waiting. */
+/** How long the colour change takes. Sits inside the blur sweep, so the
+ *  palette moves while the page is hazed rather than in plain view. */
 const TRANSITION_MS = 420;
+
+/** The blur sweep's full length, matching the keyframes in styles.css. */
+const BLUR_MS = 560;
 
 /**
  * Paint the change rather than cut to it.
  *
- * The transition lives on a class that is added for the length of the fade and
- * then removed, instead of sitting permanently on every element. A standing
- * `transition: background-color` on the whole document would also animate every
- * hover, every card that appears, and every row that changes state — the theme
- * switch is the only moment this is wanted.
+ * Two things at once. The colours crossfade, and a sheet above the page blurs
+ * and clears over the top of them — so the palette turns over behind a haze
+ * instead of in front of you.
  *
- * Skipped on the very first application: there is nothing to fade *from* on a
- * page that has not been painted yet, and fading in from the boot script's
- * colours is a flash by another name.
+ * The transition lives on a class added for the length of the change and then
+ * removed, rather than sitting permanently on every element: a standing
+ * `transition: background-color` on the document would also animate every
+ * hover, every card that appears and every row that changes state.
+ *
+ * Both are skipped on the very first application. There is nothing to fade
+ * *from* on a page that has not been painted yet, and blurring a page into
+ * existence is a flash by another name.
  */
 let painted = false;
 
-function crossfade() {
+function sweep() {
   if (!painted) {
     painted = true;
     return;
@@ -67,10 +73,25 @@ function crossfade() {
   const root = document.documentElement;
   root.classList.add("theme-transition");
   window.setTimeout(() => root.classList.remove("theme-transition"), TRANSITION_MS);
+
+  /*
+    A fresh element each time, and removed when it is done.
+
+    Restarting a CSS animation on a element that is already in the document
+    means clearing the class, forcing a reflow and setting it again — mid-sweep
+    that shows as a stutter. Creating the sheet, letting it run once and
+    throwing it away has no such state to reset, and leaves nothing behind
+    holding a compositor layer for a page that is not changing theme.
+  */
+  const sheet = document.createElement("div");
+  sheet.className = "theme-blur";
+  sheet.setAttribute("aria-hidden", "true");
+  document.body.appendChild(sheet);
+  window.setTimeout(() => sheet.remove(), BLUR_MS + 60);
 }
 
 function apply(resolved: ResolvedTheme) {
-  crossfade();
+  sweep();
   /*
     Both classes, and the light one is not decorative.
 

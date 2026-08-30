@@ -591,7 +591,65 @@
 }
 
 /*
- * The light/dark crossfade.
+ * The blur that carries the light/dark change.
+ *
+ * A sheet above the page rather than a filter on it. `filter: blur()` applied
+ * to the document would work visually and break the layout while it ran: a
+ * filtered element becomes the containing block for its fixed-position
+ * descendants, so the sticky header, every open dialog and the theme toggle
+ * itself would jump out of place for the length of the animation and back
+ * afterwards. backdrop-filter on a sheet in front blurs the same pixels and
+ * touches nothing underneath.
+ *
+ * The sweep peaks early and clears slowly. Blurring in fast puts the haze up
+ * before the colours move, so the change happens behind it rather than in
+ * front of it; easing out over the remainder is the part that reads as calm.
+ * Nothing is drawn on the sheet itself — it has no background, only a blur —
+ * so neither palette bleeds into the other through it.
+ */
+.theme-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  /* Never in the way: this exists for half a second over live controls. */
+  pointer-events: none;
+  /*
+    The blur is declared once and held constant; only opacity animates.
+
+    Two reasons, both learned from the build output. Animating backdrop-filter
+    meant writing blur(0px) at each end, and the minifier reduces blur(0px) to
+    blur() and saturate(1) to saturate() — neither of which is valid, so those
+    keyframes were dropped and the sweep never blurred. And the prefixed form
+    must not be hand-written next to the plain one: Lightning CSS collapses the
+    pair to the -webkit- one alone, which Chrome then ignores. Declared once,
+    unprefixed, the build emits both.
+
+    Fading the element also fades the blur, because the filtered backdrop is
+    composited against the unfiltered page by the element's own opacity. Same
+    effect, one animated property, no invalid values to lose.
+  */
+  backdrop-filter: blur(18px) saturate(1.08);
+  opacity: 0;
+  animation: theme-blur-sweep 560ms ease-out forwards;
+  will-change: opacity;
+}
+
+/* Peaks early so the haze is up before the colours move, then clears slowly —
+   the slow part is what reads as calm. */
+@keyframes theme-blur-sweep {
+  0% {
+    opacity: 0;
+  }
+  28% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+ * The colour change underneath the blur.
  *
  * Added to the document for the length of the change and then taken off again,
  * so nothing here is running during ordinary use. A standing transition on
