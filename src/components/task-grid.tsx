@@ -207,7 +207,17 @@ export function TaskGrid({
           a heavy Thursday does not stretch a light Friday to match it.
         */
         <FitRows
-          className="grid items-start gap-4 @2xl:grid-cols-2 @5xl:grid-cols-3"
+          /*
+            grid-cols-1 is not redundant. Bare `grid` leaves
+            grid-template-columns at `none`, so the single implicit column is
+            sized to max-content — wide enough for the longest course title,
+            which is wider than the tile, and the overflow was then clipped:
+            the area chips on the right were sliced in half. Tailwind's
+            grid-cols-1 is repeat(1, minmax(0, 1fr)), which is bounded.
+          */
+          className={`grid grid-cols-1 items-start @2xl:grid-cols-2 @5xl:grid-cols-3 ${
+            fit ? "gap-2.5" : "gap-4"
+          }`}
           moreClassName="col-span-full"
           renderMore={
             fit
@@ -225,7 +235,11 @@ export function TaskGrid({
           }
         >
           {groups.map((group) => (
-            <div key={group.date} data-fit-row={fit ? "" : undefined} className="space-y-2">
+            <div
+              key={group.date}
+              data-fit-row={fit ? "" : undefined}
+              className={`min-w-0 ${fit ? "space-y-1.5" : "space-y-2"}`}
+            >
               {showGroupLabels && (
                 <p
                   suppressHydrationWarning
@@ -236,7 +250,7 @@ export function TaskGrid({
               )}
 
               {group.events.map((event) => (
-                <EventRow key={event.id} event={event} />
+                <EventRow key={event.id} event={event} dense={fit} />
               ))}
 
               {group.tasks.map((task) => (
@@ -269,32 +283,54 @@ export function TaskGrid({
  * dashed edge, because the database rejects client writes to them and looking
  * un-editable is the honest rendering.
  */
-function EventRow({ event }: { event: CalEvent }) {
+function EventRow({ event, dense = false }: { event: CalEvent; dense?: boolean }) {
   const synced = event.source && event.source !== "local";
+  const when =
+    !event.allDay && event.startsAt ? format(new Date(event.startsAt), "h:mm a") : "all day";
+  const from =
+    event.source === "google" ? " · Google" : event.source === "microsoft" ? " · Outlook" : "";
 
   return (
     <div
       /* Deliberately never a float-row. An event is not interactive in this
          grid, and a row that lifts under the pointer promises a press that does
          nothing. Tasks lift because they answer; events sit still. */
-      className={`flex items-center gap-3 rounded-2xl border bg-secondary px-4 py-3 ${
-        synced ? "border-dashed border-tan" : "border-border"
-      }`}
+      className={`flex items-center rounded-2xl border bg-secondary ${
+        dense ? "gap-2 px-3 py-1.5" : "gap-3 px-4 py-3"
+      } ${synced ? "border-dashed border-tan" : "border-border"}`}
     >
       <CalendarDays
-        className="h-4 w-4 shrink-0"
+        className={`shrink-0 ${dense ? "h-3.5 w-3.5" : "h-4 w-4"}`}
         style={{ color: event.area ? AREA_VAR[event.area] : "var(--tan)" }}
         aria-hidden
       />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{event.title}</div>
-        <div className="text-[11px] text-ink-soft">
-          {!event.allDay && event.startsAt ? format(new Date(event.startsAt), "h:mm a") : "all day"}
-          {event.source === "google" && " · Google"}
-          {event.source === "microsoft" && " · Outlook"}
+      {/*
+        Dense puts the time on the title's line instead of under it, which is
+        most of where the height goes. Two lines per event is right on a page
+        that scrolls; in a box someone sized by hand it is the difference
+        between seeing three days and seeing six.
+      */}
+      {dense ? (
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="shrink-0 text-[11px] tabular-nums text-ink-soft">{when}</span>
+          <span className="truncate text-xs font-medium">{event.title}</span>
         </div>
-      </div>
-      {event.area && <AreaChip area={event.area} />}
+      ) : (
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium">{event.title}</div>
+          <div className="text-[11px] text-ink-soft">
+            {when}
+            {from}
+          </div>
+        </div>
+      )}
+      {/* shrink-0: the title truncates, the chip does not — a half-visible
+          chip is worse than a shorter title. */}
+      {event.area && (
+        <span className="shrink-0">
+          <AreaChip area={event.area} />
+        </span>
+      )}
     </div>
   );
 }
