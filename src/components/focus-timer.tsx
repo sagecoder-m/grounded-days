@@ -71,13 +71,19 @@ export function FocusTimer({
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
               const o = ctx.createOscillator();
               const g = ctx.createGain();
-              o.type = "sine"; o.frequency.value = 528; o.connect(g); g.connect(ctx.destination);
+              o.type = "sine";
+              o.frequency.value = 528;
+              o.connect(g);
+              g.connect(ctx.destination);
               g.gain.setValueAtTime(0.001, ctx.currentTime);
               g.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.05);
               g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
-              o.start(); o.stop(ctx.currentTime + 1.5);
+              o.start();
+              o.stop(ctx.currentTime + 1.5);
             } catch {}
-            toast("Nicely done. Take a soft pause.", { description: `${focusMin} minutes of focus, logged.` });
+            toast("Nicely done. Take a soft pause.", {
+              description: `${focusMin} minutes of focus, logged.`,
+            });
             setPhase("break");
             setSecondsLeft(breakMin * 60);
           } else {
@@ -118,8 +124,17 @@ export function FocusTimer({
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
-  const size = variant === "widget" ? 120 : variant === "medium" ? 168 : 240;
-  const stroke = 14;
+  /*
+    The widget dial is small on purpose.
+
+    At 120 it was the tallest thing in the tile, and with the controls stacked
+    underneath the card needed about 260px — more than the tile is given, so
+    the label and the Start button were simply cut off at the bottom edge. 96
+    with a thinner ring reads the same at a glance and leaves the rest of the
+    card room to exist.
+  */
+  const size = variant === "widget" ? 96 : variant === "medium" ? 168 : 240;
+  const stroke = variant === "widget" ? 11 : 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
@@ -158,20 +173,32 @@ export function FocusTimer({
 
   if (variant === "widget") {
     return (
-      /* No aspect ratio and no height — it is as tall as its contents, and the
-         tile it sits in decides the width. @sm is the widget's own width, not
-         the window's, so a half-width tile stacks and a full-width one does
-         not.
+      /*
+        No aspect ratio and no height: the tile decides the width, and this
+        lays itself out from that — dial above the controls when narrow, beside
+        them when there is room. h-full so it fills the Small half tile rather
+        than leaving a band of empty tile beneath it, and the padding steps down
+        from the p-5 other widgets use, since this is deliberately the short
+        tile on the board.
 
-         h-full so it fills the Small half tile rather than leaving a band of
-         empty tile under the card, and the padding steps down from the p-5 the
-         other widgets use: this one is deliberately the short tile on the
-         board, and the generous padding that suits a full-height card is what
-         made it look like a small thing rattling around in a big one. */
-      <div className="card-soft grid h-full items-center gap-3 p-3.5 @sm:grid-cols-[auto_minmax(0,1fr)] @sm:gap-4 @sm:p-4">
+        Two columns from 15rem, not 24rem. The threshold used to be @sm, so any
+        tile narrower than 384px stacked the dial above the controls and needed
+        roughly 260px of height to show them — taller than this tile is given,
+        so the label and the Start button were cut off at the bottom edge. Side
+        by side it needs about 130px, and 15rem is where the controls stop being
+        uncomfortably narrow.
+      */
+      <div className="card-soft grid h-full items-center gap-3 p-3.5 @[15rem]:grid-cols-[auto_minmax(0,1fr)] @[15rem]:gap-4 @[15rem]:p-4">
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke="var(--border)"
+              strokeWidth={stroke}
+              fill="none"
+            />
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -189,7 +216,7 @@ export function FocusTimer({
             <div className="text-[10px] uppercase tracking-widest text-ink-soft">
               {phase === "focus" ? "Focus" : "Break"}
             </div>
-            <div className="mt-0.5 font-serif text-2xl tabular-nums">
+            <div className="mt-0.5 font-serif text-xl tabular-nums @[15rem]:text-2xl">
               {mm}:{ss}
             </div>
           </div>
@@ -252,7 +279,14 @@ export function FocusTimer({
       >
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke="var(--border)"
+              strokeWidth={stroke}
+              fill="none"
+            />
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -267,32 +301,72 @@ export function FocusTimer({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[10px] uppercase tracking-widest text-ink-soft">{phase === "focus" ? "Focus" : "Break"}</div>
-            <div className={`mt-1 font-serif tabular-nums ${variant === "medium" ? "text-3xl" : "text-5xl"}`}>{mm}:{ss}</div>
+            <div className="text-[10px] uppercase tracking-widest text-ink-soft">
+              {phase === "focus" ? "Focus" : "Break"}
+            </div>
+            <div
+              className={`mt-1 font-serif tabular-nums ${variant === "medium" ? "text-3xl" : "text-5xl"}`}
+            >
+              {mm}:{ss}
+            </div>
             <div className="text-xs text-ink-soft mt-1 max-w-40 text-center truncate">{label}</div>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-widest text-ink-soft">What are you working on?</label>
-            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Session label" />
+            <label className="text-xs uppercase tracking-widest text-ink-soft">
+              What are you working on?
+            </label>
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Session label"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-widest text-ink-soft">Focus (min)</label>
-              <Input type="number" min={5} max={90} value={focusMin} onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))} />
+              <Input
+                type="number"
+                min={5}
+                max={90}
+                value={focusMin}
+                onChange={(e) => setFocusMin(Math.max(1, Number(e.target.value) || 25))}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-widest text-ink-soft">Break (min)</label>
-              <Input type="number" min={1} max={30} value={breakMin} onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))} />
+              <Input
+                type="number"
+                min={1}
+                max={30}
+                value={breakMin}
+                onChange={(e) => setBreakMin(Math.max(1, Number(e.target.value) || 5))}
+              />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button className="rounded-full" onClick={() => setRunning((r) => !r)}>
-              {running ? <><Pause className="h-4 w-4" /> Pause</> : <><Play className="h-4 w-4" /> Start</>}
+              {running ? (
+                <>
+                  <Pause className="h-4 w-4" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" /> Start
+                </>
+              )}
             </Button>
-            <Button variant="outline" className="rounded-full border-tan" onClick={() => { setRunning(false); setPhase("focus"); setSecondsLeft(focusMin * 60); }}>
+            <Button
+              variant="outline"
+              className="rounded-full border-tan"
+              onClick={() => {
+                setRunning(false);
+                setPhase("focus");
+                setSecondsLeft(focusMin * 60);
+              }}
+            >
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
           </div>
