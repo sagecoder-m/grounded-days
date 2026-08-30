@@ -204,36 +204,21 @@ export type AssistantTone = "gentle" | "neutral" | "direct";
 export type AssistantLength = "brief" | "balanced" | "thorough";
 
 /**
- * How much of the Overview grid a widget takes.
- *
- * Two columns on a wide screen, one below that. "wide" spans both, "square"
- * takes one, "tall" takes one and two rows — enough vocabulary to put two things
- * side by side or give a long list the height it wants, without becoming a
- * layout editor nobody asked for.
- */
-/**
  * How much of the Overview board a widget takes.
  *
- * Four shapes, sized in units of one square so the board always divides evenly:
+ *   square     a third of the row, and actually square — aspect-ratio 1:1
+ *   smallHalf  the same width, only as tall as its contents
  *
- *   long      the full row      (12 columns, one unit tall)
- *   half      half the row      (6 columns, one unit tall)
- *   square    a third of the row (4 columns, one unit tall — genuinely 1:1)
- *   tall      a third of the row, two units tall — exactly two squares stacked
- *   smallHalf a third of the row, only as tall as its contents
+ * Two shapes, down from six. The others (long, half, tall, and before them
+ * threeQuarter/third/taller) are gone: a board where every tile is the same
+ * square is a board whose rows cannot fail to line up, which is what all the
+ * earlier shapes kept getting wrong. smallHalf is the single exception, and it
+ * exists for the timer — a dial and two fields have nothing to do with the
+ * bottom half of a square.
  *
- * smallHalf exists for the timer and nothing else. The timer is a dial and two
- * fields: given a square it filled a third of the tile and left the rest empty,
- * which read as a broken widget rather than a small one. It is the one shape
- * that does not stretch to its row.
- *
- * There were six before, and three of them ("threeQuarter", "third",
- * "taller") described widths that did not divide into anything the others
- * used, so rows could not line up. "square" was also a misnomer: it meant half
- * width and was labelled as such in the menu, which left no name for an actual
- * square. Old values are mapped forward on read — see LEGACY_SIZES in mappers.
+ * Old values all map to square on read; see LEGACY_SIZES in mappers.
  */
-export type WidgetSize = "long" | "half" | "square" | "tall" | "smallHalf";
+export type WidgetSize = "square" | "smallHalf";
 
 /**
  * Light, dark, or whatever the device says.

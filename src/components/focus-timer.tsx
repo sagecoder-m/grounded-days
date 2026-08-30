@@ -161,8 +161,14 @@ export function FocusTimer({
       /* No aspect ratio and no height — it is as tall as its contents, and the
          tile it sits in decides the width. @sm is the widget's own width, not
          the window's, so a half-width tile stacks and a full-width one does
-         not. */
-      <div className="card-soft grid items-center gap-4 p-4 @sm:grid-cols-[auto_minmax(0,1fr)] @sm:gap-5 @sm:p-5">
+         not.
+
+         h-full so it fills the Small half tile rather than leaving a band of
+         empty tile under the card, and the padding steps down from the p-5 the
+         other widgets use: this one is deliberately the short tile on the
+         board, and the generous padding that suits a full-height card is what
+         made it look like a small thing rattling around in a big one. */
+      <div className="card-soft grid h-full items-center gap-3 p-3.5 @sm:grid-cols-[auto_minmax(0,1fr)] @sm:gap-4 @sm:p-4">
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={stroke} fill="none" />

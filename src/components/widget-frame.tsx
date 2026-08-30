@@ -1,14 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import {
-  Columns2,
-  Columns3,
-  EyeOff,
-  LayoutGrid,
-  RectangleHorizontal,
-  RectangleVertical,
-  Rows2,
-  type LucideIcon,
-} from "lucide-react";
+import { Columns3, EyeOff, LayoutGrid, Rows2, type LucideIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -18,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { actions, type Settings, type WidgetSize } from "@/lib/store";
+import { FitToBox } from "@/components/fit-to-box";
 
 /**
  * One Overview widget: its place in the grid, and the menu for changing it.
@@ -54,29 +46,21 @@ import { actions, type Settings, type WidgetSize } from "@/lib/store";
  * changing back.
  */
 const SPAN: Record<WidgetSize, string> = {
-  long: "@2xl/board:col-span-12",
-  half: "@2xl/board:col-span-6",
   /*
-    A third of the row, and one unit tall — the unit every other shape is
-    measured in. Below @3xl a third is under 300px, which is narrower than the
-    content wants, so it widens to a half; two across still line up.
-  */
-  square: "@2xl/board:col-span-6 @3xl/board:col-span-4",
-  /*
-    A third wide and two units tall, so a tall tile is exactly two squares
-    stacked — including the gap between them, since spanning two rows absorbs
-    the row-gap that would have sat in the middle. That is what keeps a row of
-    squares level with the top and bottom of a tall beside them.
-  */
-  tall: "@2xl/board:col-span-6 @2xl/board:row-span-2 @3xl/board:col-span-4",
-  /*
-    A third wide, and only as tall as what is in it.
+    A square, and actually square — aspect-square, not just "a third wide and
+    however tall its row turned out". It read as a tall column before, because
+    a third-width tile in a row with a long list took that list's height.
 
-    self-start is the whole point: every other shape stretches to its row, and
-    the timer given that treatment filled a third of the tile with a dial and
-    left the rest empty — which reads as a widget that is broken rather than
-    one that is small. This one sits at the top of its row at its natural
-    height and lets the row belong to whatever is beside it.
+    aspect-ratio resolves height from the tile's own width, which is settled by
+    the column, so nothing here depends on what a neighbour weighs.
+  */
+  square: "aspect-square @2xl/board:col-span-6 @3xl/board:col-span-4",
+  /*
+    The same width, and only as tall as what is in it.
+
+    self-start is the point: a square fills its row, and the timer given that
+    treatment put a dial in the top third and left the rest empty — which reads
+    as a widget that is broken rather than one that is small.
   */
   smallHalf: "@2xl/board:col-span-6 @2xl/board:self-start @3xl/board:col-span-4",
 };
@@ -90,59 +74,20 @@ const SELF_SIZED = new Set<WidgetSize>(["smallHalf"]);
 const FILL_ROW = "h-full [&>*]:h-full [&>*>*]:h-full";
 
 const SIZE_OPTIONS: { key: WidgetSize; label: string; hint: string; icon: LucideIcon }[] = [
-  { key: "long", label: "Long", hint: "Spans the row", icon: RectangleHorizontal },
-  { key: "half", label: "Half", hint: "Two side by side", icon: Columns2 },
   { key: "square", label: "Square", hint: "Three side by side", icon: Columns3 },
-  { key: "tall", label: "Tall", hint: "A square, twice the height", icon: RectangleVertical },
   { key: "smallHalf", label: "Small half", hint: "Only as tall as it needs", icon: Rows2 },
 ];
 
 /**
- * Which shapes each widget is allowed to take, by what it contains.
+ * Every widget may take either shape.
  *
- * A size is not a neutral container — content has a shape it works in, and
- * offering a shape it does not work in is offering a way to break the board.
- * The brief sets this by content type rather than per widget:
- *
- *   LIST    long, half, tall. The only content that may be tall, because it is
- *           the only content where more height means more of the thing you came
- *           for — another few rows of the day. Not square: a square list shows
- *           three items and a scrollbar, which is worse than no list.
- *   CHART   long, half, square. Never tall: a chart's x axis is time, and time
- *           needs length, so height added to a narrow chart is empty space
- *           above the plot rather than more chart.
- *   TIMER   smallHalf, half, square. A dial and two fields — nothing a full row
- *           can use and nothing that rewards height. smallHalf is its own shape
- *           and the timer is the only thing offered it.
- *
- * The order here is the order the menu shows, and the first entry is what a
- * widget falls back to when the size an account stored is not one of its
- * options — so each list leads with the shape that suits it best.
+ * There used to be a per-content allow-list here — lists could be tall, charts
+ * could not — because six shapes included several that suited only some
+ * content. With two shapes there is nothing left to withhold: a square is the
+ * board's unit, and small half is a square that stops early.
  */
-const LIST: WidgetSize[] = ["long", "half", "tall"];
-const CHART: WidgetSize[] = ["long", "half", "square"];
-const TIMER: WidgetSize[] = ["smallHalf", "half", "square"];
-
-const ALLOWED_SIZES: Record<string, WidgetSize[]> = {
-  day: LIST,
-  upcoming: LIST,
-  river: CHART,
-  chart: CHART,
-  rhythm: CHART,
-  balance: CHART,
-  movement: CHART,
-  goals: CHART,
-  focus: TIMER,
-};
-
-function sizeOptionsFor(widgetKey: string) {
-  const allowed = ALLOWED_SIZES[widgetKey];
-  if (!allowed) return SIZE_OPTIONS;
-  // Mapped over `allowed`, not filtered from SIZE_OPTIONS, so the preference
-  // order above is the order shown and the fallback is the first of them.
-  return allowed
-    .map((key) => SIZE_OPTIONS.find((o) => o.key === key))
-    .filter((o): o is (typeof SIZE_OPTIONS)[number] => Boolean(o));
+function sizeOptionsFor(_widgetKey: string) {
+  return SIZE_OPTIONS;
 }
 
 /** How long a press has to be held before it counts as "hold", in ms. Long
@@ -247,7 +192,7 @@ export function WidgetFrame({
     offer — rendered one way and described another.
   */
   const options = sizeOptionsFor(widgetKey);
-  const stored = entry?.size ?? "long";
+  const stored = entry?.size ?? "square";
   const size = options.some((o) => o.key === stored) ? stored : options[0].key;
 
   function setSize(next: WidgetSize) {
@@ -305,7 +250,16 @@ export function WidgetFrame({
       onPointerUp={cancelHold}
       onPointerCancel={cancelHold}
     >
-      <div className={SELF_SIZED.has(size) ? undefined : FILL_ROW}>{children}</div>
+      {/* A square has a height its contents did not choose, so they are scaled
+          to fit it. smallHalf is the opposite — its height comes from its
+          contents — so it needs neither the fill nor the scaling. */}
+      {SELF_SIZED.has(size) ? (
+        <div>{children}</div>
+      ) : (
+        <FitToBox>
+          <div className={FILL_ROW}>{children}</div>
+        </FitToBox>
+      )}
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         {/* Anchored to the widget's top-right rather than the cursor. A menu that

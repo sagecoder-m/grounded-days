@@ -230,45 +230,47 @@ export function rowToFocusSession(row: Tables<"focus_sessions">): FocusSession {
 // chart sit above the task list so the first thing seen is movement already
 // made, not work outstanding. Keep in step with the migration's column default.
 export const DEFAULT_WIDGETS: Settings["widgets"] = [
-  // Four widgets, not nine. A day needs what is on today, what is coming,
-  // something to focus with, and one picture of how it has been going. The rest
-  // are kept but switched off — turning one on is easier than evaluating nine
-  // before you have used any of them.
+  // Four on by default. A day needs what is on today, what is coming, something
+  // to focus with, and one picture of how it has been going. The rest are kept
+  // but switched off — turning one on is easier than evaluating nine before you
+  // have used any of them.
   //
-  // Three squares across the top and the river long beneath divide evenly into
-  // the twelve-column board, so the default arrangement has no gaps.
-  { key: "greeting", enabled: true, size: "long" },
+  // Everything is a square except the timer, so three sit across a row and the
+  // rows cannot fail to line up.
+  { key: "greeting", enabled: true, size: "square" },
   { key: "day", enabled: true, size: "square" },
   { key: "upcoming", enabled: true, size: "square" },
   { key: "focus", enabled: true, size: "smallHalf" },
-  { key: "river", enabled: true, size: "long" },
-  { key: "chart", enabled: false, size: "long" },
-  { key: "goals", enabled: false, size: "long" },
-  { key: "rhythm", enabled: false, size: "long" },
+  { key: "river", enabled: true, size: "square" },
+  { key: "chart", enabled: false, size: "square" },
+  { key: "goals", enabled: false, size: "square" },
+  { key: "rhythm", enabled: false, size: "square" },
   { key: "balance", enabled: false, size: "square" },
   { key: "movement", enabled: false, size: "square" },
 ];
 
-const WIDGET_SIZES = ["long", "half", "square", "tall", "smallHalf"] as const;
+const WIDGET_SIZES = ["square", "smallHalf"] as const;
 
 /**
- * The six old size names, mapped onto the four.
+ * Every size name this app has ever stored, mapped onto the two that remain.
  *
- * Stored settings still carry these, and a row is only rewritten when someone
- * changes something — so this is not a one-off migration step but the
- * permanent reading of an old value, and it has to stay.
+ * There have been three vocabularies: wide/square/tall/third/threeQuarter/taller,
+ * then long/half/square/tall, now square/smallHalf. A settings row is only
+ * rewritten when someone changes something, so all of them can still be sitting
+ * in the database and this mapping is permanent rather than a migration step.
  *
- * "square" is the one that cannot be taken at face value: it used to mean half
- * width and was labelled "Half width" in the menu, so an account storing it
- * means half, not the new actual square. Reading it as a square would silently
- * shrink tiles people had deliberately made wide.
+ * Everything becomes a square except the timer's own shape. Note that the old
+ * "square" meant *half width* — it is only a coincidence that it lands on a
+ * name it used to have, and it is not the same shape.
  */
 const LEGACY_SIZES: Record<string, WidgetSize> = {
-  wide: "long",
-  threeQuarter: "long",
-  square: "half",
+  wide: "square",
+  threeQuarter: "square",
   third: "square",
-  taller: "tall",
+  taller: "square",
+  long: "square",
+  half: "square",
+  tall: "square",
 };
 
 /**
@@ -332,7 +334,7 @@ function toWidgets(value: unknown): Settings["widgets"] {
         // what a row written before sizes existed at all rendered as.
         size: (WIDGET_SIZES as readonly string[]).includes(size as string)
           ? (size as WidgetSize)
-          : (LEGACY_SIZES[size as string] ?? "long"),
+          : (LEGACY_SIZES[size as string] ?? "square"),
       },
     ];
   });
