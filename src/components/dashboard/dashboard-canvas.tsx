@@ -9,7 +9,7 @@ import {
   BOARD_MARGIN,
   CANVAS_MIN_WIDTH,
   COMPACTOR,
-  DRAG_CANCEL_SELECTOR,
+  DRAG_HANDLE_SELECTOR,
   DRAG_THRESHOLD,
   MIN_H,
   MIN_W,
@@ -111,7 +111,7 @@ export function DashboardCanvas({
   const commit = useCallback(
     (next: Layout) => {
       setDraggingKey(null);
-      onPersist(fromLayout(next, placements));
+      onPersist(fromLayout(next, placements, isPinned));
     },
     [onPersist, placements],
   );
@@ -151,6 +151,7 @@ export function DashboardCanvas({
                 key={p.key}
                 title={widgetSpec(p.key)?.label ?? p.key}
                 onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
+                pinned={isPinned(p.key)}
               >
                 {render(p.key)}
               </WidgetShell>
@@ -175,7 +176,7 @@ export function DashboardCanvas({
               // Bounded so a tile cannot be dragged off the left edge into a
               // negative column and become unreachable.
               bounded: true,
-              cancel: DRAG_CANCEL_SELECTOR,
+              handle: DRAG_HANDLE_SELECTOR,
               threshold: DRAG_THRESHOLD,
             }}
             resizeConfig={{ enabled: true, handles: RESIZE_HANDLES }}
@@ -189,6 +190,7 @@ export function DashboardCanvas({
                 key={p.key}
                 title={widgetSpec(p.key)?.label ?? p.key}
                 onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
+                pinned={isPinned(p.key)}
                 dragging={draggingKey === p.key}
               >
                 {render(p.key)}

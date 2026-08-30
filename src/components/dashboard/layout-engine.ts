@@ -13,6 +13,7 @@
  */
 import {
   noCompactor,
+  type Compactor,
   type Layout,
   type LayoutItem,
   type ResizeHandleAxis,
@@ -61,24 +62,20 @@ export const RESIZE_HANDLES: readonly ResizeHandleAxis[] = [
 ];
 
 /**
- * Nothing inside a tile that already answers a press may start a drag.
+ * Dragging happens by a handle, and only by a handle.
  *
- * A tile is dragged by its body, not by a handle in one corner, because a
- * handle is a thing to find before you can move anything. The cost is that the
- * body is full of buttons, checkboxes and links — so those are excluded here
- * and keep their own behaviour. The drag threshold does the rest: a press that
- * never travels is a click.
+ * The tile body was the drag surface for a while, with every interactive thing
+ * inside it excluded so buttons still worked. That reads fine on an empty tile
+ * and badly on a real one: a day's list is nothing but checkboxes, links and
+ * inline-editable titles, so almost none of the tile was left to grab and
+ * moving a widget became a hunt for a few dead pixels.
+ *
+ * A handle inverts it. Everything in the tile stays live, and there is exactly
+ * one place that moves it — which is also the only honest way to signal that a
+ * tile can be moved at all.
  */
-export const DRAG_CANCEL_SELECTOR = [
-  "button",
-  "a[href]",
-  "input",
-  "textarea",
-  "select",
-  "[role='button']",
-  "[contenteditable='true']",
-  ".react-resizable-handle",
-].join(", ");
+export const DRAG_HANDLE_CLASS = "widget-drag-handle";
+export const DRAG_HANDLE_SELECTOR = `.${DRAG_HANDLE_CLASS}`;
 
 /**
  * How far a pointer must travel before it counts as a drag rather than a click.
@@ -90,14 +87,27 @@ export const DRAG_CANCEL_SELECTOR = [
 export const DRAG_THRESHOLD = 6;
 
 /**
- * Freeform: a widget stays where it was put.
+ * Freeform, and nothing moves that was not grabbed.
  *
- * The default compactor pulls every tile upward, so a deliberate gap closes
- * itself the moment you look away and an asymmetric layout is impossible to
- * keep. noCompactor is what makes the board honour the arrangement instead of
- * correcting it.
+ * Two separate behaviours, and both are needed.
+ *
+ * noCompactor is what stops the board pulling every tile upward, so a gap left
+ * on purpose stays a gap.
+ *
+ * preventCollision is what stops a drag rearranging the widgets around it. Left
+ * off — which is noCompactor's default — dragging one tile onto another pushes
+ * that one out of the way, and because nothing ever compacts it back, every
+ * move permanently displaced whatever it passed. The board could not be kept in
+ * any arrangement for longer than the next drag. With it on, a tile that would
+ * land on an occupied spot simply does not land there, and everything else
+ * stays exactly where it was put.
  */
-export const COMPACTOR = noCompactor;
+export const COMPACTOR: Compactor = {
+  type: noCompactor.type,
+  allowOverlap: false,
+  preventCollision: true,
+  compact: (layout, cols) => noCompactor.compact(layout, cols),
+};
 
 /** Smallest a widget may be dragged down to, in grid units — roughly 200x120px,
  *  under which a card stops being able to say anything. */
@@ -109,11 +119,26 @@ export function toLayoutItem(p: WidgetPlacement): LayoutItem {
   return { i: p.key, x: p.x, y: p.y, w: p.w, h: p.h, minW: MIN_W, minH: MIN_H };
 }
 
-/** The engine's layout back into placements, keeping `enabled` from the ones we
- *  already hold — the engine only ever sees the widgets that are on the board. */
-export function fromLayout(layout: Layout, current: WidgetPlacement[]): WidgetPlacement[] {
+/**
+ * The engine's layout back into placements.
+ *
+ * `enabled` comes from what we already hold, since the engine only ever sees
+ * the widgets that are on the board.
+ *
+ * Pinned furniture is read straight back from `current` and never from the
+ * engine. It should be impossible for a static item to move, but "should be" is
+ * not the standard for the page's own header: whatever the engine reports about
+ * it, its position is not something a drag is allowed to write. This is the one
+ * place every gesture funnels through, so the guarantee holds here or nowhere.
+ */
+export function fromLayout(
+  layout: Layout,
+  current: WidgetPlacement[],
+  isPinned: (key: string) => boolean,
+): WidgetPlacement[] {
   const byKey = new Map(layout.map((l) => [l.i, l]));
   return current.map((p) => {
+    if (isPinned(p.key)) return p;
     const l = byKey.get(p.key);
     return l ? { ...p, x: l.x, y: l.y, w: l.w, h: l.h } : p;
   });

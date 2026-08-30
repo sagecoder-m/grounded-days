@@ -1,7 +1,8 @@
 import { forwardRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { DRAG_HANDLE_CLASS } from "./layout-engine";
 
 /**
  * The frame around one widget on the board.
@@ -31,12 +32,14 @@ export const WidgetShell = forwardRef<
     children: ReactNode;
     /** Omitted for a pinned widget, which has nothing to remove it with. */
     onRemove?: () => void;
+    /** Pinned furniture gets no grip: there is nothing to drag it by. */
+    pinned?: boolean;
     dragging?: boolean;
     className?: string;
     style?: React.CSSProperties;
   } & React.HTMLAttributes<HTMLDivElement>
 >(function WidgetShell(
-  { title, children, onRemove, dragging = false, className, style, ...rest },
+  { title, children, onRemove, pinned = false, dragging = false, className, style, ...rest },
   ref,
 ) {
   return (
@@ -67,6 +70,37 @@ export const WidgetShell = forwardRef<
       )}
       {...rest}
     >
+      {!pinned && (
+        /*
+          The grip is the whole drag surface. It sits over the top-left corner
+          rather than in a header row, so it costs no height and the widget's
+          own heading is still the first thing in the tile — and everything else
+          inside stays clickable, which is the point of having a handle at all.
+        */
+        <span
+          className={cn(
+            DRAG_HANDLE_CLASS,
+            /*
+              Always there, faintly. Not reveal-control: this is the only thing
+              that moves a widget, and a control you cannot see until you happen
+              to hover the right tile is a control nobody finds. Faint enough to
+              stay out of the way, solid on hover so it is obvious what you are
+              reaching for.
+
+              reveal-control would also make it pointer-events:none until the
+              hover lands, which is a race worth not having on the one element
+              every drag has to start from.
+            */
+            "absolute left-0 top-0 z-10 cursor-grab rounded-full bg-card/80 p-1 text-ink-soft opacity-30 backdrop-blur-sm transition-opacity",
+            "hover:opacity-100 group-hover/widget:opacity-70 active:cursor-grabbing",
+          )}
+          aria-hidden
+          title={`Drag to move ${title}`}
+        >
+          <GripVertical className="h-3.5 w-3.5" />
+        </span>
+      )}
+
       {onRemove && (
         <button
           type="button"
