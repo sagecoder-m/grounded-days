@@ -106,6 +106,44 @@ Deno.serve(async (req) => {
     return backToApp({ calendar: "connected", provider }, stateRow.redirect_to);
   } catch (err) {
     console.error("calendar-oauth-callback failed", err);
-    return backToApp({ calendar: "error", reason: "exchange_failed" });
+    // The reason travels back to the app, so a failure can be diagnosed from
+    // the screen it happened on rather than from the function logs.
+    return backToApp({ calendar: "error", reason: "exchange_failed", detail: shortReason(err) });
   }
 });
+
+/**
+ * A short, safe code for what went wrong, to show the person in front of it.
+ *
+ * "Something went wrong finishing the connection" is true and useless — the
+ * actual answer (an expired secret, a redirect URI registered under the wrong
+ * platform, consent withheld) is a specific code the provider already sent us
+ * and we were dropping on the floor. Finding it meant opening the Edge
+ * Function logs in another dashboard, which is not a thing to ask of someone
+ * connecting a calendar.
+ *
+ * Deliberately an extraction rather than a truncation. The thrown message
+ * carries the provider's whole response body, and passing that through a URL
+ * into a page would be echoing an upstream payload we do not control. Only
+ * three shapes are ever emitted, each matched by a narrow pattern:
+ *
+ *   AADSTS12345      Microsoft's own error codes, which name the cause exactly
+ *   invalid_client   the OAuth `error` field, which is a fixed vocabulary
+ *   http_401         the status, when the body says nothing useful
+ *
+ * All three are public identifiers. None can carry a token or a secret.
+ */
+function shortReason(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+
+  const aadsts = message.match(/AADSTS\d+/);
+  if (aadsts) return aadsts[0];
+
+  const oauthError = message.match(/"error"\s*:\s*"([a-z_]{3,40})"/);
+  if (oauthError) return oauthError[1];
+
+  const status = message.match(/\b(4\d{2}|5\d{2})\b/);
+  if (status) return `http_${status[1]}`;
+
+  return "unknown";
+}

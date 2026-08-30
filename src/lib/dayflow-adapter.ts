@@ -132,10 +132,28 @@ export function buildCalendarTypes(connections: CalendarConnection[]): CalendarT
     // apart, so it carries the account: "Google Calendar (me@gmail.com)".
     const who = conn.accountEmail ?? feedLabel(conn.feedUrl);
 
+    /*
+      Coloured by the area the connection files its events into.
+
+      Every synced calendar used to take the unassigned tan, so a Google
+      calendar filed under Education and one filed under Personal were the same
+      colour as each other and as an event with no area at all — the areas were
+      right in the data and invisible on the page, which is the one place they
+      are meant to be read at a glance.
+
+      The connection's area is the right source rather than the event's: the
+      colour belongs to the calendar in DayFlow's registry, and every event
+      from a connection carries that connection's area (see the sync, and
+      set_connection_area for what happens when it changes). A connection with
+      no area still falls back to tan, which is honest — those events genuinely
+      belong to no area.
+    */
+    const palette = conn.defaultArea ? AREA_COLORS[conn.defaultArea] : UNASSIGNED_COLOR;
+
     return {
       id: `${provider}:${conn.id}`,
       name: who ? `${label} (${who})` : label,
-      colors: { ...UNASSIGNED_COLOR, eventSelectedColor: UNASSIGNED_COLOR.lineColor },
+      colors: { ...palette, eventSelectedColor: palette.lineColor },
       // This is the actual lockdown: DayFlow's permission resolver checks this
       // per-calendar flag before allowing a drag, so a synced event cannot be
       // moved even though rendering treats it like any other event.

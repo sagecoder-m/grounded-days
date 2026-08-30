@@ -49,7 +49,11 @@ export function CalendarConnectionsSection() {
   const { user } = useSession();
   const router = useRouter();
   // The OAuth callback redirects here with the outcome in the query string.
-  const search = useSearch({ strict: false }) as { calendar?: string; reason?: string };
+  const search = useSearch({ strict: false }) as {
+    calendar?: string;
+    reason?: string;
+    detail?: string;
+  };
   const [busy, setBusy] = useState<string | null>(null);
 
   const connections = useQuery({
@@ -67,12 +71,22 @@ export function CalendarConnectionsSection() {
         // syncCalendarsNow toasts its own failure; the connection still stands.
       });
     } else {
-      toast.error("Couldn't connect that calendar", {
-        description: CONNECT_ERRORS[search.reason ?? ""] ?? "Please try again.",
-      });
+      /*
+        The provider's own code, when there is one, appended to the sentence.
+
+        "Something went wrong finishing the connection" is true and useless:
+        the cause — an expired secret, a redirect URI on the wrong platform,
+        consent withheld — is a specific code the provider sent us, and it used
+        to be visible only by opening the Edge Function logs in a separate
+        dashboard. It is a short public identifier, so it costs nothing to show
+        and saves the one step that actually diagnoses the problem.
+      */
+      const base = CONNECT_ERRORS[search.reason ?? ""] ?? "Please try again.";
+      const code = search.detail && search.detail !== "unknown" ? ` (${search.detail})` : "";
+      toast.error("Couldn't connect that calendar", { description: `${base}${code}` });
     }
     void router.navigate({ to: "/profile", replace: true, search: {} });
-  }, [search.calendar, search.reason, router]);
+  }, [search.calendar, search.reason, search.detail, router]);
 
   async function connect(provider: CalendarProvider) {
     setBusy(provider);
@@ -135,10 +149,9 @@ export function CalendarConnectionsSection() {
       </div>
 
       <p className="text-sm text-ink-soft max-w-lg">
-        Bring your real schedule alongside your tasks. Connect as many accounts as
-        you like — several Google calendars, a work and a personal Outlook, any
-        mix of the three. Everything comes in read-only; grounded never changes
-        anything at the source.
+        Bring your real schedule alongside your tasks. Connect as many accounts as you like —
+        several Google calendars, a work and a personal Outlook, any mix of the three. Everything
+        comes in read-only; grounded never changes anything at the source.
       </p>
 
       {rows.length > 0 && (
@@ -156,18 +169,17 @@ export function CalendarConnectionsSection() {
 
       <div className="flex flex-wrap gap-3 pt-1">
         {(OAUTH_PROVIDERS as readonly CalendarProvider[]).map((provider) => (
-            <Button
-              key={provider}
-              variant="outline"
-              onClick={() => void connect(provider)}
-              disabled={busy !== null}
-              className="gap-2 rounded-full"
-            >
-              <CalendarCheck className="h-4 w-4" />
-              {countByProvider[provider] ? "Add another" : "Connect"}{" "}
-              {PROVIDER_LABELS[provider]}
-            </Button>
-          ))}
+          <Button
+            key={provider}
+            variant="outline"
+            onClick={() => void connect(provider)}
+            disabled={busy !== null}
+            className="gap-2 rounded-full"
+          >
+            <CalendarCheck className="h-4 w-4" />
+            {countByProvider[provider] ? "Add another" : "Connect"} {PROVIDER_LABELS[provider]}
+          </Button>
+        ))}
       </div>
 
       <AddFeedForm />
@@ -225,8 +237,8 @@ function AddFeedForm() {
         Or subscribe to a calendar feed
       </label>
       <p className="text-xs text-ink-soft">
-        A published .ics address — a course timetable, a fixtures list, a shared
-        family calendar. Read-only, and it never needs reconnecting.
+        A published .ics address — a course timetable, a fixtures list, a shared family calendar.
+        Read-only, and it never needs reconnecting.
       </p>
       <div className="flex flex-wrap gap-2 pt-1">
         <input

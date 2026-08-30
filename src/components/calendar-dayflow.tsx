@@ -182,7 +182,12 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
   const connectionSignature = useMemo(
     () =>
       (connections.data ?? [])
-        .map((c) => c.id)
+        // The area is in the signature, not just the id. A calendar's colour
+        // comes from its area, and the registry is captured when the app is
+        // built — keyed on ids alone, moving a calendar from Personal to
+        // Education changed the events in the database and left them the old
+        // colour on screen until a reload.
+        .map((c) => `${c.id}:${c.defaultArea ?? "-"}`)
         .sort()
         .join(","),
     [connections.data],
