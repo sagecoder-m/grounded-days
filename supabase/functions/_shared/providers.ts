@@ -89,6 +89,20 @@ export function providerConfig(provider: ProviderId): ProviderConfig {
     scopes: [
       "Calendars.Read",
       "Calendars.Read.Shared",
+      /*
+        User.Read is what lets us ask Graph who just connected.
+
+        openid, email and profile are OIDC scopes: they populate the ID token
+        and grant nothing on Graph itself. fetchAccount() calls
+        graph.microsoft.com/v1.0/me to get the account id and address, and
+        without User.Read that call is a flat 403 — so every Outlook connection
+        failed after a successful sign-in and a successful token exchange, at
+        the last step before the connection row was written.
+
+        Google needs no equivalent because its userinfo endpoint is the OIDC
+        endpoint, which openid and email already cover.
+      */
+      "User.Read",
       "offline_access",
       "openid",
       "email",
