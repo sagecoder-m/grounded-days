@@ -40,6 +40,16 @@ export function resolveTheme(theme: Theme): ResolvedTheme {
   return theme === "system" ? systemTheme() : theme;
 }
 
+/** What the boot script painted, or null if it had nothing to go on. */
+function cachedTheme(): ResolvedTheme | null {
+  try {
+    const stored = window.localStorage.getItem(THEME_CACHE_KEY);
+    return stored === "dark" || stored === "light" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
 /** How long the colour change takes. Sits inside the blur sweep, so the
  *  palette moves while the page is hazed rather than in plain view. */
 const TRANSITION_MS = 420;
@@ -125,9 +135,20 @@ function apply(resolved: ResolvedTheme) {
  * on "system", the answer can change while the page is open — at sunset, or
  * when someone flips their laptop's appearance — and the app should follow
  * without being reloaded.
+ *
+ * `known` says whether `theme` is the account's real answer or the placeholder
+ * standing in for it while the settings query is in flight. Nothing is applied
+ * until it is real, and the reason is that the placeholder is "light": applying
+ * it turned a dark account light a beat after load, and then dark again when
+ * the database replied — the blur sweep dutifully animating both halves of a
+ * change that should never have happened. Worse, apply() writes what it applied
+ * into the cache the boot script reads, so a tab closed inside that window
+ * taught the next load to start light as well. Doing nothing leaves the page
+ * exactly as the boot script painted it, which is the last answer we had.
  */
-export function useTheme(theme: Theme) {
+export function useTheme(theme: Theme, known: boolean) {
   useEffect(() => {
+    if (!known) return;
     apply(resolveTheme(theme));
     if (theme !== "system") return;
 
@@ -136,7 +157,7 @@ export function useTheme(theme: Theme) {
     const onChange = () => apply(systemTheme());
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [theme]);
+  }, [theme, known]);
 }
 
 /**
@@ -148,7 +169,28 @@ export function useTheme(theme: Theme) {
  * dark" while the screen is already dark sets dark, and pressing a button
  * changes nothing at all, which is the most confusing failure a button has.
  */
-export function useResolvedTheme(theme: Theme): ResolvedTheme {
+export function useResolvedTheme(theme: Theme, known = true): ResolvedTheme {
+  /*
+    While the setting is still loading, the honest answer is not the
+    placeholder — it is whatever is on the screen, which is what the boot script
+    painted from the cache. Getting this wrong is not just a wrong icon: the
+    toggle sets the opposite of what it is showing, so a dark page showing a
+    "switch to dark" moon would set dark, and pressing it would appear to do
+    nothing at all.
+
+    Read through useSyncExternalStore rather than in render, for the server:
+    getServerSnapshot supplies the value used for the markup and for hydration,
+    and the real cache is read immediately after — so this cannot mismatch. The
+    subscribe is a no-op because localStorage is not going to change underneath
+    us in the half-second before the query lands, and once it has, `known` is
+    true and this branch is not taken.
+  */
+  const cached = useSyncExternalStore(
+    () => () => {},
+    cachedTheme,
+    () => null,
+  );
+
   const system = useSyncExternalStore(
     (onChange) => {
       const media = window.matchMedia?.(DARK_QUERY);
@@ -160,6 +202,7 @@ export function useResolvedTheme(theme: Theme): ResolvedTheme {
     // fallback, so the first client render agrees with the served HTML.
     () => "light" as ResolvedTheme,
   );
+  if (!known) return cached ?? "light";
   return theme === "system" ? system : theme;
 }
 

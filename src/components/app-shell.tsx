@@ -18,7 +18,7 @@ import {
   User,
 } from "lucide-react";
 
-import { actions, AREA_META, useApp, useSyncStatus } from "@/lib/store";
+import { actions, AREA_META, useApp, useSettingsLoaded, useSyncStatus } from "@/lib/store";
 import { useSession } from "@/lib/use-session";
 import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
@@ -120,6 +120,7 @@ function Brand({
  */
 export function AppShell({ children }: { children: ReactNode }) {
   const settings = useApp((s) => s.settings);
+  const settingsLoaded = useSettingsLoaded();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
 
   /**
@@ -148,8 +149,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const topLayout = settings.navLayout === "top";
 
   // Writes the `dark` class onto the document, and follows the device while the
-  // setting is "system".
-  useTheme(settings.theme);
+  // setting is "system". Held until the setting is genuinely known, so a
+  // dark-mode account is never told it is light on the way in.
+  useTheme(settings.theme, settingsLoaded);
 
   /*
     Density goes on the document, not on a div.
@@ -454,7 +456,8 @@ function NavChips({ pathname }: { pathname: string }) {
  */
 function useThemeToggle() {
   const settings = useApp((s) => s.settings);
-  const showing = useResolvedTheme(settings.theme);
+  const loaded = useSettingsLoaded();
+  const showing = useResolvedTheme(settings.theme, loaded);
   return {
     showing,
     /** What pressing it would give you — the label has to name the destination,

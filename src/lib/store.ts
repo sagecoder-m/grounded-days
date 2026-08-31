@@ -184,6 +184,27 @@ export function useAppState(): AppState {
 }
 
 /**
+ * Whether the settings row has actually arrived from the database.
+ *
+ * Everywhere else, falling back to DEFAULT_SETTINGS while a query is in flight
+ * is harmless — an empty task list for half a second reads as an empty task
+ * list. Theme is the exception, because the fallback is not neutral: it says
+ * "light", and a dark-mode account therefore gets told it is light for as long
+ * as the round trip takes, and turns light, and then turns back. The default is
+ * indistinguishable from a real answer, and only this flag can tell them apart.
+ *
+ * Reading the same query key again costs nothing — React Query serves the
+ * existing observer rather than fetching a second time.
+ */
+export function useSettingsLoaded(): boolean {
+  const ctx = useStoreContext();
+  const userId = ctx?.userId ?? "anonymous";
+  const enabled = Boolean(ctx);
+  const settings = useQuery({ ...settingsQuery(userId), enabled });
+  return enabled && settings.data !== undefined;
+}
+
+/**
  * Selector read. Note the selector is applied to an already-memoized AppState,
  * so an inline arrow at the call site is fine here (it was not under the old
  * useSyncExternalStore implementation, which resubscribed every render).

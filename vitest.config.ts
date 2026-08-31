@@ -30,6 +30,12 @@ export default defineConfig({
       first test is how a suite stays theoretical.
     */
     environment: "jsdom",
+    // jsdom defaults to about:blank, an opaque origin, which is not what any
+    // page the app runs on has. A real one keeps URL resolution and the storage
+    // APIs behaving the way they do in a browser.
+    environmentOptions: { jsdom: { url: "http://localhost/" } },
+    // See the file: Node's own disabled localStorage otherwise shadows jsdom's.
+    setupFiles: ["src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     // The app's own output and the Supabase functions, which run on Deno and
     // have their own imports.
