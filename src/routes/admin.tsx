@@ -26,6 +26,7 @@ import { RetentionHeatmap } from "@/components/hq-retention";
 import { SetupPanel } from "@/components/hq-setup";
 import type { ActivityWeek } from "@/lib/hq-analytics";
 import { FeatureTrendChart } from "@/components/hq-feature-trend";
+import { HqFeatureVerdicts } from "@/components/hq-feature-verdicts";
 import { format, parseISO, subDays } from "date-fns";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -254,6 +255,14 @@ function Portal() {
         windowDays={PILOT_WINDOW_DAYS}
         truncated={pilotTruncated}
       />
+      {/* Sits after the trend chart: the trend says which way a feature moved,
+          this says whether enough people were ever in it for the movement to
+          mean anything. */}
+      {pilotEvents.isLoading ? (
+        <div className="card-soft h-72 animate-pulse rounded-2xl bg-secondary/60" />
+      ) : (
+        <HqFeatureVerdicts events={pilotEvents.data ?? []} />
+      )}
       <FrictionPanel errors={errors.data} events={events.data} loading={errors.isLoading} />
       <AccountsPanel
         accounts={accounts.data}

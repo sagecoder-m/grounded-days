@@ -60,6 +60,7 @@ const WIDGET_LABELS: Record<string, string> = {
   chart: "Two-week rhythm chart",
   day: "A look at today",
   focus: "Focus",
+  agenda: "Agenda",
   upcoming: "Upcoming",
   river: "Your rhythm (river)",
   rhythm: "Rhythm grid",

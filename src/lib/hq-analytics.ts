@@ -326,3 +326,121 @@ export function analyseFeatureTrend(events: UsageFact[], windowDays: number) {
     peopleLate: peopleLate.size,
   };
 }
+
+// --------------------------------------------------------- feature verdicts
+
+/**
+ * What a feature is actually worth keeping, per feature.
+ *
+ * The existing charts count events, and event counts answer the wrong question
+ * for a build-or-cut decision: one person using the timer forty times looks
+ * exactly like eight people using it five times each, and those call for
+ * opposite decisions. So the first-class number here is how many distinct
+ * people touched a feature at all, with volume demoted to a second column.
+ */
+export interface FeatureVerdict {
+  label: string;
+  /** Distinct people who used it in the window. */
+  users: number;
+  /** Those people as a share of everyone active in the window, 0..1. */
+  adoption: number;
+  /** Total uses, which is the number that flatters a feature one person loves. */
+  uses: number;
+  /** Uses per person who adopted it — whether they came back to it. */
+  depth: number;
+  /** ISO date of the most recent use, or null if never. */
+  lastUsed: string | null;
+  verdict: "deepen" | "keep" | "niche" | "shallow" | "cut" | "thin";
+  /** The reasoning, in the words a decision needs to be defended in. */
+  because: string;
+}
+
+/** Adoption at or above this reads as "most people", not "some people". */
+const WIDE_ADOPTION = 0.6;
+/** Below this, a feature is the preserve of a handful. */
+const NARROW_ADOPTION = 0.2;
+/** Uses per adopter at or above this means they came back rather than tried once. */
+const RETURNED = 2;
+/** And at or above this, they lean on it. */
+const RELIED_ON = 4;
+
+/**
+ * Rank every feature by who uses it, and say what to do about each.
+ *
+ * `activeUsers` is the denominator for adoption and is counted from the events
+ * themselves: anyone who did anything at all in the window. Using the total
+ * account count instead would score every feature against people who never
+ * showed up, which makes a healthy product look dead.
+ *
+ * "thin" is a real verdict and comes first, because the honest answer for a
+ * pilot this size is usually "we cannot tell yet" — and a verdict of "cut"
+ * drawn from four events is worse than no verdict, since it will be quoted
+ * later without its sample size.
+ */
+export function analyseFeatureAdoption(
+  events: UsageFact[],
+  windowDays: number,
+  now: number = Date.now(),
+): { rows: FeatureVerdict[]; activeUsers: number } {
+  const cutoff = now - windowDays * 86_400_000;
+  const inWindow = events.filter((e) => Date.parse(e.created_at) >= cutoff);
+  const activeUsers = new Set(inWindow.map((e) => e.user_id)).size;
+
+  const rows = FEATURES.map(({ label, events: names }) => {
+    const mine = inWindow.filter((e) => names.includes(e.event));
+    const users = new Set(mine.map((e) => e.user_id)).size;
+    const uses = mine.length;
+    const adoption = activeUsers > 0 ? users / activeUsers : 0;
+    const depth = users > 0 ? uses / users : 0;
+    const lastUsed =
+      mine.length > 0
+        ? mine.reduce(
+            (latest, e) => (e.created_at > latest ? e.created_at : latest),
+            mine[0].created_at,
+          )
+        : null;
+
+    const pct = Math.round(adoption * 100);
+    let verdict: FeatureVerdict["verdict"];
+    let because: string;
+
+    if (uses < THIN_EVIDENCE) {
+      verdict = "thin";
+      because =
+        uses === 0
+          ? "Nobody has touched it in this window. Too little to call — check a longer range before reading anything into it."
+          : `Only ${uses} ${uses === 1 ? "use" : "uses"} in total. Too little to call.`;
+    } else if (adoption >= WIDE_ADOPTION && depth >= RELIED_ON) {
+      verdict = "deepen";
+      because = `${pct}% of active people used it, ${depth.toFixed(1)} times each. Widely used and returned to — worth building further.`;
+    } else if (adoption < NARROW_ADOPTION && depth < RETURNED) {
+      verdict = "cut";
+      because = `Only ${pct}% tried it and they did not come back (${depth.toFixed(1)} uses each). The clearest candidate to drop.`;
+    } else if (adoption < NARROW_ADOPTION) {
+      verdict = "niche";
+      because = `Only ${pct}% used it, but those who did came back (${depth.toFixed(1)} times each). Small and real — cutting it would cost those people something.`;
+    } else if (depth < RETURNED) {
+      /*
+        Plenty of people tried it and none of them came back.
+
+        This case used to fall through to "keep", which is the wrong reading and
+        the most expensive one to get wrong: broad first use looks like success
+        in any chart that counts events, and the number that contradicts it —
+        roughly one use per person — is the one that says the feature did not
+        hold anybody. It is a different problem from "cut", because the interest
+        is real and it is the second visit that is missing.
+      */
+      verdict = "shallow";
+      because = `${pct}% tried it but barely returned (${depth.toFixed(1)} uses each). The interest is there and something about it is not holding people — worth fixing or dropping, not leaving.`;
+    } else {
+      verdict = "keep";
+      because = `${pct}% used it, ${depth.toFixed(1)} times each. Doing its job without needing attention.`;
+    }
+
+    return { label, users, adoption, uses, depth, lastUsed, verdict, because };
+  });
+
+  // Widest adoption first, then volume — the order a decision gets made in.
+  rows.sort((a, b) => b.adoption - a.adoption || b.uses - a.uses);
+  return { rows, activeUsers };
+}

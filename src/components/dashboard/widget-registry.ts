@@ -48,6 +48,12 @@ export const WIDGETS: WidgetSpec[] = [
     preferred: { w: 12, h: 18 },
   },
   {
+    key: "agenda",
+    label: "Agenda",
+    hint: "The next fortnight, in order",
+    preferred: { w: 12, h: 19 },
+  },
+  {
     key: "upcoming",
     label: "Upcoming",
     hint: "The next few days",

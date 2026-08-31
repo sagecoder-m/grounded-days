@@ -6,6 +6,7 @@ import type { Settings } from "@/lib/store-types";
 import { waitingAWhile, WAITING_MIN } from "@/lib/user-insights";
 import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
 import { TodayGlance } from "@/components/today-glance";
+import { AgendaWidget } from "@/components/agenda-widget";
 import { FocusTimer } from "@/components/focus-timer";
 import { DashboardCanvas } from "@/components/dashboard/dashboard-canvas";
 import { AddWidgetMenu } from "@/components/dashboard/add-widget";
@@ -405,6 +406,13 @@ function Overview() {
     if (key === "rhythm" && w("rhythm")) return <RhythmGrid key={key} state={state} />;
     if (key === "balance" && w("balance")) return <AreaBalance key={key} state={state} />;
     if (key === "movement" && w("movement")) return <MovementCards key={key} state={state} />;
+
+    if (key === "agenda" && w("agenda"))
+      return (
+        <section key={key} className="flex h-full min-h-0 flex-col">
+          <AgendaWidget />
+        </section>
+      );
 
     if (key === "upcoming" && w("upcoming"))
       return (

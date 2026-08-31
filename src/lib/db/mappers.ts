@@ -255,7 +255,8 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   // Off by default, and parked below everything else so that switching one on
   // in Profile does not drop it on top of something. Adding one from the board
   // gives it a fresh spot underneath anyway (see placeBelow).
-  { key: "chart", enabled: false, x: 0, y: 33, w: 36, h: 11 },
+  { key: "agenda", enabled: false, x: 0, y: 33, w: 12, h: 19 },
+  { key: "chart", enabled: false, x: 12, y: 33, w: 24, h: 11 },
   { key: "goals", enabled: false, x: 0, y: 44, w: 18, h: 9 },
   { key: "rhythm", enabled: false, x: 18, y: 44, w: 18, h: 9 },
   { key: "movement", enabled: false, x: 0, y: 53, w: 18, h: 9 },
