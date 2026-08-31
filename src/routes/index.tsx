@@ -230,14 +230,31 @@ function Overview() {
   function renderSection(key: string) {
     if (key === "greeting" && w("greeting"))
       return (
+        /*
+          Four lines on a desktop, one on a phone.
+
+          The date, a serif greeting and a line of prose is a calm opening when
+          it sits above a board. Stacked into a single column it is most of the
+          first screen before anything useful appears — and the sentence it
+          spends that space on ("one small thing at a time") is a promise the
+          rest of the screen then has to keep, which it cannot do from below the
+          fold.
+        */
         <section key={key}>
-          <p suppressHydrationWarning className="text-sm text-ink-soft">
+          <p suppressHydrationWarning className="hidden text-sm text-ink-soft sm:block">
             {format(today, "EEEE, MMMM d, yyyy")}
           </p>
-          <h1 suppressHydrationWarning className="mt-1 font-serif text-2xl md:text-3xl">
+          <h1
+            suppressHydrationWarning
+            className="font-serif text-xl leading-tight sm:mt-1 sm:text-2xl md:text-3xl"
+          >
             {greeting(settings.displayName || "friend")}
           </h1>
-          <p className="mt-2 text-ink-soft max-w-lg">
+          {/* The date joins the greeting's line rather than owning one. */}
+          <p suppressHydrationWarning className="mt-0.5 text-xs text-ink-soft sm:hidden">
+            {format(today, "EEEE, d MMMM")}
+          </p>
+          <p className="mt-2 hidden max-w-lg text-ink-soft sm:block">
             Take a breath. Here's your gentle rundown for today — one small thing at a time.
           </p>
         </section>

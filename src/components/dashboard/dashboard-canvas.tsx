@@ -3,7 +3,7 @@ import GridLayout, { type Layout } from "react-grid-layout";
 
 import type { WidgetPlacement } from "@/lib/store-types";
 import { WidgetShell } from "./widget-shell";
-import { isPinned, widgetSpec } from "./widget-registry";
+import { isPinned, mobileRank, trimsOwnContent, widgetSpec } from "./widget-registry";
 import {
   BOARD_COLS,
   BOARD_MARGIN,
@@ -140,18 +140,42 @@ export function DashboardCanvas({
           each: precision nobody can use, in tiles nobody can read.
         */
         <div className="flex flex-col gap-3.5">
-          {/* The pinned header first regardless of its saved y, then the rest
-              in reading order — it is the page's heading in this layout too. */}
+          {/*
+            Ordered by what each widget is for, not by where it sits on the
+            board. A board has no reading order — things are side by side and
+            the eye picks — but one column forces one, and the saved x/y gave
+            the wrong answer: on the default arrangement a phone met two
+            analysis charts before today's list, purely because those charts sit
+            to its left on a wide screen. See mobileRank in the registry.
+          */}
           {[...onBoard]
-            .sort(
-              (a, b) => Number(isPinned(b.key)) - Number(isPinned(a.key)) || a.y - b.y || a.x - b.x,
-            )
+            .sort((a, b) => mobileRank(a.key) - mobileRank(b.key))
             .map((p) => (
               <WidgetShell
                 key={p.key}
                 title={widgetSpec(p.key)?.label ?? p.key}
                 onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
                 pinned={isPinned(p.key)}
+                /*
+                  A height budget, which is what makes the lists stop being
+                  endless.
+
+                  FitRows only trims when it has a bounded height to measure
+                  against, and on the canvas that comes from the tile someone
+                  sized. Stacked, nothing bounded anything — so every widget
+                  rendered in full and "A look at today" put eleven to-dos on
+                  screen, one after another, with Upcoming doing the same below
+                  it. That is the wall people describe.
+
+                  26rem is about two thirds of a phone screen: enough that a
+                  quiet day shows completely and nothing is trimmed, low enough
+                  that a busy one becomes "+6 more" instead of a scroll.
+
+                  Only for widgets that trim themselves. A capped list says how
+                  much it left out; a capped chart is a chart with its bottom cut
+                  off, which is worse than a long one.
+                */
+                className={trimsOwnContent(p.key) ? "max-h-[26rem]" : undefined}
               >
                 {render(p.key)}
               </WidgetShell>

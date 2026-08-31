@@ -31,11 +31,36 @@ export interface WidgetSpec {
   /** Smallest it may be dragged down to. Overrides the board default when the
    *  content genuinely cannot survive the usual minimum. */
   min?: { w: number; h: number };
+  /**
+   * Where this sits in the single column a phone gets. Lower comes first.
+   *
+   * A board has no reading order — things sit side by side and the eye picks.
+   * Stacked into one column an order is forced on it, and the saved x/y gave
+   * the wrong one: on the default arrangement a phone met two analysis charts
+   * before it reached today's list, because those charts happen to sit to the
+   * left of it on a wide screen.
+   *
+   * So the phone orders by what the thing is for. Today and what is coming
+   * first, then the tools, then the charts — action before reflection, which is
+   * the order the day is actually lived in.
+   */
+  mobileRank: number;
+  /**
+   * Whether this widget trims its own contents when it runs out of room.
+   *
+   * Only the lists do, via FitRows, which shows what fits and says how many it
+   * left out. That distinction decides whether a phone may cap its height: a
+   * capped list says "+6 more", and a capped chart is just a chart with its
+   * bottom cut off. So the budget below applies to these and nothing else —
+   * the rest keep whatever height their content needs.
+   */
+  trimsOwnContent?: boolean;
 }
 
 export const WIDGETS: WidgetSpec[] = [
   {
     key: "greeting",
+    mobileRank: 0,
     label: "Greeting & date",
     hint: "The day, and your name",
     pinned: true,
@@ -43,24 +68,31 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "day",
+    trimsOwnContent: true,
+    mobileRank: 10,
     label: "A look at today",
     hint: "Today's events and to-dos",
     preferred: { w: 12, h: 18 },
   },
   {
     key: "agenda",
+    trimsOwnContent: true,
+    mobileRank: 30,
     label: "Agenda",
     hint: "The next fortnight, in order",
     preferred: { w: 12, h: 19 },
   },
   {
     key: "upcoming",
+    trimsOwnContent: true,
+    mobileRank: 20,
     label: "Upcoming",
     hint: "The next few days",
     preferred: { w: 12, h: 18 },
   },
   {
     key: "focus",
+    mobileRank: 40,
     label: "Focus timer",
     hint: "One stretch of work",
     preferred: { w: 12, h: 7 },
@@ -68,6 +100,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "river",
+    mobileRank: 80,
     label: "Your rhythm",
     hint: "Activity over time, as a river",
     preferred: { w: 12, h: 11 },
@@ -75,6 +108,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "chart",
+    mobileRank: 70,
     label: "Two-week chart",
     hint: "A fortnight of what you tended to",
     preferred: { w: 36, h: 11 },
@@ -82,6 +116,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "goals",
+    mobileRank: 50,
     label: "Area progress",
     hint: "How your three areas are moving",
     preferred: { w: 18, h: 9 },
@@ -89,6 +124,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "rhythm",
+    mobileRank: 90,
     label: "Rhythm grid",
     hint: "Your weeks as shaded days",
     preferred: { w: 18, h: 9 },
@@ -96,6 +132,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "balance",
+    mobileRank: 100,
     label: "Where your attention went",
     hint: "The balance between your areas",
     preferred: { w: 12, h: 11 },
@@ -103,6 +140,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "movement",
+    mobileRank: 60,
     label: "How it's been going",
     hint: "Recent progress, in plain words",
     preferred: { w: 18, h: 9 },
@@ -118,6 +156,16 @@ export function widgetSpec(key: string): WidgetSpec | undefined {
 
 export function widgetLabel(key: string): string {
   return BY_KEY.get(key)?.label ?? key;
+}
+
+/** Whether a phone may put a height budget on this widget — see the field. */
+export function trimsOwnContent(key: string): boolean {
+  return BY_KEY.get(key)?.trimsOwnContent === true;
+}
+
+/** Order for the single column a phone gets. Unknown keys sort last. */
+export function mobileRank(key: string): number {
+  return BY_KEY.get(key)?.mobileRank ?? 999;
 }
 
 export function isPinned(key: string): boolean {
