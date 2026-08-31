@@ -68,7 +68,11 @@ export function FocusTimer({
             // twice (StrictMode), which would double-write the session.
             queueMicrotask(() => logSession(label || "Focus session", focusMin));
             try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              /* Safari only exposed this under a prefix for years, and still
+                 does on older iOS. Narrowed to the one property rather than
+                 casting the whole window to any. */
+              const w = window as Window & { webkitAudioContext?: typeof AudioContext };
+              const ctx = new (window.AudioContext || w.webkitAudioContext!)();
               const o = ctx.createOscillator();
               const g = ctx.createGain();
               o.type = "sine";
@@ -80,7 +84,13 @@ export function FocusTimer({
               g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
               o.start();
               o.stop(ctx.currentTime + 1.5);
-            } catch {}
+            } catch {
+              // Deliberately silent. Browsers refuse to open an AudioContext
+              // without a prior user gesture, and a timer that finished while
+              // the tab was in the background is exactly that case — the
+              // session is already logged and the toast still appears, so a
+              // missing chime is not worth reporting.
+            }
             toast("Nicely done. Take a soft pause.", {
               description: `${focusMin} minutes of focus, logged.`,
             });

@@ -35,12 +35,12 @@ https://pbjpypcdiwvxegewxleu.supabase.co/functions/v1/calendar-oauth-callback
 1. <https://portal.azure.com> → **Microsoft Entra ID** → **App registrations** →
    **New registration**
 2. Name it anything (e.g. `Grounded Days`)
-3. **Supported account types**: *Accounts in any organizational directory and
-   personal Microsoft accounts* — this is what lets both a
+3. **Supported account types**: _Accounts in any organizational directory and
+   personal Microsoft accounts_ — this is what lets both a
    progressionstate.com account and a personal outlook.com account connect
 4. **Redirect URI**: platform **Web**, value from step 1
 5. Register, then copy the **Application (client) ID**
-6. **Certificates & secrets** → **New client secret** → copy the *Value*
+6. **Certificates & secrets** → **New client secret** → copy the _Value_
    (shown once)
 7. **API permissions** → **Add a permission** → **Microsoft Graph** →
    **Delegated** → add `Calendars.Read` and `offline_access`
@@ -61,7 +61,7 @@ If the tenant requires admin consent for `Calendars.Read`, grant it with
 
 ### The Google catch, in plain terms
 
-`calendar.readonly` is a *sensitive* scope, and that puts the consent screen's
+`calendar.readonly` is a _sensitive_ scope, and that puts the consent screen's
 **publishing status** in charge of two things that matter to a pilot.
 
 #### "Access blocked ... has not completed the Google verification process"
@@ -87,17 +87,17 @@ possibilities rather than guessing.
 #### Refresh tokens expire after 7 days in Testing
 
 Also a consequence of Testing status: Google kills refresh tokens weekly, so
-sync stops and the connection shows *needs reconnecting* on Profile. That state
+sync stops and the connection shows _needs reconnecting_ on Profile. That state
 is built into the UI on purpose; it is expected, not a bug.
 
 #### Which status to run the pilot on
 
-| | Testing | Production, unverified | Verified |
-|---|---|---|---|
-| Who can connect | allowlist only, 100 max | anyone, ~100 cap on sensitive scopes | anyone |
-| Refresh tokens | **die after 7 days** | persist | persist |
-| What the tester sees | normal consent | "Google hasn't verified this app" → Advanced → continue | normal consent |
-| Cost to get there | nothing | privacy policy + terms + homepage URL | the above, plus demo video and review, days to weeks |
+|                      | Testing                 | Production, unverified                                  | Verified                                             |
+| -------------------- | ----------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
+| Who can connect      | allowlist only, 100 max | anyone, ~100 cap on sensitive scopes                    | anyone                                               |
+| Refresh tokens       | **die after 7 days**    | persist                                                 | persist                                              |
+| What the tester sees | normal consent          | "Google hasn't verified this app" → Advanced → continue | normal consent                                       |
+| Cost to get there    | nothing                 | privacy policy + terms + homepage URL                   | the above, plus demo video and review, days to weeks |
 
 For a pilot of a few dozen testers over three months, **Testing is the wrong
 place to sit**: every tester reconnects weekly for the whole pilot, and that

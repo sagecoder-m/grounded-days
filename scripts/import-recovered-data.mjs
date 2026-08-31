@@ -233,7 +233,9 @@ function buildRows(blob, userId) {
     }
     // events.area is nullable, so an unrecognised area becomes NULL, not
     // 'personal' — matching the SQL migration.
-    return [{ user_id: userId, title: str(e.title) ?? "Untitled event", date, area: area(e.area, null) }];
+    return [
+      { user_id: userId, title: str(e.title) ?? "Untitled event", date, area: area(e.area, null) },
+    ];
   });
 
   const focusRows = arr(blob.focusSessions).flatMap((raw) => {
@@ -426,7 +428,8 @@ if (serviceKey) {
   supabase = clientFor(url, serviceKey);
   console.log(`\nAuth: service role, importing for user ${userId}`);
 } else {
-  if (!publishableKey) die("SUPABASE_PUBLISHABLE_KEY is not set (checked the environment and .env).");
+  if (!publishableKey)
+    die("SUPABASE_PUBLISHABLE_KEY is not set (checked the environment and .env).");
   let email = env("GROUNDED_EMAIL");
   let password = env("GROUNDED_PASSWORD");
   if (!email || !password) {
@@ -514,7 +517,15 @@ if (VERIFY) {
 // --- emptiness guard, mirroring migrate-local.ts. The point is to make a
 // second run impossible to silently double up the data.
 const counts = {};
-for (const table of ["projects", "subprojects", "tasks", "goals", "habits", "events", "focus_sessions"]) {
+for (const table of [
+  "projects",
+  "subprojects",
+  "tasks",
+  "goals",
+  "habits",
+  "events",
+  "focus_sessions",
+]) {
   const { count, error } = await supabase.from(table).select("*", { count: "exact", head: true });
   if (error) die(`Counting ${table} failed: ${error.message}`);
   counts[table] = count ?? 0;

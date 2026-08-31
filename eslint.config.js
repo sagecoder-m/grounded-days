@@ -6,7 +6,12 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  {
+    // .claude holds git worktrees other tooling sessions create, which are full
+    // copies of this repository — linted, every error appeared twice with a
+    // path nobody can act on. .nitro is build output like .output.
+    ignores: ["dist", ".output", ".vinxi", ".nitro", ".claude"],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -37,4 +42,21 @@ export default tseslint.config(
     },
   },
   eslintPluginPrettier,
+
+  /*
+    The Supabase functions run on Deno, and Deno lints them.
+
+    They are not part of the app build: they import by URL, use Deno globals,
+    and carry deno-lint-ignore directives for the places where a provider's wire
+    format genuinely is dynamic. Running this config's type rules over them as
+    well means every such place needs two suppressions on one line, which
+    Prettier then reflows apart — so the second one silently stops applying.
+
+    Formatting still applies, because one house style across the repository is
+    worth having. Only the type rules step back.
+  */
+  {
+    files: ["supabase/functions/**/*.ts"],
+    rules: { "@typescript-eslint/no-explicit-any": "off" },
+  },
 );

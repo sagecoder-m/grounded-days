@@ -262,7 +262,8 @@ function AssistantPage() {
       .from("assistant_conversations")
       .update({ title: clean })
       .eq("id", id);
-    if (renameError) toast.error("Could not rename that chat", { description: renameError.message });
+    if (renameError)
+      toast.error("Could not rename that chat", { description: renameError.message });
   }
 
   async function deleteConversation(id: string) {
@@ -270,7 +271,10 @@ function AssistantPage() {
     const remaining = conversations.filter((c) => c.id !== id);
     setConversations(remaining);
     if (activeId === id) setActiveId(remaining[0]?.id ?? null);
-    const { error: delError } = await supabase.from("assistant_conversations").delete().eq("id", id);
+    const { error: delError } = await supabase
+      .from("assistant_conversations")
+      .delete()
+      .eq("id", id);
     if (delError) {
       setConversations(previous);
       if (activeId === id) setActiveId(id);
@@ -362,7 +366,9 @@ function AssistantPage() {
 
       if (isFirstMessage) {
         const title = titleFrom(content);
-        setConversations((prev) => prev.map((c) => (c.id === conversationId ? { ...c, title } : c)));
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, title } : c)),
+        );
         void supabase
           .from("assistant_conversations")
           .update({ title })
@@ -380,10 +386,9 @@ function AssistantPage() {
       const created = Array.isArray(data.createdTasks) ? data.createdTasks : [];
       if (created.length > 0 && user) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.tasks(user.id) });
-        toast.success(
-          created.length === 1 ? "Task added" : `${created.length} tasks added`,
-          { description: created.map((t: { title: string }) => t.title).join(", ") },
-        );
+        toast.success(created.length === 1 ? "Task added" : `${created.length} tasks added`, {
+          description: created.map((t: { title: string }) => t.title).join(", "),
+        });
       }
     } catch {
       setError("Could not reach the assistant. Check your connection.");
@@ -443,8 +448,8 @@ function AssistantPage() {
           <div className="card-soft flex items-start gap-3 p-5">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p className="text-sm text-ink-soft">
-              Ask for the next small step rather than a whole plan, or send a photo of a syllabus
-              or schedule — that is what it is best at.
+              Ask for the next small step rather than a whole plan, or send a photo of a syllabus or
+              schedule — that is what it is best at.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -482,7 +487,10 @@ function AssistantPage() {
                     className="mb-2 max-h-64 rounded-xl object-contain"
                   />
                 ) : (
-                  <div key={a.path} className="mb-2 h-32 w-full animate-pulse rounded-xl bg-black/10" />
+                  <div
+                    key={a.path}
+                    className="mb-2 h-32 w-full animate-pulse rounded-xl bg-black/10"
+                  />
                 ),
               )}
               {m.content}

@@ -160,7 +160,11 @@ export function OneThing({ state, onClose }: { state: AppState; onClose: () => v
               <Button onClick={done} className="w-full rounded-full">
                 <Check className="h-4 w-4" /> Done
               </Button>
-              <Button onClick={notToday} variant="outline" className="w-full rounded-full border-tan">
+              <Button
+                onClick={notToday}
+                variant="outline"
+                className="w-full rounded-full border-tan"
+              >
                 Not today
               </Button>
               <button

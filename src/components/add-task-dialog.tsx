@@ -1,5 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DateField } from "@/components/ui/date-field";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +24,14 @@ interface Props {
   defaultDate?: string;
 }
 
-export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId, defaultDate }: Props) {
+export function AddTaskDialog({
+  area,
+  trigger,
+  projectId,
+  courseId,
+  subprojectId,
+  defaultDate,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -26,7 +40,15 @@ export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    actions.addTask({ area, title: title.trim(), description: description.trim() || undefined, date, projectId, subprojectId, courseId });
+    actions.addTask({
+      area,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      date,
+      projectId,
+      subprojectId,
+      courseId,
+    });
     setTitle("");
     setDescription("");
     setOpen(false);
@@ -42,18 +64,32 @@ export function AddTaskDialog({ area, trigger, projectId, courseId, subprojectId
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="t-title">Title</Label>
-            <Input id="t-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Something small and doable" autoFocus />
+            <Input
+              id="t-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Something small and doable"
+              autoFocus
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-desc">Description</Label>
-            <Textarea id="t-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional notes" rows={3} />
+            <Textarea
+              id="t-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional notes"
+              rows={3}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="t-date">Due date</Label>
             <DateField id="t-date" value={date} onChange={setDate} />
           </div>
           <DialogFooter>
-            <Button type="submit" className="rounded-full">Add task</Button>
+            <Button type="submit" className="rounded-full">
+              Add task
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

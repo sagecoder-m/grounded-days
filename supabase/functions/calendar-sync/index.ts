@@ -113,7 +113,6 @@ async function fetchIcsEvents(
   return events;
 }
 
-
 /**
  * How many ids to name in one delete.
  *
@@ -277,7 +276,9 @@ Deno.serve(async (req) => {
       userId = data.user.id;
     }
 
-    let query = db.from("calendar_connections").select("id, user_id, provider, default_area, feed_url");
+    let query = db
+      .from("calendar_connections")
+      .select("id, user_id, provider, default_area, feed_url");
     if (userId) query = query.eq("user_id", userId);
 
     const { data: connections, error } = await query;

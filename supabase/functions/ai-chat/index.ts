@@ -131,7 +131,9 @@ async function resolveModelChain(
   const ids = await fetchAvailableIds();
   const usable = ids ? wanted.filter((m) => ids.has(m)) : wanted;
   if (override && ids && !ids.has(override)) {
-    console.warn(`OPENROUTER_MODEL "${override}" is not a current OpenRouter model id; ignoring it`);
+    console.warn(
+      `OPENROUTER_MODEL "${override}" is not a current OpenRouter model id; ignoring it`,
+    );
   }
 
   // Every preference retired at once is implausible, but returning an empty
@@ -496,7 +498,6 @@ function briefPrompt(brief: ClientBrief): string {
   return lines.join("\n");
 }
 
-
 /**
  * The one thing the assistant may change.
  *
@@ -668,12 +669,20 @@ async function runCreateTasks(
   try {
     args = JSON.parse(rawArgs || "{}");
   } catch {
-    return { created: [], failures: ["bad JSON"], summary: "FAILED — arguments were not valid JSON. Nothing was saved." };
+    return {
+      created: [],
+      failures: ["bad JSON"],
+      summary: "FAILED — arguments were not valid JSON. Nothing was saved.",
+    };
   }
 
   const items = Array.isArray(args.tasks) ? args.tasks.slice(0, MAX_TASKS_PER_CALL) : [];
   if (items.length === 0) {
-    return { created: [], failures: [], summary: "FAILED — no tasks were given. Nothing was saved." };
+    return {
+      created: [],
+      failures: [],
+      summary: "FAILED — no tasks were given. Nothing was saved.",
+    };
   }
 
   const created: CreatedTask[] = [];
@@ -685,7 +694,8 @@ async function runCreateTasks(
   }
 
   const lines = created.map(
-    (t) => `- "${t.title}"${t.date ? ` due ${t.date}` : " (no date)"}${t.course ? " filed under the course" : ""}`,
+    (t) =>
+      `- "${t.title}"${t.date ? ` due ${t.date}` : " (no date)"}${t.course ? " filed under the course" : ""}`,
   );
   const summary =
     created.length > 0
@@ -712,7 +722,9 @@ async function runCreateTasks(
 async function runCreateCourse(
   userId: string,
   rawArgs: string,
-): Promise<{ ok: true; id: string; name: string; existed: boolean } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; id: string; name: string; existed: boolean } | { ok: false; error: string }
+> {
   let args: { name?: unknown; code?: unknown; term?: unknown };
   try {
     args = JSON.parse(rawArgs || "{}");
@@ -724,10 +736,7 @@ async function runCreateCourse(
   if (!name) return { ok: false, error: "A course name is required." };
 
   const db = serviceClient();
-  const { data: existing } = await db
-    .from("courses")
-    .select("id, name")
-    .eq("user_id", userId);
+  const { data: existing } = await db.from("courses").select("id, name").eq("user_id", userId);
 
   // Compared with spaces and case removed, so "OPAN 6607" matches "opan6607".
   const squash = (v: string) => v.toLowerCase().replace(/[\s_-]/g, "");
@@ -844,6 +853,17 @@ Deno.serve(async (req) => {
     );
     const { primary, fallbacks } = await resolveModelChain({ requireVision: imageUrls.length > 0 });
 
+    /*
+      Deliberately any[], and suppressed for both linters rather than one.
+
+      These messages are the provider's wire format, not ours: a role and a
+      content that is a string on the way in and an array of parts when an
+      image is attached, plus tool_calls whose shape the provider defines and
+      changes. They are read back — the last user turn is rewritten in place
+      below, and an assistant turn is pushed back in during the tool loop — so
+      `unknown` does not work here, and a hand-written interface would be a
+      guess at somebody else's schema that goes stale silently.
+    */
     // deno-lint-ignore no-explicit-any
     const convo: any[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -901,7 +921,9 @@ Deno.serve(async (req) => {
             silently never happened. A tool round gets room to work; the prose
             round still gets exactly the length they asked for.
           */
-          max_tokens: withTools ? TOOL_ROUND_TOKENS : (LENGTH_TOKENS[brief.length] ?? LENGTH_TOKENS.brief),
+          max_tokens: withTools
+            ? TOOL_ROUND_TOKENS
+            : (LENGTH_TOKENS[brief.length] ?? LENGTH_TOKENS.brief),
           temperature: 0.6,
         }),
       });
@@ -921,6 +943,13 @@ Deno.serve(async (req) => {
     const createdTasks: CreatedTask[] = [];
     for (let round = 0; round < MAX_TOOL_ROUNDS && res.ok; round++) {
       const roundText = await res.text();
+      /*
+        The provider's raw response. Same reasoning as convo above: the shape
+        is theirs, it is read by optional chaining immediately below precisely
+        because a model can return an error object where a completion was
+        expected, and optional chaining is what `unknown` forbids.
+      */
+      // deno-lint-ignore no-explicit-any
       let parsed: any;
       try {
         parsed = JSON.parse(roundText);

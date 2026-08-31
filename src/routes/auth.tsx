@@ -57,8 +57,11 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back.");
       }
-    } catch (err: any) {
-      toast.error(err?.message ?? "That didn't work. Try again gently.");
+    } catch (err) {
+      // Supabase throws AuthError, but a network failure throws TypeError and a
+      // thrown string is possible from anywhere — so this narrows rather than
+      // asserting a shape.
+      toast.error(err instanceof Error ? err.message : "That didn't work. Try again gently.");
     } finally {
       setBusy(false);
     }

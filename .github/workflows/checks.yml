@@ -1,14 +1,12 @@
-# Typecheck and tests on every push and pull request.
+# Typecheck, lint and tests on every push and pull request.
 #
-# Deliberately not `bun run lint`. ESLint currently reports about 1,800
-# problems across the repository — almost all of them Prettier formatting in
-# files nobody has run the formatter over — so adding it here would make this
-# workflow red on its first run and stay red, which trains everyone to ignore
-# it. That is worse than having no check at all. Worth fixing separately with
-# `bun run format`, and worth adding here once it passes.
+# Lint is here because it now passes. It reported about 1,800 problems until the
+# formatter was run across the repository — a check that is red on arrival
+# teaches everyone to ignore it, which is worse than no check, so it was left
+# out until the number was zero.
 #
-# Also not `bun run build`: Vercel builds every push already, and duplicating
-# it here would double the wait to learn the same thing.
+# Not `bun run build`: Vercel builds every push already, and duplicating it here
+# would double the wait to learn the same thing.
 name: Checks
 
 on:
@@ -34,6 +32,9 @@ jobs:
 
       - name: Typecheck
         run: bunx tsc --noEmit
+
+      - name: Lint
+        run: bun run lint
 
       - name: Test
         run: bun run test

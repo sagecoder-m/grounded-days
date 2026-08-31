@@ -102,7 +102,12 @@ export function ReorderableCard({
         onKeyDown={(e) => {
           // Keyboard equivalent — a handle that only answers to a pointer is
           // unusable for anyone not using one.
-          if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "ArrowLeft" && e.key !== "ArrowRight")
+          if (
+            e.key !== "ArrowUp" &&
+            e.key !== "ArrowDown" &&
+            e.key !== "ArrowLeft" &&
+            e.key !== "ArrowRight"
+          )
             return;
           e.preventDefault();
           const index = orderedIds.indexOf(id);

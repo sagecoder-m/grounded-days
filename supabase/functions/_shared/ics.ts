@@ -65,7 +65,9 @@ function unescapeText(value: string): string {
 }
 
 /** "DTSTART;TZID=Europe/London:20260901T090000" -> name, params, value. */
-function splitLine(line: string): { name: string; params: Record<string, string>; value: string } | null {
+function splitLine(
+  line: string,
+): { name: string; params: Record<string, string>; value: string } | null {
   const colon = line.indexOf(":");
   if (colon < 0) return null;
   const left = line.slice(0, colon);
@@ -99,7 +101,9 @@ function parseStamp(value: string, isDate: boolean): Date | null {
     return new Date(Number(y), Number(mo) - 1, Number(d), 12, 0, 0);
   }
   if (z) {
-    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm), Number(ss)));
+    return new Date(
+      Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm), Number(ss)),
+    );
   }
   return new Date(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm), Number(ss));
 }
