@@ -29,7 +29,7 @@ import {
 } from "@dayflow/react";
 import { ViewType, type Event as DayFlowEvent } from "@dayflow/core";
 
-import { actions, useAppState } from "@/lib/store";
+import { actions, useAppState, useSettingsLoaded } from "@/lib/store";
 import type { Area, CalEvent, CalView } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { conflictingEventIds } from "@/lib/schedule";
@@ -129,7 +129,69 @@ const VIEW_FOR_SETTING: Record<CalView, ViewType> = {
   year: ViewType.YEAR,
 };
 
+/**
+ * Waits for the two things the calendar is *built* from before building it.
+ *
+ * The glitch this fixes was visible on every single visit to the tab: the grid
+ * appeared as a week, then a beat later redrew as a month, with both painted
+ * over each other in between — two month captions stamped across the grid.
+ *
+ * Nothing was wrong with the calendar. It was being built twice from data that
+ * had not arrived yet. useCalendarApp memoises its CalendarApp on a version
+ * string, and ours contains the calendar-connection signature, which starts
+ * empty and changes the moment that query resolves — so the app was rebuilt,
+ * and rebuilding "discards the current view and date" as the note on that
+ * signature already says. The first build also read defaultCalView from
+ * DEFAULT_SETTINGS, whose value is "week", so the throwaway build opened on a
+ * week grid regardless of the month the person had actually chosen.
+ *
+ * Both are the same mistake the theme had: a default that is a real, applicable
+ * answer is indistinguishable from a loaded one, so the app acts on it. The fix
+ * is the same too — do nothing until the answer is real. A calendar that takes
+ * one more moment to appear and then simply *is* the right view beats one that
+ * appears instantly as the wrong one and corrects itself in front of you.
+ *
+ * The gate is a separate component, not an early return, because the hooks
+ * below must not run against placeholder data at all — an early return after
+ * them would still build the throwaway app.
+ */
 export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) {
+  const { user } = useSession();
+  const settingsLoaded = useSettingsLoaded();
+  const connections = useQuery({
+    ...calendarConnectionsQuery(user?.id ?? ""),
+    enabled: Boolean(user),
+  });
+
+  /*
+    Ready when there is nothing left to wait for — which includes the case where
+    there was never anything to wait for.
+
+    Both halves need the `!user` escape, and the first one caught me: with no
+    signed-in user the settings query is disabled, so it never resolves and
+    `settingsLoaded` stays false forever. Gating on it alone left the calendar as
+    a skeleton that never became a calendar. It is behind the auth gate in the
+    app, so this would not have shown in normal use — which is exactly why it is
+    worth the guard rather than the assumption.
+
+    `data !== undefined` rather than isSuccess, for the same reason: a disabled
+    query is not a failed one, and it never succeeds either.
+  */
+  const ready = !user || (settingsLoaded && connections.data !== undefined);
+
+  if (!ready) {
+    return (
+      <section className="space-y-3">
+        <h2 className="font-serif text-lg">{heading}</h2>
+        <div className="h-[32rem] animate-pulse rounded-2xl bg-secondary/50" />
+      </section>
+    );
+  }
+
+  return <CalendarBoard heading={heading} />;
+}
+
+function CalendarBoard({ heading }: { heading: string }) {
   const state = useAppState();
   const { user } = useSession();
   const connections = useQuery({
