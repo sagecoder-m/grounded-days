@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { WIDGETS, mobileRank } from "./widget-registry";
+import { WIDGETS, isReflective, mobileRank } from "./widget-registry";
 
 /**
  * The phone gets one column, so something has to decide the order. These are
@@ -41,5 +41,34 @@ describe("mobile ordering", () => {
   it("ranks are distinct, so the order is not left to sort stability", () => {
     const ranks = WIDGETS.map((w) => w.mobileRank);
     expect(new Set(ranks).size).toBe(ranks.length);
+  });
+});
+
+describe("reflective widgets", () => {
+  it("marks the charts, and only the charts", () => {
+    const reflective = WIDGETS.filter((w) => w.reflective)
+      .map((w) => w.key)
+      .sort();
+    expect(reflective).toEqual(["balance", "chart", "rhythm", "river"]);
+  });
+
+  it("keeps today's widgets out of the drawer", () => {
+    // The drawer is for looking back. Anything that answers "what am I doing
+    // now" belongs in the column, where a phone meets it without tapping.
+    for (const key of ["greeting", "day", "upcoming", "agenda", "focus"]) {
+      expect(isReflective(key)).toBe(false);
+    }
+  });
+
+  it("sorts every reflective widget after every everyday one", () => {
+    // The drawer sits at the end of the column, so a chart ranking above a list
+    // would put the drawer in the middle of the day's own widgets.
+    const worstEveryday = Math.max(
+      ...WIDGETS.filter((w) => !w.reflective).map((w) => w.mobileRank),
+    );
+    const bestReflective = Math.min(
+      ...WIDGETS.filter((w) => w.reflective).map((w) => w.mobileRank),
+    );
+    expect(bestReflective).toBeGreaterThan(worstEveryday);
   });
 });

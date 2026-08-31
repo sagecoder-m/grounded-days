@@ -55,6 +55,21 @@ export interface WidgetSpec {
    * the rest keep whatever height their content needs.
    */
   trimsOwnContent?: boolean;
+  /**
+   * Whether this looks backwards rather than at today.
+   *
+   * The charts are the widgets you read when you want to know how a fortnight
+   * went — genuinely useful, and not what anyone opens the app to find out at
+   * 8am. On a wide board that costs nothing, because they sit off to one side
+   * and the eye skips them. Stacked into one column they cannot be skipped:
+   * they are four full panels between you and the bottom of the page, and a
+   * pilot user called the result overwhelming.
+   *
+   * So a phone folds these into one line you can tap. Not the same as removing
+   * them, and deliberately not remembered as open — the phone starts on the
+   * day, every time, and looking back is a thing you ask for.
+   */
+  reflective?: boolean;
 }
 
 export const WIDGETS: WidgetSpec[] = [
@@ -100,6 +115,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "river",
+    reflective: true,
     mobileRank: 80,
     label: "Your rhythm",
     hint: "Activity over time, as a river",
@@ -108,6 +124,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "chart",
+    reflective: true,
     mobileRank: 70,
     label: "Two-week chart",
     hint: "A fortnight of what you tended to",
@@ -124,6 +141,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "rhythm",
+    reflective: true,
     mobileRank: 90,
     label: "Rhythm grid",
     hint: "Your weeks as shaded days",
@@ -132,6 +150,7 @@ export const WIDGETS: WidgetSpec[] = [
   },
   {
     key: "balance",
+    reflective: true,
     mobileRank: 100,
     label: "Where your attention went",
     hint: "The balance between your areas",
@@ -166,6 +185,11 @@ export function trimsOwnContent(key: string): boolean {
 /** Order for the single column a phone gets. Unknown keys sort last. */
 export function mobileRank(key: string): number {
   return BY_KEY.get(key)?.mobileRank ?? 999;
+}
+
+/** Whether a phone folds this into the "Looking back" disclosure — see the field. */
+export function isReflective(key: string): boolean {
+  return BY_KEY.get(key)?.reflective === true;
 }
 
 export function isPinned(key: string): boolean {

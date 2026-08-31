@@ -3,7 +3,15 @@ import GridLayout, { type Layout } from "react-grid-layout";
 
 import type { WidgetPlacement } from "@/lib/store-types";
 import { WidgetShell } from "./widget-shell";
-import { isPinned, mobileRank, trimsOwnContent, widgetSpec } from "./widget-registry";
+import {
+  isPinned,
+  isReflective,
+  mobileRank,
+  trimsOwnContent,
+  widgetLabel,
+  widgetSpec,
+} from "./widget-registry";
+import { MobileReflection } from "./mobile-reflection";
 import {
   BOARD_COLS,
   BOARD_MARGIN,
@@ -118,6 +126,48 @@ export function DashboardCanvas({
 
   const narrow = width > 0 && width < CANVAS_MIN_WIDTH;
 
+  /*
+    The stacked layout, split into the part about today and the part about how
+    the fortnight went. Sorted once and then partitioned, so the drawer's
+    contents keep the order they would have had in the column.
+  */
+  const stacked = useMemo(() => {
+    const ordered = [...onBoard].sort((a, b) => mobileRank(a.key) - mobileRank(b.key));
+    return {
+      everyday: ordered.filter((p) => !isReflective(p.key)),
+      reflective: ordered.filter((p) => isReflective(p.key)),
+    };
+  }, [onBoard]);
+
+  const renderStacked = (p: (typeof onBoard)[number]) => (
+    <WidgetShell
+      key={p.key}
+      title={widgetSpec(p.key)?.label ?? p.key}
+      onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
+      pinned={isPinned(p.key)}
+      /*
+        A height budget, which is what makes the lists stop being endless.
+
+        FitRows only trims when it has a bounded height to measure against, and
+        on the canvas that comes from the tile someone sized. Stacked, nothing
+        bounded anything — so every widget rendered in full and "A look at
+        today" put eleven to-dos on screen, one after another, with Upcoming
+        doing the same below it. That is the wall people describe.
+
+        26rem is about two thirds of a phone screen: enough that a quiet day
+        shows completely and nothing is trimmed, low enough that a busy one
+        becomes "+6 more" instead of a scroll.
+
+        Only for widgets that trim themselves. A capped list says how much it
+        left out; a capped chart is a chart with its bottom cut off, which is
+        worse than a long one.
+      */
+      className={trimsOwnContent(p.key) ? "max-h-[26rem]" : undefined}
+    >
+      {render(p.key)}
+    </WidgetShell>
+  );
+
   return (
     /*
       One element, always, and the measured one.
@@ -147,39 +197,18 @@ export function DashboardCanvas({
             the wrong answer: on the default arrangement a phone met two
             analysis charts before today's list, purely because those charts sit
             to its left on a wide screen. See mobileRank in the registry.
+
+            Then split: the day's own widgets stay in the column, and the charts
+            fold into one tappable line at the end of it. Both halves keep the
+            sort, so the drawer's contents are in the same order they would have
+            been in had they stayed.
           */}
-          {[...onBoard]
-            .sort((a, b) => mobileRank(a.key) - mobileRank(b.key))
-            .map((p) => (
-              <WidgetShell
-                key={p.key}
-                title={widgetSpec(p.key)?.label ?? p.key}
-                onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
-                pinned={isPinned(p.key)}
-                /*
-                  A height budget, which is what makes the lists stop being
-                  endless.
-
-                  FitRows only trims when it has a bounded height to measure
-                  against, and on the canvas that comes from the tile someone
-                  sized. Stacked, nothing bounded anything — so every widget
-                  rendered in full and "A look at today" put eleven to-dos on
-                  screen, one after another, with Upcoming doing the same below
-                  it. That is the wall people describe.
-
-                  26rem is about two thirds of a phone screen: enough that a
-                  quiet day shows completely and nothing is trimmed, low enough
-                  that a busy one becomes "+6 more" instead of a scroll.
-
-                  Only for widgets that trim themselves. A capped list says how
-                  much it left out; a capped chart is a chart with its bottom cut
-                  off, which is worse than a long one.
-                */
-                className={trimsOwnContent(p.key) ? "max-h-[26rem]" : undefined}
-              >
-                {render(p.key)}
-              </WidgetShell>
-            ))}
+          {stacked.everyday.map(renderStacked)}
+          {stacked.reflective.length > 0 && (
+            <MobileReflection labels={stacked.reflective.map((p) => widgetLabel(p.key))}>
+              {stacked.reflective.map(renderStacked)}
+            </MobileReflection>
+          )}
         </div>
       ) : (
         /* Nothing until the width is known: rendering at the hook's 1280px
