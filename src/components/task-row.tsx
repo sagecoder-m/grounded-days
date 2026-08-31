@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateField } from "@/components/ui/date-field";
 import { AreaChip } from "./area-chip";
@@ -65,6 +68,23 @@ export function TaskRow({
     !readOnly && !task.done && !!task.date && (overdue || isToday(parseISO(task.date)));
   const notToday = () =>
     actions.updateTask(task.id, { date: format(addDays(new Date(), 1), "yyyy-MM-dd") });
+
+  /*
+    Whether this row's description is open.
+
+    Collapsed to a single line by default, because a description is not always
+    the thing you are looking at. An assignment pulled in from a syllabus can
+    carry a paragraph, and a course full of those turns a list you are scanning
+    into a page you have to read — the titles stop being findable, which is the
+    one job the list has.
+
+    Per row and not persisted: this is a peek at one thing, not a preference
+    about all of them, and a toggle that outlives the glance would need
+    somewhere to live and a reason to be there.
+  */
+  const [showDescription, setShowDescription] = useState(false);
+  const hasDescription = Boolean(task.description?.trim());
+
   return (
     <div
       className={cn(
@@ -90,7 +110,11 @@ export function TaskRow({
               {task.title}
             </div>
             {task.description && (
-              <div className="text-xs text-ink-soft mt-0.5">{task.description}</div>
+              <div
+                className={cn("mt-0.5 text-xs text-ink-soft", !showDescription && "line-clamp-1")}
+              >
+                {task.description}
+              </div>
             )}
           </>
         ) : (
@@ -104,16 +128,58 @@ export function TaskRow({
                 task.done && "line-through decoration-1",
               )}
             />
-            <InlineText
-              value={task.description ?? ""}
-              placeholder="Add a description…"
-              multiline
-              onSave={(v) => actions.updateTask(task.id, { description: v || undefined })}
-              className="text-xs text-ink-soft"
-            />
+            {/*
+              Collapsed is a plain line, not a clamped editor.
+
+              InlineText puts its className on a textarea while editing and on
+              an inline-flex button otherwise, so a line-clamp passed down would
+              either cut the box being typed into or override the button's own
+              display and drop the pencil out of line. A separate one-line
+              preview avoids both, and clicking it opens the same editor the
+              toggle does.
+
+              With no description at all the editor shows directly, so "Add a
+              description…" stays exactly where it has always been — nothing new
+              to find in order to write one.
+            */}
+            {hasDescription && !showDescription ? (
+              <button
+                type="button"
+                onClick={() => setShowDescription(true)}
+                title="Show the full description"
+                className="-mx-2 block w-full truncate rounded-xl px-2 py-1 text-left text-xs text-ink-soft transition-colors hover:bg-secondary/70"
+              >
+                {task.description}
+              </button>
+            ) : (
+              <InlineText
+                value={task.description ?? ""}
+                placeholder="Add a description…"
+                multiline
+                onSave={(v) => actions.updateTask(task.id, { description: v || undefined })}
+                className="text-xs text-ink-soft"
+              />
+            )}
           </>
         )}
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {/* Only when there is something behind it. A control that reveals
+              nothing is worse than no control. */}
+          {hasDescription && (
+            <button
+              type="button"
+              onClick={() => setShowDescription((open) => !open)}
+              aria-expanded={showDescription}
+              className="inline-flex shrink-0 items-center gap-1 text-[11px] text-ink-soft transition-colors hover:text-ink"
+            >
+              {showDescription ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+              {showDescription ? "Hide details" : "Details"}
+            </button>
+          )}
           {showArea && <AreaChip area={task.area} />}
           {task.date && readOnly && (
             <span

@@ -113,6 +113,25 @@ async function fetchIcsEvents(
   return events;
 }
 
+
+/**
+ * How many ids to name in one delete.
+ *
+ * PostgREST puts an `in` list in the request URL, and a Microsoft event id runs
+ * to about a hundred and fifty characters — so this is a URL length budget
+ * rather than a query cost. Twenty-five keeps the longest realistic batch
+ * comfortably inside four kilobytes.
+ */
+const PRUNE_BATCH = 25;
+
+/** Split into fixed-size batches. Empty input yields nothing, so callers can
+ *  loop unconditionally instead of guarding on length first. */
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 async function syncConnection(
   db: ReturnType<typeof serviceClient>,
   connection: ConnectionRow,
@@ -173,35 +192,61 @@ async function syncConnection(
   let removed = 0;
 
   // Instances the provider explicitly reports as cancelled.
-  if (cancelled.length > 0) {
+  for (const batch of chunk(
+    cancelled.map((e) => e.externalId),
+    PRUNE_BATCH,
+  )) {
     const { error, count } = await db
       .from("events")
       .delete({ count: "exact" })
       .eq("connection_id", connection.id)
-      .in(
-        "external_id",
-        cancelled.map((e) => e.externalId),
-      );
+      .in("external_id", batch);
     if (error) throw new Error(`cancelled prune failed: ${error.message}`);
     removed += count ?? 0;
   }
 
-  // Events deleted at the provider simply stop appearing, so anything still
-  // stored inside the window that the provider no longer returned is stale.
-  // Scoped to the window so events outside it are never mistaken for deletions.
-  const keepIds = live.map((e) => e.externalId);
-  const staleQuery = db
+  /*
+    Events deleted at the provider simply stop appearing, so anything still
+    stored inside the window that the provider no longer returned is stale.
+    Scoped to the window so events outside it are never mistaken for deletions.
+
+    This used to ask the database to delete everything NOT in the list of ids
+    just seen, which puts every kept id into the request URL. Google's ids are
+    short and it never mattered; Microsoft's are around a hundred and fifty
+    characters each, so a hundred and thirty of them produced a URL long enough
+    that PostgREST answered "Bad Request" — the events synced, then the sync
+    was marked failed by the step that runs after them.
+
+    Reading the stored ids and deleting the difference inverts the size problem.
+    The list in the URL becomes the events that have actually gone, which is
+    normally none and occasionally a handful, rather than everything that
+    remains. The read itself is a filtered GET with no long URL.
+  */
+  const keep = new Set(live.map((e) => e.externalId));
+  const { data: storedRows, error: storedError } = await db
     .from("events")
-    .delete({ count: "exact" })
+    .select("external_id")
     .eq("connection_id", connection.id)
     .gte("date", windowStart.toISOString().slice(0, 10))
     .lte("date", windowEnd.toISOString().slice(0, 10));
+  if (storedError) throw new Error(`stale read failed: ${storedError.message}`);
 
-  const { error: staleError, count: staleCount } =
-    keepIds.length > 0
-      ? await staleQuery.not("external_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`)
-      : await staleQuery;
-  if (staleError) throw new Error(`stale prune failed: ${staleError.message}`);
+  const staleIds = (storedRows ?? [])
+    .map((row: { external_id: string | null }) => row.external_id)
+    .filter((id: string | null): id is string => Boolean(id) && !keep.has(id));
+
+  let staleCount = 0;
+  // Chunked for the same reason: even the stale list must not be assumed small
+  // enough for one URL when a whole calendar has been emptied at the provider.
+  for (const batch of chunk(staleIds, PRUNE_BATCH)) {
+    const { error, count } = await db
+      .from("events")
+      .delete({ count: "exact" })
+      .eq("connection_id", connection.id)
+      .in("external_id", batch);
+    if (error) throw new Error(`stale prune failed: ${error.message}`);
+    staleCount += count ?? 0;
+  }
   removed += staleCount ?? 0;
 
   await db
