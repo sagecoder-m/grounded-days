@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DateField } from "@/components/ui/date-field";
+import { TimeField } from "@/components/ui/time-field";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ export function AddTaskDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(defaultDate ?? todayISO());
+  const [dueTime, setDueTime] = useState("");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,12 +47,14 @@ export function AddTaskDialog({
       title: title.trim(),
       description: description.trim() || undefined,
       date,
+      dueTime: dueTime || undefined,
       projectId,
       subprojectId,
       courseId,
     });
     setTitle("");
     setDescription("");
+    setDueTime("");
     setOpen(false);
   }
 
@@ -82,9 +86,19 @@ export function AddTaskDialog({
               rows={3}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="t-date">Due date</Label>
-            <DateField id="t-date" value={date} onChange={setDate} />
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="t-date">Due date</Label>
+              <DateField id="t-date" value={date} onChange={setDate} />
+            </div>
+            {/* Only with a day to hang it on — the database rejects a time
+                without one, because a time with no day is not a deadline. */}
+            {date && (
+              <div className="space-y-1.5">
+                <Label htmlFor="t-time">Due time</Label>
+                <TimeField id="t-time" value={dueTime} onChange={setDueTime} clearable={false} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="submit" className="rounded-full">

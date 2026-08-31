@@ -18,6 +18,15 @@ export interface Task {
   title: string;
   description?: string;
   date?: string; // ISO yyyy-mm-dd
+  /**
+   * Optional 24-hour "HH:mm" the task is due on its date.
+   *
+   * Coursework deadlines are almost never "that day" — they are 11:59pm on
+   * that day, and the difference is what makes something late. Kept separate
+   * from `date` and timezone-naive on purpose: 11:59pm is 11:59pm where you
+   * are, not an instant that moves when you travel.
+   */
+  dueTime?: string;
   done: boolean;
   createdAt: number;
   /**

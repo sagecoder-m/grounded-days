@@ -88,6 +88,7 @@ export function rowToTask(row: Tables<"tasks">): Task {
     title: row.title,
     description: row.description ?? undefined,
     date: row.date ?? undefined,
+    dueTime: row.due_time ?? undefined,
     done: row.done,
     createdAt: toEpoch(row.created_at),
     updatedAt: toEpoch(row.updated_at),
@@ -434,6 +435,14 @@ export function taskPatchToRow(patch: Partial<Task>): TablesUpdate<"tasks"> {
   if ("description" in patch) row.description = patch.description ?? null;
   if ("courseId" in patch) row.course_id = patch.courseId ?? null;
   if ("date" in patch) row.date = patch.date ?? null;
+  /*
+    Clearing the date clears the time with it. A time with no day is not a
+    deadline, and the database rejects that pair outright — so without this,
+    dragging an assignment off the calendar would fail the write rather than
+    simply undating it.
+  */
+  if ("dueTime" in patch) row.due_time = patch.dueTime ?? null;
+  if ("date" in patch && !patch.date) row.due_time = null;
   if (patch.done !== undefined) row.done = patch.done;
   if ("projectId" in patch) row.project_id = patch.projectId ?? null;
   if ("subprojectId" in patch) row.subproject_id = patch.subprojectId ?? null;

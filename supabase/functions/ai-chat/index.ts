@@ -219,6 +219,9 @@ ORGANIZING A PASTE OF TASKS OR ASSIGNMENTS
   these."
 - Extract every item as its own task, and put them ALL in one create_tasks call — never one
   call per task. Parse any date given (any format) into YYYY-MM-DD before calling it.
+- A time given with the date ("due Aug 31 at 11:59pm", "by 9am Friday") goes in dueTime as
+  24-hour HH:MM. A date with no stated time has no time — midnight is not a default, and an
+  11:59pm deadline written as midnight is a day wrong in the direction that matters.
 - No date given: create it undated — never invent one — but check it against their actual
   schedule and say in your reply that it's undated, with a concrete recommendation (spacing,
   order, or a specific date) as a question. Apply a date only if they confirm.
@@ -577,6 +580,13 @@ const TOOLS = [
                     "Optional due date as YYYY-MM-DD. Omit entirely if they did not give " +
                     "one — do not invent a deadline.",
                 },
+                dueTime: {
+                  type: "string",
+                  description:
+                    "Optional time of day it is due, as 24-hour HH:MM — '23:59' for " +
+                    "11:59pm. Only when a time was actually given; a date with no stated " +
+                    "time means no time, not midnight. Requires date to be set too.",
+                },
                 courseId: {
                   type: "string",
                   description:
@@ -668,15 +678,38 @@ async function createOneTask(
     if (owned) courseId = owned.id;
   }
 
-  const { error } = await serviceClient()
-    .from("tasks")
-    .insert({ user_id: userId, title, area, date, done: false, course_id: courseId });
+  /*
+    A due time only counts alongside a date, and only in 24-hour HH:MM.
+
+    Validated here rather than trusted, for the same reason courseId is: the
+    model produces it. The database enforces both rules as constraints, so a bad
+    value would not corrupt anything — it would fail the whole insert, losing
+    every other assignment in the same batch over one malformed string.
+  */
+  let dueTime: string | null = null;
+  if (
+    date &&
+    typeof args.dueTime === "string" &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(args.dueTime.trim())
+  ) {
+    dueTime = args.dueTime.trim();
+  }
+
+  const { error } = await serviceClient().from("tasks").insert({
+    user_id: userId,
+    title,
+    area,
+    date,
+    due_time: dueTime,
+    done: false,
+    course_id: courseId,
+  });
 
   if (error) {
     console.error("create_task insert failed", error.message);
     return { ok: false, error: "The task could not be saved." };
   }
-  return { ok: true, task: { title, area, date, course: courseId } };
+  return { ok: true, task: { title, area, date, dueTime, course: courseId } };
 }
 
 /**

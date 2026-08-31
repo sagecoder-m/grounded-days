@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateField } from "@/components/ui/date-field";
+import { TimeField, formatTime } from "@/components/ui/time-field";
 import { AreaChip } from "./area-chip";
 import { actions, type Task } from "@/lib/store";
 import { addDays, format, isBefore, isToday, parseISO } from "date-fns";
@@ -187,6 +188,12 @@ export function TaskRow({
               className={cn("text-[11px]", overdue ? "text-[color:var(--clay)]" : "text-ink-soft")}
             >
               {niceDate(task.date)}
+              {/* The clock time, when there is one. Coursework is due at
+                  11:59pm far more often than it is due "that day", and which
+                  of the two it is decides whether something is late. */}
+              {formatTime(task.dueTime) && (
+                <span className="ml-1 tabular-nums">{formatTime(task.dueTime)}</span>
+              )}
             </span>
           )}
           {!readOnly && (
@@ -201,6 +208,15 @@ export function TaskRow({
                 "h-auto w-auto gap-0 border-0 bg-transparent p-0 text-[11px] underline decoration-dotted underline-offset-4 hover:bg-transparent focus:border-0",
                 overdue ? "text-[color:var(--clay)]" : "text-ink-soft",
               )}
+            />
+          )}
+          {/* Offered only once a date exists: a time with no day is not a
+              deadline, and the database refuses the pair outright. */}
+          {!readOnly && task.date && (
+            <TimeField
+              value={task.dueTime ?? ""}
+              onChange={(v) => actions.updateTask(task.id, { dueTime: v || undefined })}
+              aria-label="Due time"
             />
           )}
           {canDefer && (

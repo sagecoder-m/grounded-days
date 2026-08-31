@@ -739,6 +739,7 @@ export type Database = {
           date: string | null;
           description: string | null;
           done: boolean;
+          due_time: string | null;
           id: string;
           project_id: string | null;
           subproject_id: string | null;
@@ -753,6 +754,7 @@ export type Database = {
           date?: string | null;
           description?: string | null;
           done?: boolean;
+          due_time?: string | null;
           id?: string;
           project_id?: string | null;
           subproject_id?: string | null;
@@ -767,6 +769,7 @@ export type Database = {
           date?: string | null;
           description?: string | null;
           done?: boolean;
+          due_time?: string | null;
           id?: string;
           project_id?: string | null;
           subproject_id?: string | null;

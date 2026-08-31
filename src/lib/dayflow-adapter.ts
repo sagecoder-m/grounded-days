@@ -43,6 +43,7 @@ import type { CalendarType, Event as DayFlowEvent } from "@dayflow/core";
 
 import type { Area, CalEvent, Goal, Task } from "@/lib/store-types";
 import type { CalendarConnection } from "@/lib/store-types";
+import { formatTime } from "@/components/ui/time-field";
 
 const AREA_COLORS: Record<Area, { eventColor: string; lineColor: string; textColor: string }> = {
   personal: {
@@ -286,7 +287,15 @@ export function taskToDayFlowEvent(
     // The course goes in front of the title, not after it: chips truncate from
     // the right, so a tag on the end is the first thing lost on the narrow
     // columns of a week view \u2014 which is where it is needed.
-    title: `${task.done ? "\u2611" : "\u2610"} ${courseTag ? `${courseTag} \u00b7 ` : ""}${task.title}`,
+    //
+    // The time goes last, and last is a decision rather than an afterthought.
+    // What you scan a calendar for is *which* assignment this is, and the
+    // course answers that; the exact minute is detail you want once you have
+    // found it. The day widgets give the time a column of its own, which is
+    // where "when is this due" actually gets read.
+    title: `${task.done ? "\u2611" : "\u2610"} ${courseTag ? `${courseTag} \u00b7 ` : ""}${
+      task.title
+    }${formatTime(task.dueTime) ? ` \u00b7 ${formatTime(task.dueTime)}` : ""}`,
     start: day,
     end: day,
     allDay: true,

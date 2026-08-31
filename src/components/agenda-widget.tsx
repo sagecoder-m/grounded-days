@@ -6,6 +6,7 @@ import { CalendarDays } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import { dateKey } from "@/lib/dates";
 import { FitRows } from "@/components/dashboard/fit-rows";
+import { formatTime } from "@/components/ui/time-field";
 import type { Area, CalEvent, Task } from "@/lib/store-types";
 
 const AREA_VAR: Record<Area, string> = {
@@ -63,9 +64,17 @@ export function AgendaWidget() {
       // Finished work is not part of what is coming. It stays visible on the
       // day's own list, which is where crossing something off belongs.
       if (task.done) continue;
-      // A task has a date but no time, so it sits after the day's events —
-      // an appointment is fixed and a task is whenever you get to it.
-      items.push({ kind: "task", date: task.date, sort: "99:99", task });
+      /*
+        A task with a due time sorts at it, among the day's events.
+
+        The old rule — every task after every event — was reasoning from "a task
+        has a date but no time", which is no longer true of coursework. An
+        assignment due at 9am is genuinely before a 2pm lecture, and burying it
+        under the lecture is the sort of small wrongness that makes a day plan
+        untrustworthy. Tasks with no time keep the old position: whenever you
+        get to them, which is after the things that are fixed.
+      */
+      items.push({ kind: "task", date: task.date, sort: task.dueTime || "99:99", task });
     }
 
     items.sort((a, b) => a.date.localeCompare(b.date) || a.sort.localeCompare(b.sort));
@@ -172,7 +181,9 @@ function AgendaEvent({ event }: { event: CalEvent }) {
 function AgendaTask({ task }: { task: Task }) {
   return (
     <div data-fit-row className="flex items-baseline gap-2 px-1 py-1">
-      <span className="w-14 shrink-0 text-right text-[11px] text-ink-soft">to do</span>
+      <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-ink-soft">
+        {formatTime(task.dueTime) ?? "to do"}
+      </span>
       <span
         className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
         style={{ backgroundColor: AREA_VAR[task.area] }}

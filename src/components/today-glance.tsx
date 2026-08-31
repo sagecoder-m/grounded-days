@@ -8,6 +8,7 @@ import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FitRows } from "@/components/dashboard/fit-rows";
+import { formatTime } from "@/components/ui/time-field";
 import type { Area, Task } from "@/lib/store-types";
 
 const AREA_VAR: Record<Area, string> = {
@@ -59,7 +60,20 @@ export function TodayGlance() {
   // carry their own date, so they need no separate heading.
   const todays = state.tasks.filter((t) => t.date === iso);
   const overdue = state.tasks.filter((t) => !t.done && t.date && t.date < iso);
-  const tasks = [...overdue, ...todays.filter((t) => !t.done), ...todays.filter((t) => t.done)];
+  /*
+    Today's outstanding work, earliest deadline first.
+
+    Only among themselves — tasks still sit below the day's events here, because
+    this widget is read as "the shape of the day, then what I owe it". But an
+    assignment due at 9am belongs above one due at 11:59pm, and before this they
+    came out in whatever order the database returned.
+  */
+  const byTime = (a: Task, b: Task) => (a.dueTime ?? "99:99").localeCompare(b.dueTime ?? "99:99");
+  const tasks = [
+    ...overdue,
+    ...todays.filter((t) => !t.done).sort(byTime),
+    ...todays.filter((t) => t.done),
+  ];
 
   const remaining = tasks.filter((t) => !t.done).length;
   const nothing = events.length === 0 && tasks.length === 0;
@@ -215,11 +229,13 @@ function TaskAgendaRow({ task, today }: { task: Task; today: string }) {
       className="group float-row flex items-baseline gap-3 rounded-2xl border border-border bg-card px-4 py-2.5"
     >
       <span
-        className={`w-14 shrink-0 text-right text-xs ${
+        className={`w-14 shrink-0 text-right text-xs tabular-nums ${
           late ? "text-[color:var(--clay)]" : "text-ink-soft"
         }`}
       >
-        {late ? format(new Date(`${task.date}T12:00:00`), "MMM d") : "to do"}
+        {late
+          ? format(new Date(`${task.date}T12:00:00`), "MMM d")
+          : (formatTime(task.dueTime) ?? "to do")}
       </span>
       <Checkbox
         checked={task.done}

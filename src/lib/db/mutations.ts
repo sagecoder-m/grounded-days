@@ -176,6 +176,9 @@ export const actions = {
         title: input.title,
         description: input.description ?? null,
         date: input.date ?? null,
+        // Guarded by the same rule the database enforces: a time with no day
+        // is not a deadline.
+        due_time: input.date ? (input.dueTime ?? null) : null,
         done: false,
         project_id: input.projectId ?? null,
         subproject_id: input.subprojectId ?? null,
