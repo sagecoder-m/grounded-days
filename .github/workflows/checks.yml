@@ -1,0 +1,39 @@
+# Typecheck and tests on every push and pull request.
+#
+# Deliberately not `bun run lint`. ESLint currently reports about 1,800
+# problems across the repository — almost all of them Prettier formatting in
+# files nobody has run the formatter over — so adding it here would make this
+# workflow red on its first run and stay red, which trains everyone to ignore
+# it. That is worse than having no check at all. Worth fixing separately with
+# `bun run format`, and worth adding here once it passes.
+#
+# Also not `bun run build`: Vercel builds every push already, and duplicating
+# it here would double the wait to learn the same thing.
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # --frozen-lockfile so CI fails on a lockfile that does not match
+      # package.json, rather than quietly resolving something different from
+      # what anyone has run locally.
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Test
+        run: bun run test
