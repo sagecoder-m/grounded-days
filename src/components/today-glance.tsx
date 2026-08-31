@@ -3,7 +3,7 @@ import { addDays, format } from "date-fns";
 import { CalendarDays } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import { conflictingEventIds } from "@/lib/schedule";
 import { useMounted } from "@/lib/use-mounted";
 import { Checkbox } from "@/components/ui/checkbox";

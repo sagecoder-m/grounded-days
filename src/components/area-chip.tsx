@@ -30,11 +30,3 @@ export function AreaChip({ area, className }: { area: Area; className?: string }
     </span>
   );
 }
-
-export function areaColor(area: Area) {
-  return area === "personal"
-    ? "var(--sage)"
-    : area === "professional"
-      ? "var(--brown)"
-      : "var(--clay)";
-}

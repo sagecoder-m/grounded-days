@@ -47,7 +47,7 @@ import {
   toDayFlowEvent,
 } from "@/lib/dayflow-adapter";
 import { useDayFlowEventSync } from "@/lib/use-dayflow-sync";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import {
   AddEventDialog,
   EditEventDialog,

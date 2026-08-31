@@ -154,8 +154,3 @@ export function HowFarYouveCome({
     </section>
   );
 }
-
-/** Newest first. The thing you finished this morning is the one worth seeing. */
-export function newestFirst(tasks: Task[]): Task[] {
-  return [...tasks].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-}

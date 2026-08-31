@@ -2,7 +2,7 @@ import { addDays, format, parseISO } from "date-fns";
 import { CalendarDays } from "lucide-react";
 
 import { useAppState } from "@/lib/store";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import type { Area, CalEvent } from "@/lib/store-types";
 
 /** Same horizon Education's own "Due this week" uses, so an event and an

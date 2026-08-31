@@ -9,23 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { FitRows } from "@/components/dashboard/fit-rows";
 import { actions, type Task } from "@/lib/store";
 import type { Area, CalEvent } from "@/lib/store-types";
-
-/** Local yyyy-mm-dd. Not toISOString(), which converts to UTC first and so
- *  reports the previous day for anyone west of Greenwich after 5pm. */
-export function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate(),
-  ).padStart(2, "0")}`;
-}
-
-/** dateKey for today, and for `days` after today. */
-export function dayRange(days: number, startOffset = 0) {
-  const base = new Date();
-  return {
-    from: dateKey(addDays(base, startOffset)),
-    to: dateKey(addDays(base, startOffset + days - 1)),
-  };
-}
+import { dateKey } from "@/lib/dates";
 
 const AREA_VAR: Record<Area, string> = {
   personal: "var(--sage)",

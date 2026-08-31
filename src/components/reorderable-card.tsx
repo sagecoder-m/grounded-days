@@ -1,3 +1,4 @@
+import type { CardDragState } from "@/lib/use-card-drag";
 import { useState, type ReactNode } from "react";
 import { GripVertical } from "lucide-react";
 
@@ -21,11 +22,6 @@ import { actions } from "@/lib/store";
  * there — the control faded out as the cursor approached. A drag affordance
  * nobody can reach is not an affordance.
  */
-
-export interface CardDragState {
-  id: string;
-  overId: string | null;
-}
 
 export type ReorderableCollection = "goals" | "projects" | "habits" | "courses";
 
@@ -128,18 +124,4 @@ export function ReorderableCard({
       {children}
     </div>
   );
-}
-
-/**
- * Shared drag state for one collection on a page, plus the handlers a container
- * needs. Kept here so each page does not reimplement the same three lines.
- */
-export function useCardDrag() {
-  const [drag, setDrag] = useState<CardDragState | null>(null);
-  return {
-    drag,
-    setDrag,
-    /** Ends a drag that finished outside any card. */
-    endDrag: () => setDrag(null),
-  };
 }

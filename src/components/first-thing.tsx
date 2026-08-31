@@ -28,21 +28,6 @@ import { Input } from "@/components/ui/input";
  * cannot linger or be seen twice by someone who is already going.
  */
 
-/** Nothing anywhere. Deliberately every kind of content, not just tasks, so
- *  someone who started with a habit or a journal line is never sent back here. */
-export function isNewAccount(state: AppState): boolean {
-  return (
-    state.tasks.length === 0 &&
-    state.habits.length === 0 &&
-    state.goals.length === 0 &&
-    state.journal.length === 0 &&
-    state.courses.length === 0 &&
-    state.projects.length === 0 &&
-    state.focusSessions.length === 0 &&
-    state.events.filter((e) => e.source === "local").length === 0
-  );
-}
-
 export function FirstThing({ onLookAround }: { onLookAround: () => void }) {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);

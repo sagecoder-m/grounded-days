@@ -37,11 +37,18 @@ function ProjectPage() {
   const state = useAppState();
   const project = state.projects.find((p) => p.id === projectId);
 
-  // Only once the project is known to exist, so a stale link does not become
-  // the thing you are sent back to.
+  /*
+    Only once the project is known to exist, so a stale link does not become the
+    thing you are sent back to.
+    
+    The id is pulled out rather than reaching through `project` inside the
+    effect: the effect genuinely only depends on the id, and written that way
+    the dependency list says so instead of listing one thing and using another.
+  */
+  const rememberedId = project?.id;
   useEffect(() => {
-    if (project) rememberProject(project.id);
-  }, [project?.id]);
+    if (rememberedId) rememberProject(rememberedId);
+  }, [rememberedId]);
 
   /** Which sub-project is open, and which goal is filling the screen. */
   const [openSub, setOpenSub] = useState<string | null>(null);

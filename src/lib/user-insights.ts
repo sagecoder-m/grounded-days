@@ -20,6 +20,7 @@
 import { addDays, differenceInCalendarDays, format, startOfWeek, subWeeks } from "date-fns";
 
 import type { AppState, Area, Task } from "./store-types";
+import { dateKey } from "./dates";
 
 /** Monday, matching the habit grid and the calendar. */
 const WEEK_OPTS = { weekStartsOn: 1 } as const;
@@ -389,4 +390,58 @@ export function waitingAWhile(state: AppState, today = new Date()): Task[] {
   return state.tasks
     .filter((t) => !t.done && t.date && t.date < cutoff)
     .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+}
+
+// ------------------------------------------------- selectors moved out of views
+//
+// These three were exported from component files, which meant a module that
+// draws a screen also had to be imported for a question about the data. They
+// belong with waitingAWhile above: all four answer "what does this account look
+// like right now", and none of them render anything.
+
+/** Nothing anywhere. Deliberately every kind of content, not just tasks, so
+ *  someone who started with a habit or a journal line is never sent back to the
+ *  empty state. */
+export function isNewAccount(state: AppState): boolean {
+  return (
+    state.tasks.length === 0 &&
+    state.habits.length === 0 &&
+    state.goals.length === 0 &&
+    state.journal.length === 0 &&
+    state.courses.length === 0 &&
+    state.projects.length === 0 &&
+    state.focusSessions.length === 0 &&
+    state.events.filter((e) => e.source === "local").length === 0
+  );
+}
+
+/**
+ * The single next thing, for the one-at-a-time screen.
+ *
+ * Deliberately not random and not "most important" — there is no priority field
+ * in this app, and inventing one here would be inventing a judgement. Overdue
+ * and due-today first, then dated work in date order, then undated.
+ */
+export function pickOneThing(state: AppState, skipped: string[] = []): Task | null {
+  const today = dateKey(new Date());
+  const open = state.tasks.filter((t) => !t.done && !skipped.includes(t.id));
+  if (open.length === 0) return null;
+
+  const rank = (t: Task) => {
+    if (t.date && t.date <= today) return 0; // due or overdue
+    if (t.date) return 1; // ahead of today
+    return 2; // undated
+  };
+  return (
+    [...open].sort((a, b) => {
+      const byRank = rank(a) - rank(b);
+      if (byRank !== 0) return byRank;
+      return (a.date ?? "9999").localeCompare(b.date ?? "9999");
+    })[0] ?? null
+  );
+}
+
+/** Newest first. The thing you finished this morning is the one worth seeing. */
+export function newestFirst(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
 }

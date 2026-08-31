@@ -4,7 +4,7 @@ import { addDays, format, isToday, isTomorrow, parseISO } from "date-fns";
 import { CalendarDays } from "lucide-react";
 
 import { useAppState } from "@/lib/store";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import { FitRows } from "@/components/dashboard/fit-rows";
 import type { Area, CalEvent, Task } from "@/lib/store-types";
 

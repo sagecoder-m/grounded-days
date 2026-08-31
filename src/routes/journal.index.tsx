@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import { actions, useAppState } from "@/lib/store";
 import type { JournalEntry, Mood } from "@/lib/store-types";
 import { affirmationForDate } from "@/lib/affirmations";

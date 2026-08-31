@@ -4,6 +4,7 @@ import { addDays, format, parseISO } from "date-fns";
 
 import { actions, AREA_META, todayISO } from "@/lib/store";
 import type { AppState, Task } from "@/lib/store-types";
+import { pickOneThing } from "@/lib/user-insights";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -30,35 +31,6 @@ import { Button } from "@/components/ui/button";
  * only safe move would be to close the whole thing, which is how people end up
  * avoiding the app rather than the task.
  */
-
-/**
- * Which one to offer.
- *
- * Today's work first, oldest first within that, then anything else that is
- * dated, then the undated. Oldest-first rather than newest, because the thing
- * that has been sitting longest is usually the one costing the most to carry.
- *
- * Deliberately not random and not "most important" — there is no priority field
- * in this app, and inventing one here would be inventing a judgement.
- */
-export function pickOneThing(state: AppState, skipped: string[] = []): Task | null {
-  const today = todayISO();
-  const open = state.tasks.filter((t) => !t.done && !skipped.includes(t.id));
-  if (open.length === 0) return null;
-
-  const rank = (t: Task) => {
-    if (t.date && t.date <= today) return 0; // due or overdue
-    if (t.date) return 1; // ahead of today
-    return 2; // undated
-  };
-  return (
-    [...open].sort((a, b) => {
-      const byRank = rank(a) - rank(b);
-      if (byRank !== 0) return byRank;
-      return (a.date ?? "9999").localeCompare(b.date ?? "9999");
-    })[0] ?? null
-  );
-}
 
 export function OneThing({ state, onClose }: { state: AppState; onClose: () => void }) {
   /** Passed over this sitting. Not persisted: skipping is a mood, not a decision

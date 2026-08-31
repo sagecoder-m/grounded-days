@@ -4,7 +4,8 @@ import { format, parseISO, addDays } from "date-fns";
 import { actions, useAppState } from "@/lib/store";
 import type { Settings } from "@/lib/store-types";
 import { waitingAWhile, WAITING_MIN } from "@/lib/user-insights";
-import { TaskGrid, dateKey, dayRange } from "@/components/task-grid";
+import { TaskGrid } from "@/components/task-grid";
+import { dateKey, dayRange } from "@/lib/dates";
 import { TodayGlance } from "@/components/today-glance";
 import { AgendaWidget } from "@/components/agenda-widget";
 import { FocusTimer } from "@/components/focus-timer";
@@ -15,7 +16,8 @@ import { placeBelow } from "@/components/dashboard/layout-engine";
 import { DEFAULT_WIDGETS } from "@/lib/store";
 import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
-import { FirstThing, isNewAccount } from "@/components/first-thing";
+import { FirstThing } from "@/components/first-thing";
+import { isNewAccount } from "@/lib/user-insights";
 import { WaitingAWhile } from "@/components/waiting-a-while";
 import { OneThing } from "@/components/one-thing";
 import { AreaBalance } from "@/components/area-balance";
@@ -61,6 +63,15 @@ function greeting(name: string) {
 function Overview() {
   const state = useAppState();
   const today = new Date();
+  /*
+    The day, as a stable value the memos below can depend on.
+
+    `today` is a fresh Date on every render, so listing it as a dependency
+    defeats the memo entirely — which is why it was omitted, and why the chart
+    then never noticed midnight passing. A yyyy-MM-dd string changes exactly
+    once a day, which is when these actually need recomputing.
+  */
+  const todayKey = dateKey(today);
 
   const areaProgress = useMemo(() => {
     const areas = ["personal", "professional", "education"] as const;
@@ -79,7 +90,10 @@ function Overview() {
     // dateKey, not toISOString: the latter converts to UTC first, so an evening
     // in a western timezone produced tomorrow's key and the chart attributed
     // completed work to the wrong bar.
-    const days = Array.from({ length: 14 }, (_, i) => dateKey(addDays(today, -13 + i)));
+    // Derived from todayKey rather than `today`, so this really is a function
+    // of its dependencies.
+    const base = parseISO(todayKey);
+    const days = Array.from({ length: 14 }, (_, i) => dateKey(addDays(base, -13 + i)));
     return days.map((d) => {
       const dObj = parseISO(d);
       const personal =
@@ -93,7 +107,7 @@ function Overview() {
       ).length;
       return { day: format(dObj, "MMM d"), personal, professional, education };
     });
-  }, [state.tasks, state.habits]);
+  }, [state.tasks, state.habits, todayKey]);
 
   /**
    * The chart's headline. It leads the Overview, so it reports what has been

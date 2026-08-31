@@ -4,10 +4,12 @@ import { ChevronRight, Pause, Play, Plus } from "lucide-react";
 
 import { actions, useAppState } from "@/lib/store";
 import { areaProjectProgress, lastProjectId, projectProgress } from "@/lib/project-progress";
-import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
+import { ReorderableCard } from "@/components/reorderable-card";
+import { useCardDrag } from "@/lib/use-card-drag";
 import { AddProjectDialog } from "@/components/add-project-dialog";
 import { SoftProgress } from "@/components/soft-progress";
-import { HowFarYouveCome, newestFirst, type HowFarGroup } from "@/components/how-far";
+import { HowFarYouveCome, type HowFarGroup } from "@/components/how-far";
+import { newestFirst } from "@/lib/user-insights";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { AreaEvents } from "@/components/area-events";
 import { Button } from "@/components/ui/button";

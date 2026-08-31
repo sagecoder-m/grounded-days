@@ -33,7 +33,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/lib/use-is-admin";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

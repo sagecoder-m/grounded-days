@@ -36,12 +36,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { actions } from "@/lib/store";
+import { dateKey } from "@/lib/dates";
 import type { Area, CalEvent } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { shiftToDate } from "@/lib/schedule";
 import { useSession } from "@/lib/use-session";
-
-export const iso = (d: Date) => format(d, "yyyy-MM-dd");
 
 /** What the calendar can create. All three carry a day now: an event has a start
  *  and an end, a task has a due date, a goal has an optional target. */
@@ -110,7 +109,7 @@ export function AddEventDialog({
    * was born with a Monday due date and appeared immediately under "Still
    * waiting". Today wins unless the visible period starts later than today.
    */
-  const todayKey = iso(new Date());
+  const todayKey = dateKey(new Date());
   const [startDate, setStartDate] = useState(
     defaultDate && defaultDate > todayKey ? defaultDate : todayKey,
   );
@@ -166,7 +165,6 @@ export function AddEventDialog({
     if (draft.startTime) setStartTime(draft.startTime);
     if (draft.endTime) setEndTime(draft.endTime);
     setOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
   function reset() {
@@ -403,7 +401,7 @@ export function AddEventDialog({
  */
 export function EditEventDialog({ event, onClose }: { event: CalEvent; onClose: () => void }) {
   const [title, setTitle] = useState(event.title);
-  const [date, setDate] = useState(event.date ?? iso(new Date()));
+  const [date, setDate] = useState(event.date ?? dateKey(new Date()));
   const [endDate, setEndDate] = useState(event.endDate ?? "");
 
   const save = () => {

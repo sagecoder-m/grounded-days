@@ -5,10 +5,11 @@ import { actions, useAppState } from "@/lib/store";
 import type { Goal, Habit, Task } from "@/lib/store-types";
 import { HowFarYouveCome } from "@/components/how-far";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
-import { dateKey } from "@/components/task-grid";
+import { dateKey } from "@/lib/dates";
 import { TaskRow } from "@/components/task-row";
 import { GoalCard } from "@/components/goal-card";
-import { ReorderableCard, useCardDrag } from "@/components/reorderable-card";
+import { ReorderableCard } from "@/components/reorderable-card";
+import { useCardDrag } from "@/lib/use-card-drag";
 import { SoftProgress } from "@/components/soft-progress";
 import { AddTaskDialog } from "@/components/add-task-dialog";
 import { AddGoalDialog } from "@/components/add-goal-dialog";
@@ -64,6 +65,12 @@ function PersonalPage() {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   const today = new Date();
+  /*
+    The day as a stable string — see the note in routes/index.tsx. Also what
+    the deps array below used to compute inline, which ESLint could not check
+    statically and warned about separately.
+  */
+  const todayKey = dateKey(today);
   /**
    * The current week, starting on whichever day the profile says.
    *
@@ -73,9 +80,9 @@ function PersonalPage() {
    * could be read as "this week".
    */
   const days = useMemo(() => {
-    const start = startOfWeek(today, { weekStartsOn: state.settings.weekStartsOn });
+    const start = startOfWeek(parseISO(todayKey), { weekStartsOn: state.settings.weekStartsOn });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [state.settings.weekStartsOn, dateKey(today)]);
+  }, [state.settings.weekStartsOn, todayKey]);
 
   const [newHabit, setNewHabit] = useState("");
   const goalDrag = useCardDrag();
@@ -96,13 +103,14 @@ function PersonalPage() {
     series that does.
   */
   const chartData = useMemo(() => {
+    const base = parseISO(todayKey);
     return Array.from({ length: 21 }, (_, i) => {
-      const d = addDays(today, -20 + i);
+      const d = addDays(base, -20 + i);
       const iso = dateKey(d);
       const completed = state.habits.reduce((s, h) => s + (h.log[iso] ? 1 : 0), 0);
       return { day: format(d, "M/d"), habits: completed };
     });
-  }, [state.habits]);
+  }, [state.habits, todayKey]);
 
   return (
     <div className="space-y-10">
