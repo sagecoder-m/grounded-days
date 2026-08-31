@@ -227,12 +227,22 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
         Boolean(g.targetDate) && (areaFilter.size === 0 || areaFilter.has(g.area)),
     );
 
+    /*
+      How each course should read on the grid. The code when there is one,
+      because that is what a syllabus, a portal and the student all call it;
+      the name when there is not, since "Statistics" is a complete answer and
+      an assignment with no course attached at all is worse than a long tag.
+    */
+    const courseTag = new Map(state.courses.map((c) => [c.id, c.code || c.name]));
+
     return [
       ...visible.map(toDayFlowEvent),
-      ...tasks.map(taskToDayFlowEvent),
+      ...tasks.map((t) =>
+        taskToDayFlowEvent(t, t.courseId ? courseTag.get(t.courseId) : undefined),
+      ),
       ...goals.map(goalToDayFlowEvent),
     ];
-  }, [state.events, state.tasks, state.goals, areaFilter]);
+  }, [state.events, state.tasks, state.goals, state.courses, areaFilter]);
 
   /**
    * Writes a drag or resize back through the same actions.updateEvent the old

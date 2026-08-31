@@ -261,7 +261,20 @@ export function taskIdFromEventId(id: string): string {
  * emptier the more of it you got through, which is both wrong and, on a page
  * meant to feel calm, discouraging in precisely the way this app avoids.
  */
-export function taskToDayFlowEvent(task: Task & { date: string }): DayFlowEvent {
+export function taskToDayFlowEvent(
+  task: Task & { date: string },
+  /**
+   * The course this is an assignment for, as it should read on the grid \u2014
+   * "OPAN 6605" for a course with a code, its name otherwise.
+   *
+   * A due date on a calendar answers "when", and for coursework the missing
+   * half is "for what". Six assignments in one week, titled "Problem Set 3" and
+   * "Discussion post", are indistinguishable at a glance precisely when it
+   * matters most, which is a busy week. Passed in rather than read here because
+   * this module maps shapes and does not reach for data.
+   */
+  courseTag?: string,
+): DayFlowEvent {
   // Parsed with an explicit local midnight, never new Date("yyyy-mm-dd"), which
   // is UTC midnight and lands on the previous day west of Greenwich.
   const day = dateToPlainDate(new Date(`${task.date}T00:00:00`));
@@ -269,7 +282,11 @@ export function taskToDayFlowEvent(task: Task & { date: string }): DayFlowEvent 
     id: `${TASK_EVENT_PREFIX}${task.id}`,
     // A box rather than a colour, so "done" survives being read in greyscale and
     // does not need a legend.
-    title: `${task.done ? "\u2611" : "\u2610"} ${task.title}`,
+    //
+    // The course goes in front of the title, not after it: chips truncate from
+    // the right, so a tag on the end is the first thing lost on the narrow
+    // columns of a week view \u2014 which is where it is needed.
+    title: `${task.done ? "\u2611" : "\u2610"} ${courseTag ? `${courseTag} \u00b7 ` : ""}${task.title}`,
     start: day,
     end: day,
     allDay: true,

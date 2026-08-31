@@ -200,6 +200,19 @@ BE USEFUL HERE
   simple things can be lighter than one large one. Consider deadlines, dependencies you can
   see, and what's already on their calendar before answering.
 
+NAMING A COURSE
+- People say the code far more often than the title: "add assignments for OPAN 6605", "how
+  should I organize OPAN 6607 and 6608". Match on the code as readily as on the name — the
+  COURSES list below gives you both.
+- Treat codes loosely. Case does not matter, nor does the space ("opan6605" is OPAN 6605),
+  and once a prefix is established in the conversation a bare number means that prefix —
+  "6607 and 6608" after OPAN 6605 means OPAN 6607 and OPAN 6608.
+- A bare number matching exactly one course is that course. If it genuinely matches more
+  than one, ask which — do not pick.
+- Refer to a course the way they did. If they said the code, answer with the code.
+- Only call create_course when nothing in the list matches. A code you have not seen before
+  is a new course, not a typo to be mapped onto an existing one.
+
 ORGANIZING A PASTE OF TASKS OR ASSIGNMENTS
 - Recognize a pasted list for what it is — a syllabus, an assignment table, a copied to-do
   list — and treat organizing it as the request, even with no words attached beyond "add
@@ -341,13 +354,26 @@ async function buildContext(userId: string): Promise<{ context: string; brief: C
     }
   }
 
-  const courseName = new Map((courses.data ?? []).map((c) => [c.id, c.name]));
+  /*
+    How an existing assignment names its course further down.
+
+    The code first, because that is what people say — and because a task listed
+    as "[assignment for Operations Analytics]" gives the model no way to answer
+    "what have I already got for OPAN 6605" without inferring the link. Both, so
+    it can match whichever half they used.
+  */
+  const courseName = new Map(
+    (courses.data ?? []).map((c) => [c.id, c.code ? `${c.code} — ${c.name}` : c.name]),
+  );
 
   if (courses.data?.length) {
     lines.push("\nCOURSES");
     for (const c of courses.data) {
-      const label = [c.code, c.term].filter(Boolean).join(" · ");
-      lines.push(`- ${c.name}${label ? ` (${label})` : ""} [id: ${c.id}]`);
+      // Code first, matching how they are referred to and how open tasks name
+      // them below. It read "Operations Analytics (OPAN 6605 · Fall 2026)",
+      // which buries the half of the line people actually say out loud.
+      const head = c.code ? `${c.code} — ${c.name}` : c.name;
+      lines.push(`- ${head}${c.term ? ` (${c.term})` : ""} [id: ${c.id}]`);
     }
   }
 
