@@ -1,7 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { track } from "@/lib/telemetry";
 import { useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, MessagesSquare, Plus, Send, Sparkles, X } from "lucide-react";
+import {
+  Image as ImageIcon,
+  MessagesSquare,
+  Plus,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
+
+import { GrowingTextarea } from "@/components/growing-textarea";
+import { CopyButton } from "@/components/copy-button";
 import { toast } from "sonner";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -21,6 +33,15 @@ import { InlineText } from "@/components/inline-text";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { useSession } from "@/lib/use-session";
 import type { Json } from "@/integrations/supabase/types";
+
+/** Everything ask() needs, which is also everything a retry needs. */
+interface PendingAsk {
+  next: Message[];
+  attachments: Attachment[];
+  conversationId: string;
+  isFirstMessage: boolean;
+  content: string;
+}
 
 export const Route = createFileRoute("/assistant")({
   component: AssistantPage,
@@ -101,6 +122,10 @@ function AssistantPage() {
     uploading: boolean;
   } | null>(null);
   const [busy, setBusy] = useState(false);
+  /** In-flight request, so Stop can cancel it rather than merely ignore it. */
+  const abortRef = useRef<AbortController | null>(null);
+  /** The last send that failed, kept so "Try again" can repeat it. */
+  const [retry, setRetry] = useState<PendingAsk | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -200,7 +225,20 @@ function AssistantPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
+  /*
+    Follow the conversation, but only if they are already at the bottom of it.
+
+    This used to scroll on every change unconditionally, which meant scrolling
+    up to re-read an earlier answer while a reply was arriving yanked the page
+    back down — the one moment the app takes the page away from you. Chat UIs
+    stick to the bottom while you are at the bottom and leave you alone
+    otherwise, and that is the whole rule.
+  */
   useEffect(() => {
+    const fromBottom = document.documentElement.scrollHeight - window.scrollY - window.innerHeight;
+    // A generous threshold: "near the bottom" should survive a reply landing
+    // between the check and the scroll, and the composer sitting below the list.
+    if (fromBottom > 220) return;
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
 
@@ -330,16 +368,40 @@ function AssistantPage() {
     persist("user", content, conversationId, attachments);
     setDraft("");
     clearPendingImage();
+
+    await ask({ next, attachments, conversationId, isFirstMessage, content });
+  }
+
+  /** Cancel the reply in flight. Leaves the question in the conversation —
+   *  they asked it, and a retry should not have to retype it. */
+  function stop() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+  }
+
+  /**
+   * The half of a send that talks to the network, kept separate so "Try
+   * again" can run it a second time without adding the message to the
+   * conversation twice.
+   */
+  async function ask({ next, attachments, conversationId, isFirstMessage, content }: PendingAsk) {
+    const controller = new AbortController();
+    abortRef.current = controller;
     setError(null);
     setBusy(true);
 
     try {
       track("assistant_message");
+      setRetry(null);
       const { data, error: fnError } = await supabase.functions.invoke("ai-chat", {
         body: {
           messages: next.map((m) => ({ role: m.role, content: m.content })),
           attachments: attachments.map((a) => a.path),
         },
+        // What makes Stop actually stop, rather than hide a reply that is
+        // still being paid for and still on its way.
+        signal: controller.signal,
       });
       if (fnError) {
         // The function returns a readable message in its body; the SDK's own
@@ -352,10 +414,12 @@ function AssistantPage() {
           /* keep the fallback */
         }
         setError(message);
+        setRetry({ next, attachments, conversationId, isFirstMessage, content });
         return;
       }
       if (!data?.content) {
         setError("The assistant had nothing to say. Try rephrasing?");
+        setRetry({ next, attachments, conversationId, isFirstMessage, content });
         return;
       }
       setMessages([
@@ -391,9 +455,17 @@ function AssistantPage() {
         });
       }
     } catch {
+      /*
+        An abort lands here too, and it is not a failure: the person pressed
+        Stop, so telling them the connection might be down would be inventing a
+        problem they just created on purpose.
+      */
+      if (controller.signal.aborted) return;
       setError("Could not reach the assistant. Check your connection.");
+      setRetry({ next, attachments, conversationId, isFirstMessage, content });
     } finally {
       setBusy(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 
@@ -494,6 +566,13 @@ function AssistantPage() {
                 ),
               )}
               {m.content}
+              {/* Replies only. There is nothing to copy from your own message
+                  that you did not just write. */}
+              {m.role === "assistant" && m.content && (
+                <div className="-mb-1 mt-2 flex justify-end">
+                  <CopyButton text={m.content} />
+                </div>
+              )}
             </div>
           ))}
           {busy && (
@@ -506,9 +585,21 @@ function AssistantPage() {
       )}
 
       {error && (
-        <p className="rounded-2xl border border-dashed border-tan bg-secondary/60 px-4 py-3 text-sm text-ink-soft">
-          {error}
-        </p>
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-tan bg-secondary/60 px-4 py-3 text-sm text-ink-soft">
+          <span className="min-w-0 flex-1">{error}</span>
+          {/* The question is still in the conversation above, so the only thing
+              a failure should cost is one tap — not retyping what they wrote. */}
+          {retry && !busy && (
+            <button
+              type="button"
+              onClick={() => void ask(retry)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-tan px-3 py-1 text-xs text-ink transition-colors hover:bg-secondary"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Try again
+            </button>
+          )}
+        </div>
       )}
 
       {pendingImage && (
@@ -562,7 +653,7 @@ function AssistantPage() {
         >
           <ImageIcon className="h-4 w-4" />
         </Button>
-        <textarea
+        <GrowingTextarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -573,18 +664,39 @@ function AssistantPage() {
               void send(draft);
             }
           }}
-          rows={2}
           placeholder="Ask about your week, or attach a photo…"
-          className="flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+          className="min-h-12 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
         />
-        <Button
-          type="submit"
-          disabled={busy || (!draft.trim() && !pendingImage) || pendingImage?.uploading}
-          className="h-12 shrink-0 rounded-full px-4"
-          aria-label="Send"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+        {busy ? (
+          /*
+            Stop, in the send button's place rather than beside it.
+
+            A reply you no longer want — a misread question, a wrong course — is
+            otherwise something you can only wait out, and waiting out an answer
+            you already know is wrong is the most frustrating state a chat has.
+            It replaces Send because there is nothing to send while one is in
+            flight, and two buttons where one is always dead is worse.
+          */
+          <Button
+            type="button"
+            variant="outline"
+            onClick={stop}
+            className="h-12 shrink-0 rounded-full border-tan px-4"
+            aria-label="Stop"
+            title="Stop generating"
+          >
+            <Square className="h-3.5 w-3.5 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={(!draft.trim() && !pendingImage) || pendingImage?.uploading}
+            className="h-12 shrink-0 rounded-full px-4"
+            aria-label="Send"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        )}
       </form>
 
       <p className="text-[11px] italic text-ink-soft">
