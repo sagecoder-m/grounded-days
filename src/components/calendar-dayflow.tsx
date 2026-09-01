@@ -55,7 +55,7 @@ import {
   type EventDraft,
 } from "@/components/calendar-dialogs";
 import { useMediaQuery } from "@/lib/use-media-query";
-import { CalendarGridSkeleton } from "@/components/calendar-skeleton";
+import { CALENDAR_BOX, CalendarGridSkeleton } from "@/components/calendar-skeleton";
 
 const FILTER_AREAS: { key: Area; label: string; dot: string }[] = [
   { key: "personal", label: "Personal", dot: "var(--sage)" },
@@ -540,7 +540,10 @@ function CalendarBoard({ heading }: { heading: string }) {
         page headings recovered enough room that 42rem still lands within a
         normal laptop window — so it fits on arrival without being tied to it.
       */}
-      <div className="h-[32rem] md:h-[42rem]">
+      {/* The height comes from CALENDAR_BOX, which the placeholder uses too —
+          they were separate values and drifted straight away, leaving a phone
+          with a 640px stand-in in front of a 512px calendar. */}
+      <div className={CALENDAR_BOX}>
         <DayFlowCalendar calendar={calendar} />
       </div>
 

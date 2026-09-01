@@ -345,7 +345,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               which is also where the top-tabs layout has always had them: the
               two layouts now agree, and the rail is only places to go.
             */}
-            <div className="flex justify-end px-4 pt-4 md:px-8 md:pt-6">
+            {/*
+              Desktop only. This row belongs to the sidebar layout, which itself
+              only exists from md up — the rail beside it is `hidden md:flex`.
+              Without the guard a phone got this *and* the sticky header's copy,
+              so the theme toggle, Lock and Sign out appeared twice, one set
+              directly above the other, before you reached your own name.
+            */}
+            <div className="hidden justify-end px-4 pt-4 md:flex md:px-8 md:pt-6">
               <AccountBox compact />
             </div>
             <div

@@ -1,6 +1,22 @@
 import { format } from "date-fns";
 
 /**
+ * How tall the calendar box is, in one place.
+ *
+ * Both the real calendar and the placeholder use this. They were separate
+ * values and drifted immediately: the box was h-[32rem] on a phone while the
+ * placeholder was a fixed 40rem, so a phone loaded a 640px stand-in and then
+ * snapped to a 512px calendar — a 128px jump, which is the mobile flash.
+ *
+ * Taller on a phone than it was. 32rem gave a day view about seven hours before
+ * it scrolled internally, on the one screen where vertical space is the only
+ * dimension there is — a single narrow column has nowhere else to grow. svh
+ * rather than vh so it does not jump when mobile browser chrome hides, with a
+ * floor for landscape.
+ */
+export const CALENDAR_BOX = "min-h-[32rem] h-[78svh] md:h-[42rem]";
+
+/**
  * The calendar page while it is still arriving.
  *
  * This exists because the flashing people complained about was not one slow
@@ -57,45 +73,71 @@ export function CalendarHeader() {
  * you cannot look away from; the faint bars in the toolbar carry the "still
  * working" signal at a size where it does not dominate.
  *
- * Six rows at 5.85rem to land on 678px, which is what the real grid measures —
- * and measures in every view, day through agenda, because its container is a
- * fixed height. That is worth knowing: it means one placeholder is right for
- * all five views rather than only for the common one.
+ * It fills its box rather than adding up to a height, which is the part I got
+ * wrong twice. Computed row heights had to be re-measured every time anything
+ * above them changed — adding the toolbar row put it 62px out — and they could
+ * only ever be right at one breakpoint, which is how the phone ended up with a
+ * 640px stand-in in front of a 512px calendar. Six flex rows inside the shared
+ * CALENDAR_BOX cannot be wrong at any width: it is the same box the real
+ * calendar gets, so it is the same height by construction.
+ *
+ * Seven columns even on a phone, where the real view is a single day. The
+ * columns are hairlines on an empty card at that size, so what a phone actually
+ * sees is a calendar-shaped rectangle of the right height — and a stand-in that
+ * matched the day view's exact internals would be a second thing to maintain
+ * for a difference nobody can see in the half-second it is up.
  */
 export function CalendarGridSkeleton({ heading = "Schedule" }: { heading?: string }) {
   return (
-    <section className="space-y-3" aria-busy="true" aria-live="polite">
+    <section aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading your calendar</span>
-      <div className="flex items-center justify-between gap-4">
+
+      {/*
+        The same header the real calendar has, chip for chip.
+
+        Measured, because guessing was wrong: the boxes matched to the pixel and
+        a phone still jumped 70px, all of it here. The real row carries the
+        heading, three area filters and Add, and on a 375px screen that wraps to
+        three lines — 98px against the 28px a single-line placeholder took. So
+        the placeholder wraps the same way, using the same flex-wrap container,
+        and lands on the same height at every width without a number in it.
+      */}
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
         <h2 className="font-serif text-lg">{heading}</h2>
-        <div className="h-6 w-40 animate-pulse rounded-full bg-secondary" />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="h-6 w-24 rounded-full bg-secondary" />
+          ))}
+          <div className="h-7 w-16 animate-pulse rounded-full bg-secondary" />
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div
+        className={`flex flex-col overflow-hidden rounded-2xl border border-border bg-card ${CALENDAR_BOX}`}
+      >
         {/* The view switcher's row. Kept as a bar rather than fake buttons: a
             placeholder that looks pressable invites a press that does nothing. */}
-        <div className="flex items-center justify-between gap-4 border-b border-border px-3 py-2.5">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-3 py-2.5">
           <div className="h-6 w-6 rounded-lg bg-secondary" />
-          <div className="h-7 w-64 animate-pulse rounded-full bg-secondary" />
-          <div className="h-6 w-24 rounded-full bg-secondary" />
+          <div className="h-7 w-40 animate-pulse rounded-full bg-secondary sm:w-64" />
+          <div className="h-6 w-16 rounded-full bg-secondary sm:w-24" />
         </div>
 
-        {/* Weekday header, then six week rows of empty cells. Drawn with the
-            grid's own hairlines so the real one lands on top of the same lines. */}
-        <div className="grid grid-cols-7 border-b border-border">
+        {/* Weekday header, then six week rows that share what is left. Drawn
+            with the grid's own hairlines so the real one lands on the same
+            lines rather than beside them. */}
+        <div className="grid shrink-0 grid-cols-7 border-b border-border">
           {Array.from({ length: 7 }, (_, i) => (
             <div key={i} className="px-2 py-2">
-              <div className="mx-auto h-2.5 w-7 rounded-full bg-secondary" />
+              <div className="mx-auto h-2.5 w-6 rounded-full bg-secondary" />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6">
           {Array.from({ length: 42 }, (_, i) => (
             <div
               key={i}
-              className={`h-[5.85rem] border-border ${i % 7 < 6 ? "border-r" : ""} ${
-                i < 35 ? "border-b" : ""
-              }`}
+              className={`border-border ${i % 7 < 6 ? "border-r" : ""} ${i < 35 ? "border-b" : ""}`}
             />
           ))}
         </div>
