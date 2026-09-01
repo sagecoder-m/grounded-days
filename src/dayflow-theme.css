@@ -252,4 +252,32 @@
   .dark .df-context-menu {
     --df-context-menu-swatch-ring: oklch(0.94 0.015 82 / 0.25);
   }
+
+  /*
+    The month watermark, removed.
+
+    This is the "glitch" reported over and over across three recordings, and it
+    is not a glitch: DayFlow paints a large translucent month caption over the
+    grid itself — position:absolute, top:2.5rem, z-index:30, a 50%-transparent
+    background — once for each month the grid touches. On a six-week August the
+    result is "August 2026" lying across the 27th and 28th and "September 2026"
+    lying across the last row, both on top of the dates they cover.
+
+    In a calendar that scrolls continuously through months, that caption is a
+    section marker and earns its place. Ours does not scroll: it is paged, with
+    ‹ Today › arrows, and .df-view-header-title already names the month directly
+    above the grid. So every one of these is a second copy of a heading that is
+    already on screen, printed over the days.
+
+    Why it read as a flash rather than as a layout bug: the background is
+    color-mix(…50%, transparent), so it is faint against the light palette and
+    solid against the dark one, and the theme sweep visibly fades it in. It
+    looked like something arriving late, which is exactly what it was not.
+
+    Hiding it loses nothing. The month is named in the header, and days outside
+    it are already greyed.
+  */
+  .df-month-title {
+    display: none;
+  }
 }
