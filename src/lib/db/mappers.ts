@@ -261,6 +261,7 @@ export const DEFAULT_WIDGETS: Settings["widgets"] = [
   { key: "goals", enabled: false, x: 0, y: 44, w: 18, h: 9 },
   { key: "rhythm", enabled: false, x: 18, y: 44, w: 18, h: 9 },
   { key: "movement", enabled: false, x: 0, y: 53, w: 18, h: 9 },
+  { key: "todo", enabled: false, x: 18, y: 53, w: 12, h: 14 },
 ];
 
 const DEFAULT_BY_KEY = new Map(DEFAULT_WIDGETS.map((w) => [w.key, w]));

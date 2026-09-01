@@ -90,6 +90,15 @@ export const WIDGETS: WidgetSpec[] = [
     preferred: { w: 12, h: 18 },
   },
   {
+    key: "todo",
+    trimsOwnContent: true,
+    mobileRank: 15,
+    label: "To do",
+    hint: "A list you write yourself",
+    preferred: { w: 12, h: 14 },
+    min: { w: 9, h: 8 },
+  },
+  {
     key: "agenda",
     trimsOwnContent: true,
     mobileRank: 30,

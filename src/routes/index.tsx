@@ -8,6 +8,7 @@ import { TaskGrid } from "@/components/task-grid";
 import { dateKey, dayRange } from "@/lib/dates";
 import { TodayGlance } from "@/components/today-glance";
 import { AgendaWidget } from "@/components/agenda-widget";
+import { TodoWidget } from "@/components/todo-widget";
 import { FocusTimer } from "@/components/focus-timer";
 import { DashboardCanvas } from "@/components/dashboard/dashboard-canvas";
 import { AddWidgetMenu } from "@/components/dashboard/add-widget";
@@ -437,6 +438,13 @@ function Overview() {
     if (key === "rhythm" && w("rhythm")) return <RhythmGrid key={key} state={state} />;
     if (key === "balance" && w("balance")) return <AreaBalance key={key} state={state} />;
     if (key === "movement" && w("movement")) return <MovementCards key={key} state={state} />;
+
+    if (key === "todo" && w("todo"))
+      return (
+        <section key={key} className="flex h-full min-h-0 flex-col">
+          <TodoWidget />
+        </section>
+      );
 
     if (key === "agenda" && w("agenda"))
       return (
