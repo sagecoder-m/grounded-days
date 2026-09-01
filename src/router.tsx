@@ -45,6 +45,16 @@ export const getRouter = () => {
       slow one is never mistaken for a dead click. pendingMinMs then keeps the
       placeholder up briefly once shown, so it cannot itself flicker.
     */
+    /*
+      A cross-fade between tabs, painted by the browser. Styled in styles.css.
+
+      Deliberately the platform's own rather than a React transition: keying the
+      page on the pathname would re-mount every route on every navigation, which
+      on /calendar means rebuilding DayFlow each visit. This screenshots the old
+      page and fades, so nothing unmounts and no query refetches.
+    */
+    defaultViewTransition: true,
+
     defaultPendingMs: 250,
     defaultPendingMinMs: 400,
     defaultPendingComponent: RoutePending,

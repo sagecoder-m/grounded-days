@@ -13,10 +13,20 @@ const HORIZON_DAYS = 7;
  *  a task is something you do (see today-glance.tsx's AgendaRow, which this
  *  mirrors). Exported so Education's own Today section can fold an event
  *  into the same list as its tasks without re-drawing this row from scratch. */
-export function EventRow({ event, today }: { event: CalEvent; today: string }) {
+export function EventRow({
+  event,
+  today,
+  course,
+}: {
+  event: CalEvent;
+  today: string;
+  /** The course this class is for, when the title named one. Read, never
+   *  guessed — see courseForEvent. Absent for anything unrecognised. */
+  course?: string;
+}) {
   return (
     <div className="flex items-baseline gap-2.5 py-1">
-      <span className="w-14 shrink-0 text-[11px] text-ink-soft">
+      <span className="w-14 shrink-0 text-[11px] tabular-nums text-ink-soft">
         {event.date === today
           ? event.allDay || !event.startsAt
             ? "today"
@@ -25,6 +35,11 @@ export function EventRow({ event, today }: { event: CalEvent; today: string }) {
       </span>
       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-ink-soft" aria-hidden />
       <span className="min-w-0 flex-1 truncate text-sm">{event.title}</span>
+      {course && (
+        <span className="chip shrink-0 bg-clay-soft text-[11px] text-[color:var(--clay)]">
+          {course}
+        </span>
+      )}
     </div>
   );
 }
@@ -41,10 +56,13 @@ export function EventRow({ event, today }: { event: CalEvent; today: string }) {
  * specifically — Personal and Professional have the identical gap, since
  * none of the three pages ever read state.events.
  *
- * Local only. A synced Google/Outlook event carries no area — see the
- * calendar's own AreaFilter — so there is nothing here for it to match, and
- * it stays visible only on the calendar itself. That is the honest rendering:
- * an area page can only speak for what was actually filed under that area.
+ * Synced events included, which they were not at first. The original rule was
+ * "local only", on the reasoning that a Google or Outlook event carries no area
+ * and so has nothing to match — true when it was written, and untrue since each
+ * connection gained a default area and the sync began stamping it onto every
+ * row it writes. The consequence was quietly bad on the page it mattered most:
+ * a student's lectures all arrive from their university's calendar, so
+ * Education showed assignments and never a single class.
  *
  * Renders nothing when there is nothing to show, same as Education's other
  * date-scoped sections — an empty "On your calendar" heading every day would
@@ -65,7 +83,7 @@ export function AreaEvents({
   const horizon = dateKey(addDays(new Date(), HORIZON_DAYS));
 
   const events = state.events
-    .filter((e) => e.source === "local" && e.area === area)
+    .filter((e) => e.area === area)
     .filter((e) => (excludeToday ? e.date > today : e.date >= today) && e.date <= horizon)
     .sort(
       (a, b) => a.date.localeCompare(b.date) || (a.startsAt ?? "").localeCompare(b.startsAt ?? ""),

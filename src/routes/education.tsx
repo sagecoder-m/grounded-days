@@ -17,6 +17,7 @@ import { HowFarYouveCome } from "@/components/how-far";
 import { newestFirst } from "@/lib/user-insights";
 import { ConfirmDeleteButton } from "@/components/confirm-delete";
 import { AreaEvents, EventRow } from "@/components/area-events";
+import { courseForEvent, courseTag } from "@/lib/course-match";
 import { ReorderableCard } from "@/components/reorderable-card";
 import { useCardDrag } from "@/lib/use-card-drag";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -61,13 +62,15 @@ function EducationPage() {
   const courses = state.courses;
 
   const today = dateKey(new Date());
-  // Local only, same reasoning as AreaEvents: a synced Google/Outlook event
-  // carries no area, so it has nothing to match here and stays calendar-only.
+  /*
+    Synced classes included. This said "local only", because a Google or Outlook
+    event used to carry no area — which stopped being true when connections
+    gained a default area and the sync started stamping it on every row. On this
+    page that exclusion was the whole problem: lectures come from the
+    university's calendar, so Today listed assignments and never a class.
+  */
   const todaysEvents = useMemo(
-    () =>
-      state.events.filter(
-        (e) => e.source === "local" && e.area === "education" && e.date === today,
-      ),
+    () => state.events.filter((e) => e.area === "education" && e.date === today),
     [state.events, today],
   );
   const courseDrag = useCardDrag();
@@ -155,7 +158,7 @@ function EducationPage() {
         </div>
 
         <div className="space-y-8">
-          <Today tasks={tasks} events={todaysEvents} today={today} />
+          <Today tasks={tasks} events={todaysEvents} courses={courses} today={today} />
           <DueThisWeek tasks={tasks} today={today} />
           <AreaEvents area="education" excludeToday />
 
@@ -224,7 +227,20 @@ function EducationPage() {
  * it today, which is a softer kind of commitment — see today-glance.tsx's
  * AgendaRow for the same ordering on the Overview.
  */
-function Today({ tasks, events, today }: { tasks: Task[]; events: CalEvent[]; today: string }) {
+function Today({
+  tasks,
+  events,
+  courses,
+  today,
+}: {
+  tasks: Task[];
+  events: CalEvent[];
+  courses: Course[];
+  today: string;
+}) {
+  // Which course each row belongs to. An assignment knows its own; a class has
+  // to be read out of the title it was synced with — see courseForEvent.
+  const byId = new Map(courses.map((c) => [c.id, c]));
   const due = tasks.filter((t) => t.date === today || (!t.done && t.date && t.date < today));
   const open = due.filter((t) => !t.done);
   const timed = events
@@ -251,18 +267,18 @@ function Today({ tasks, events, today }: { tasks: Task[]; events: CalEvent[]; to
       ) : (
         <div className="space-y-1">
           {timed.map((e) => (
-            <EventRow key={e.id} event={e} today={today} />
+            <EventRow key={e.id} event={e} today={today} course={tagFor(e, courses)} />
           ))}
           {allDay.map((e) => (
-            <EventRow key={e.id} event={e} today={today} />
+            <EventRow key={e.id} event={e} today={today} course={tagFor(e, courses)} />
           ))}
           {open.map((t) => (
-            <LineItem key={t.id} task={t} today={today} />
+            <LineItem key={t.id} task={t} today={today} course={courseLabel(t, byId)} />
           ))}
           {due
             .filter((t) => t.done)
             .map((t) => (
-              <LineItem key={t.id} task={t} today={today} />
+              <LineItem key={t.id} task={t} today={today} course={courseLabel(t, byId)} />
             ))}
         </div>
       )}
@@ -270,9 +286,23 @@ function Today({ tasks, events, today }: { tasks: Task[]; events: CalEvent[]; to
   );
 }
 
+/** The course a class is for, or nothing. Read from the title, never guessed. */
+function tagFor(event: CalEvent, courses: Course[]): string | undefined {
+  const match = courseForEvent(event.title, courses);
+  return match ? courseTag(match) : undefined;
+}
+
+/** The course an assignment is filed under. This one is certain — the task
+ *  carries the id — so it needs no matching. */
+function courseLabel(task: Task, byId: Map<string, Course>): string | undefined {
+  if (!task.courseId) return undefined;
+  const course = byId.get(task.courseId);
+  return course ? courseTag(course) : undefined;
+}
+
 /** One assignment as a line, not a card. Checkbox, title, and the date only when
  *  it is telling you something you did not already know. */
-function LineItem({ task, today }: { task: Task; today: string }) {
+function LineItem({ task, today, course }: { task: Task; today: string; course?: string }) {
   const late = Boolean(task.date && task.date < today && !task.done);
   return (
     <div className="flex items-baseline gap-2.5 py-1">
@@ -288,6 +318,14 @@ function LineItem({ task, today }: { task: Task; today: string }) {
       >
         {task.title}
       </span>
+      {/* Which course this is for. The single most useful thing to add to a
+          list of assignments, and the thing a page of six of them was missing:
+          "Problem set 3" says nothing on its own in a term with four courses. */}
+      {course && (
+        <span className="chip shrink-0 bg-clay-soft text-[11px] text-[color:var(--clay)]">
+          {course}
+        </span>
+      )}
       {late && task.date && (
         <span className="shrink-0 text-[11px] text-[color:var(--clay)]">
           {format(parseISO(task.date), "MMM d")}
