@@ -55,6 +55,7 @@ import {
   type EventDraft,
 } from "@/components/calendar-dialogs";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { CalendarGridSkeleton } from "@/components/calendar-skeleton";
 
 const FILTER_AREAS: { key: Area; label: string; dot: string }[] = [
   { key: "personal", label: "Personal", dot: "var(--sage)" },
@@ -179,14 +180,15 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
   */
   const ready = !user || (settingsLoaded && connections.data !== undefined);
 
-  if (!ready) {
-    return (
-      <section className="space-y-3">
-        <h2 className="font-serif text-lg">{heading}</h2>
-        <div className="h-[32rem] animate-pulse rounded-2xl bg-secondary/50" />
-      </section>
-    );
-  }
+  /*
+    The same block the route's pending component draws, deliberately.
+
+    This state and that one are consecutive — the router hands over the moment
+    the chunk lands, and this then waits for the queries — so if they look
+    different the handover is a visible flash. Drawn from one shared component
+    so they cannot drift apart the next time either is touched.
+  */
+  if (!ready) return <CalendarGridSkeleton heading={heading} />;
 
   return <CalendarBoard heading={heading} />;
 }

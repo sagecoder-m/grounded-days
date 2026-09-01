@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { CalendarDayFlow } from "@/components/calendar-dayflow";
+import { CalendarHeader, CalendarPending } from "@/components/calendar-skeleton";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({
@@ -18,21 +18,22 @@ export const Route = createFileRoute("/calendar")({
     ],
   }),
   component: CalendarPage,
+  /*
+    Its own pending state, not the app-wide one.
+
+    The generic placeholder is a title-shaped bar over a 288px panel, which is
+    the right guess for most pages here and the wrong one for this: the calendar
+    is twice that tall and its header is static text that needs no data at all.
+    Showing bars where the heading already belongs, then swapping in a shorter
+    panel, then a taller grid, is three layouts for one navigation.
+  */
+  pendingComponent: CalendarPending,
 });
 
 function CalendarPage() {
   return (
     <div className="space-y-8">
-      <header>
-        <p suppressHydrationWarning className="text-sm text-ink-soft">
-          {format(new Date(), "EEEE, MMMM d, yyyy")}
-        </p>
-        <h1 className="mt-1 font-serif text-2xl md:text-3xl">Your calendar</h1>
-        <p className="mt-2 max-w-lg text-ink-soft">
-          Everything scheduled, in one quiet place. A day, a week, a month, or the whole year. Your
-          tasks live on the overview.
-        </p>
-      </header>
+      <CalendarHeader />
       <CalendarDayFlow heading="Schedule" />
     </div>
   );
