@@ -21,6 +21,7 @@ import { useMounted } from "@/lib/use-mounted";
 import { toast } from "sonner";
 import { InlineText } from "@/components/inline-text";
 import { AreaEvents } from "@/components/area-events";
+import { SectionNav } from "@/components/section-nav";
 import {
   Line,
   LineChart,
@@ -30,6 +31,13 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+
+const SECTIONS = [
+  { id: "consistency", label: "Consistency" },
+  { id: "habits", label: "Habits" },
+  { id: "other", label: "Tasks" },
+  { id: "goals", label: "Goals" },
+];
 
 export const Route = createFileRoute("/personal")({
   component: PersonalPage,
@@ -128,6 +136,10 @@ function PersonalPage() {
         </p>
       </header>
 
+      {/* Phone only — see SectionNav. Four stacked sections is a long scroll on
+          one narrow column, and reaching goals meant passing everything else. */}
+      <SectionNav sections={SECTIONS} />
+
       {/*
         Consistency first, then habits beside goals.
 
@@ -137,7 +149,7 @@ function PersonalPage() {
         at two scales. The chart leads because it is the only part that answers
         "how has this been going" rather than "what is there to do".
       */}
-      <section>
+      <section id="consistency" className="scroll-mt-36">
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="font-serif text-lg">Consistency, over time</h2>
         </div>
@@ -185,7 +197,7 @@ function PersonalPage() {
         {/* The left track: habits, and the tasks that sit under them. */}
         <div className="space-y-8">
           {/* Habits */}
-          <section>
+          <section id="habits" className="scroll-mt-36">
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="font-serif text-lg">Daily habits</h2>
             </div>
@@ -335,7 +347,7 @@ function PersonalPage() {
           and now has its own hideable section below — the two answer different
           questions and only one of them should be able to fill the page.
         */}
-          <section>
+          <section id="other" className="scroll-mt-36">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 className="font-serif text-lg">Anything else</h2>
               <AddTaskDialog
@@ -371,7 +383,7 @@ function PersonalPage() {
         {/* The right track. */}
         <div className="space-y-8">
           {/* Goals */}
-          <section>
+          <section id="goals" className="scroll-mt-36">
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="font-serif text-lg">Goals</h2>
               <AddGoalDialog

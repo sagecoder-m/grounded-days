@@ -22,6 +22,16 @@ import { useCardDrag } from "@/lib/use-card-drag";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { FocusTimer } from "@/components/focus-timer";
+import { SectionNav } from "@/components/section-nav";
+
+/* Reading order on a phone, which is the order the column stacks in: what is
+   on today, then the week, then the courses and goals behind them. */
+const SECTIONS = [
+  { id: "today", label: "Today" },
+  { id: "week", label: "This week" },
+  { id: "courses", label: "Courses" },
+  { id: "goals", label: "Goals" },
+];
 
 export const Route = createFileRoute("/education")({
   component: EducationPage,
@@ -82,13 +92,23 @@ function EducationPage() {
         </p>
       </header>
 
+      {/* Phone only — see SectionNav. On a wide screen these four sit in two
+          columns and are taken in at once; stacked, Due this week is four
+          scrolls past Courses. */}
+      <SectionNav sections={SECTIONS} />
+
       <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="space-y-8">
           {/* First on the page, because on a study page the first useful action
               is usually "start a block", not "read the list". */}
           <FocusTimer size="medium" />
 
-          <section onPointerUp={courseDrag.endDrag} onPointerLeave={courseDrag.endDrag}>
+          <section
+            id="courses"
+            className="scroll-mt-36"
+            onPointerUp={courseDrag.endDrag}
+            onPointerLeave={courseDrag.endDrag}
+          >
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-serif text-lg">Courses</h2>
               <AddCourseDialog
@@ -139,7 +159,12 @@ function EducationPage() {
           <DueThisWeek tasks={tasks} today={today} />
           <AreaEvents area="education" excludeToday />
 
-          <section onPointerUp={goalDrag.endDrag} onPointerLeave={goalDrag.endDrag}>
+          <section
+            id="goals"
+            className="scroll-mt-36"
+            onPointerUp={goalDrag.endDrag}
+            onPointerLeave={goalDrag.endDrag}
+          >
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h2 className="font-serif text-lg">Goals</h2>
               <AddGoalDialog
@@ -209,7 +234,7 @@ function Today({ tasks, events, today }: { tasks: Task[]; events: CalEvent[]; to
   const nothing = due.length === 0 && events.length === 0;
 
   return (
-    <section>
+    <section id="today" className="scroll-mt-36">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Today</h2>
         <Link
@@ -281,7 +306,7 @@ function DueThisWeek({ tasks, today }: { tasks: Task[]; today: string }) {
     .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 
   return (
-    <section>
+    <section id="week" className="scroll-mt-36">
       <h2 className="mb-3 font-serif text-lg">Due this week</h2>
       {due.length === 0 ? (
         <p className="text-sm italic text-ink-soft">A clear week ahead.</p>
