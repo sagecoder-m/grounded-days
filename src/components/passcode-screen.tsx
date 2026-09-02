@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Lock, Sprout } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -42,6 +42,43 @@ function PasscodeFrame({
 const slotClass =
   "h-12 w-12 rounded-xl border border-border bg-background text-lg first:rounded-l-xl last:rounded-r-xl";
 
+/**
+ * One line for whatever the screen has to say, always taking up its space.
+ *
+ * The status used to be two conditional paragraphs — the busy line and the
+ * message — appearing and disappearing as you typed. The card is centred in the
+ * viewport, so every change of its height moved the icon, the title and the
+ * digits you were looking at: typing the last digit shifted the whole screen up
+ * as "One moment…" appeared, and shifted it again when the result replaced it.
+ * Two jumps per attempt, at the exact moment you are watching the boxes.
+ *
+ * Reserving the row costs one line of empty space and nothing moves again.
+ */
+function StatusLine({
+  busy,
+  busyLabel,
+  message,
+  urgent = false,
+}: {
+  busy: boolean;
+  busyLabel: string;
+  message: string | null;
+  urgent?: boolean;
+}) {
+  return (
+    <p
+      aria-live="polite"
+      className={cn(
+        "min-h-8 text-center text-xs leading-4",
+        busy && "italic text-ink-soft",
+        !busy && urgent ? "text-[color:var(--clay)]" : "text-ink-soft",
+      )}
+    >
+      {busy ? busyLabel : (message ?? "")}
+    </p>
+  );
+}
+
 function Slots({ mask }: { mask: boolean }) {
   return (
     <InputOTPGroup className="justify-center gap-2">
@@ -81,6 +118,16 @@ function RevealToggle({ shown, onToggle }: { shown: boolean; onToggle: () => voi
  */
 export function PasscodeLock() {
   const [code, setCode] = useState("");
+  /*
+    Where the digits are, so focus can be put back.
+
+    The field is disabled while the code is being checked, which is right — you
+    should not be able to type into a verification in flight. The side effect is
+    that a wrong code left you with an empty, cleared, *unfocused* field: the
+    keyboard closed on a phone and you had to tap the boxes again to retry, at
+    the one moment you are least inclined to be patient with the app.
+  */
+  const fieldRef = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -101,6 +148,20 @@ export function PasscodeLock() {
     }, ms + 250);
     return () => window.clearTimeout(timer);
   }, [lockedUntil]);
+
+  /*
+    Focus follows the field becoming usable, not the attempt failing.
+
+    Doing it at the point of failure was the obvious thing and did nothing at
+    all: `busy` is still true there — it clears in the finally — so the input is
+    still disabled, and focusing a disabled input is a no-op. Watching the flag
+    that actually gates it is the fix. Measured before and after; the first
+    version left focus on <body>.
+  */
+  useEffect(() => {
+    if (busy || locked) return;
+    fieldRef.current?.querySelector("input")?.focus();
+  }, [busy, locked]);
 
   const submit = async (candidate: string) => {
     setBusy(true);
@@ -152,7 +213,7 @@ export function PasscodeLock() {
     >
       <div className="space-y-4">
         <p className="text-center text-sm text-ink-soft">Enter your passcode to open your space.</p>
-        <div className="flex justify-center">
+        <div ref={fieldRef} className="flex justify-center">
           <InputOTP
             maxLength={PASSCODE_LENGTH}
             value={code}
@@ -168,17 +229,7 @@ export function PasscodeLock() {
           </InputOTP>
         </div>
         <RevealToggle shown={shown} onToggle={() => setShown((v) => !v)} />
-        {message && (
-          <p
-            className={cn(
-              "text-center text-xs",
-              locked ? "text-[color:var(--clay)]" : "text-ink-soft",
-            )}
-          >
-            {message}
-          </p>
-        )}
-        {busy && <p className="text-center text-xs italic text-ink-soft">One moment…</p>}
+        <StatusLine busy={busy} busyLabel="One moment…" message={message} urgent={locked} />
       </div>
     </PasscodeFrame>
   );
@@ -277,8 +328,7 @@ export function PasscodeSetup() {
         {/* Especially worth having during setup: a code you cannot see is a code
             you cannot check before committing to it. */}
         <RevealToggle shown={shown} onToggle={() => setShown((v) => !v)} />
-        {message && <p className="text-center text-xs text-ink-soft">{message}</p>}
-        {busy && <p className="text-center text-xs italic text-ink-soft">Saving…</p>}
+        <StatusLine busy={busy} busyLabel="Saving…" message={message} />
         {step === "confirm" && !busy && (
           <div className="text-center">
             <Button

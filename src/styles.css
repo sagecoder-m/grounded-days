@@ -879,18 +879,36 @@
  */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 220ms;
-  animation-timing-function: cubic-bezier(0.32, 0.08, 0.24, 1);
+  /*
+    Slow on purpose, and slower than a transition "should" be.
+
+    220ms was the safe answer and read as a flicker rather than a change of
+    place. 460ms is long enough that the eye follows it instead of catching it,
+    which is the whole point here — the app's premise is that arriving
+    somewhere should feel like less. It is still under the ~500ms where a
+    transition starts to feel like waiting.
+  */
+  animation-duration: 460ms;
+  /* Almost all the easing at the end: the page leaves quickly and settles
+     slowly, which reads as coming to rest rather than sliding to a stop. */
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.24, 1);
 }
 
 ::view-transition-old(root) {
   animation-name: page-leave;
+  animation-duration: 300ms;
+  animation-timing-function: ease-out;
 }
 
 ::view-transition-new(root) {
   animation-name: page-enter;
 }
 
+/*
+  The old page clears in the first two thirds, so the two are never both at
+  half opacity — that midpoint is what makes a plain cross-fade look muddy on
+  a page with text over a tinted ground.
+*/
 @keyframes page-leave {
   to {
     opacity: 0;
@@ -900,9 +918,10 @@
 @keyframes page-enter {
   from {
     opacity: 0;
-    /* Four pixels. Enough that the page reads as settling rather than
-       appearing; small enough that nothing appears to slide. */
-    transform: translateY(4px);
+    /* Six pixels. A longer fade carries a little more travel without reading
+       as a slide — at 4px over 460ms the movement stopped being perceptible
+       at all, which wasted the extra time. */
+    transform: translateY(6px);
   }
 }
 
