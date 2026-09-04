@@ -25,6 +25,24 @@ export interface SharedView {
     allDay: boolean;
   }[];
   habits: { id: string; name: string }[];
+
+  /*
+    The summary's raw material, added so a shared link can say how the last
+    couple of months have gone rather than only what is coming up.
+
+    Counts and dates, never titles — an area and a date describe the shape of a
+    fortnight without saying what was in it. Journal entries are not here and
+    never will be: they are excluded from the share function the same way they
+    are excluded from the assistant, and for the same reason.
+
+    Optional because a link opened against a function that has not been
+    redeployed yet returns the old payload. The page falls back to what it
+    always showed rather than erroring at whoever was handed the link.
+  */
+  since?: string;
+  completions?: { area: Area; date: string }[];
+  openWork?: { area: Area; date: string | null }[];
+  habitCheckins?: { date: string }[];
 }
 
 function base64Url(bytes: Uint8Array): string {

@@ -8,6 +8,9 @@
 import { corsHeaders, jsonResponse, serviceClient } from "../_shared/supabase.ts";
 
 /** How far ahead a share shows dated items. Matches the app's own horizon. */
+/** How far back the summary reads. See the note where it is used. */
+const SUMMARY_DAYS = 56;
+
 const UPCOMING_DAYS = 60;
 
 type Area = "personal" | "professional" | "education";
@@ -54,38 +57,89 @@ Deno.serve(async (req) => {
     const todayStr = today.toISOString().slice(0, 10);
     const horizonStr = horizon.toISOString().slice(0, 10);
 
+    /*
+      How far back the summary looks.
+
+      Eight weeks, because the audience for this link is a therapist or someone
+      close, and the question they are actually asking is "how have the last
+      couple of months gone" — not "what happened today". A shorter window turns
+      one hard fortnight into the whole picture, which is the reading this page
+      most needs to avoid.
+    */
+    const since = new Date(today.getTime() - SUMMARY_DAYS * 86_400_000);
+    const sinceStr = since.toISOString().slice(0, 10);
+
     // Every query below is scoped by BOTH user_id and the link's areas. The
     // area filter is not cosmetic: it is what keeps a professional link from
     // returning personal rows.
-    const [tasks, goals, events, habits, settings] = await Promise.all([
-      db
-        .from("tasks")
-        .select("id, title, area, date, done")
-        .eq("user_id", userId)
-        .in("area", areas)
-        .gte("date", todayStr)
-        .lte("date", horizonStr)
-        .order("date", { ascending: true }),
-      db
-        .from("goals")
-        .select("id, name, area, progress")
-        .eq("user_id", userId)
-        .in("area", areas)
-        .order("created_at", { ascending: true }),
-      db
-        .from("events")
-        .select("id, title, area, date, starts_at, all_day")
-        .eq("user_id", userId)
-        .gte("date", todayStr)
-        .lte("date", horizonStr)
-        .order("date", { ascending: true }),
-      // Habits carry no area and belong to Personal, so they are only ever
-      // included when the link covers Personal.
-      areas.includes("personal")
-        ? db.from("habits").select("id, name").eq("user_id", userId)
-        : Promise.resolve({ data: [], error: null }),
-      db.from("user_settings").select("display_name").eq("user_id", userId).maybeSingle(),
-    ]);
+    const [tasks, goals, events, habits, settings, finished, outstanding, checkins] =
+      await Promise.all([
+        db
+          .from("tasks")
+          .select("id, title, area, date, done")
+          .eq("user_id", userId)
+          .in("area", areas)
+          .gte("date", todayStr)
+          .lte("date", horizonStr)
+          .order("date", { ascending: true }),
+        db
+          .from("goals")
+          .select("id, name, area, progress")
+          .eq("user_id", userId)
+          .in("area", areas)
+          .order("created_at", { ascending: true }),
+        db
+          .from("events")
+          .select("id, title, area, date, starts_at, all_day")
+          .eq("user_id", userId)
+          .gte("date", todayStr)
+          .lte("date", horizonStr)
+          .order("date", { ascending: true }),
+        // Habits carry no area and belong to Personal, so they are only ever
+        // included when the link covers Personal.
+        areas.includes("personal")
+          ? db.from("habits").select("id, name").eq("user_id", userId)
+          : Promise.resolve({ data: [], error: null }),
+        db.from("user_settings").select("display_name").eq("user_id", userId).maybeSingle(),
+
+        /*
+        Finished work over the window, as dates and areas only — no titles.
+
+        updated_at stands in for "when this was ticked". It is an approximation
+        the app already relies on (see Task.updatedAt), and renaming a finished
+        task moves it; being a few hours out costs nothing in an eight-week
+        shape.
+      */
+        db
+          .from("tasks")
+          .select("area, updated_at")
+          .eq("user_id", userId)
+          .in("area", areas)
+          .eq("done", true)
+          .gte("updated_at", since.toISOString()),
+
+        /*
+        What is still open, at any date — including things with no date at all.
+
+        Separate from the `tasks` query above, which is deliberately scoped to
+        the upcoming fortnight for the "coming up" list. Support is most needed
+        where work has been sitting, and sitting work is usually behind you.
+      */
+        db
+          .from("tasks")
+          .select("area, date")
+          .eq("user_id", userId)
+          .in("area", areas)
+          .eq("done", false),
+
+        /*
+        Habit check-ins per day. Personal only, for the same reason the habits
+        list is: habits carry no area and belong to Personal.
+      */
+        areas.includes("personal")
+          ? db.from("habit_logs").select("date").eq("user_id", userId).gte("date", sinceStr)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
 
     // Events with no area are ambiguous rather than safe, so they are only shown
     // on a link that covers every area. An unlabelled event on a Professional-only
@@ -127,6 +181,27 @@ Deno.serve(async (req) => {
         allDay: e.all_day,
       })),
       habits: (habits.data ?? []).map((h) => ({ id: h.id, name: h.name })),
+
+      /*
+        The summary's raw material: counts and dates, never titles.
+
+        Aggregated on the page rather than here, so the phrasing that turns
+        these into sentences stays testable and stays in one place. What crosses
+        the wire is deliberately thinner than what is already shared — an area
+        and a date says how a fortnight went without saying what was in it.
+      */
+      since: sinceStr,
+      completions: (finished.data ?? []).map((t) => ({
+        area: t.area,
+        date: String(t.updated_at).slice(0, 10),
+      })),
+      openWork: (outstanding.data ?? []).map((t) => ({
+        area: t.area,
+        // Null where there is no date. "Waiting" is decided on the page, so the
+        // definition lives with the words that describe it.
+        date: t.date,
+      })),
+      habitCheckins: (checkins.data ?? []).map((h) => ({ date: h.date })),
     });
   } catch (err) {
     console.error("share-view failed", err);

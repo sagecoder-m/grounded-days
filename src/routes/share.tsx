@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 
+import { format, parseISO } from "date-fns";
+
 import { AreaChip } from "@/components/area-chip";
-import { SoftProgress } from "@/components/soft-progress";
+import { ShareSummaryView } from "@/components/share-summary-view";
 import { fetchSharedView, type SharedView } from "@/lib/share";
 import type { Area } from "@/lib/store-types";
 
@@ -76,7 +78,13 @@ function SharePage() {
 
 function SharedDashboard({ data }: { data: SharedView }) {
   const owner = data.displayName?.trim();
-  const dated = [
+  const today = new Date().toISOString().slice(0, 10);
+
+  /* The next fortnight, kept but demoted. Someone opening this link wants the
+     shape of the last two months first; what is coming up is detail they can
+     scroll to. Capped, because a full list is the overwhelming thing this page
+     was reported as being. */
+  const coming = [
     ...data.events.map((e) => ({
       key: `e-${e.id}`,
       title: e.title,
@@ -88,7 +96,7 @@ function SharedDashboard({ data }: { data: SharedView }) {
               hour: "numeric",
               minute: "2-digit",
             })
-          : "event",
+          : "all day",
     })),
     ...data.tasks
       .filter((t) => !t.done)
@@ -97,55 +105,38 @@ function SharedDashboard({ data }: { data: SharedView }) {
         title: t.title,
         area: t.area,
         date: t.date,
-        detail: "task",
+        detail: "to do",
       })),
-  ].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+  ]
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
+    .slice(0, 8);
 
   return (
     <Shell>
       <header className="mb-8">
         <p className="chip bg-secondary text-ink-soft">Shared with you</p>
-        <h1 className="mt-3 font-serif text-4xl">
-          {owner ? `${owner}'s grounded` : "A grounded space"}
+        <h1 className="mt-3 font-serif text-3xl md:text-4xl">
+          {owner ? `How ${owner} has been` : "How things have been"}
         </h1>
-        <p className="mt-2 text-ink-soft">
-          A read-only look at {data.areas.length === 3 ? "everything" : data.areas.join(" and ")}.
-          Nothing here can be changed.
+        <p className="mt-2 max-w-prose text-ink-soft">
+          A read-only summary, shared on purpose. It shows where attention has gone and where
+          something might be worth asking about — not a score, and nothing here can be changed.
         </p>
       </header>
 
-      {data.goals.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 font-serif text-2xl">Goals</h2>
-          <div className="space-y-3">
-            {data.goals.map((goal) => (
-              <div key={goal.id} className="card-soft p-4">
-                <div className="mb-2 flex items-baseline justify-between gap-3">
-                  <span className="font-medium">{goal.name}</span>
-                  <AreaChip area={goal.area as Area} />
-                </div>
-                <SoftProgress value={goal.progress} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <ShareSummaryView data={data} today={today} />
 
-      {dated.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 font-serif text-2xl">Coming up</h2>
-          <div className="space-y-2">
-            {dated.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3"
-              >
-                <div className="flex-1">
-                  <div className="text-sm font-medium">{item.title}</div>
-                  <div className="text-[11px] text-ink-soft">
-                    {item.date ?? "someday"} · {item.detail}
-                  </div>
-                </div>
+      {coming.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-serif text-xl">Coming up</h2>
+          <p className="mt-1 mb-3 text-sm text-ink-soft">The next couple of weeks.</p>
+          <div className="space-y-1.5">
+            {coming.map((item) => (
+              <div key={item.key} className="flex items-baseline gap-3 py-1">
+                <span className="w-16 shrink-0 text-[11px] tabular-nums text-ink-soft">
+                  {item.date ? format(parseISO(item.date), "EEE d MMM") : "someday"}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
                 {item.area && <AreaChip area={item.area as Area} />}
               </div>
             ))}
@@ -153,27 +144,25 @@ function SharedDashboard({ data }: { data: SharedView }) {
         </section>
       )}
 
-      {data.habits.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 font-serif text-2xl">Daily habits</h2>
-          <div className="flex flex-wrap gap-2">
-            {data.habits.map((habit) => (
-              <span key={habit.id} className="chip bg-sage-soft text-sage-deep">
-                {habit.name}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
+      {/*
+        What this page is not.
 
-      {data.goals.length === 0 && dated.length === 0 && data.habits.length === 0 && (
-        <div className="card-soft p-8 text-center text-ink-soft italic">
-          Nothing to show in what was shared.
-        </div>
-      )}
-
-      <footer className="mt-10 text-center text-xs text-ink-soft">
-        Shared from grounded · read-only
+        Worth stating outright, for both readers. For whoever was given the
+        link: counts describe a period, not a person, and they cannot see a
+        reason. For whoever shared it: the reassurance that the private half of
+        the app stayed private is the thing that makes sharing the rest
+        possible at all.
+      */}
+      <footer className="mt-12 border-t border-border pt-6 text-sm text-ink-soft">
+        <p className="max-w-prose">
+          This is a summary, not an assessment. Numbers here show what was recorded, not why — a
+          quiet month can be rest, illness, or a season when things were tracked somewhere else.
+        </p>
+        <p className="mt-3 max-w-prose">
+          Journal entries are never included in a shared link, and neither are descriptions or
+          notes. Shared from grounded · read-only ·{" "}
+          {data.label ? `"${data.label}"` : "this link can be turned off at any time"}.
+        </p>
       </footer>
     </Shell>
   );
