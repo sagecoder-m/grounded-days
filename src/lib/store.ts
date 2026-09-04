@@ -205,6 +205,40 @@ export function useSettingsLoaded(): boolean {
 }
 
 /**
+ * Whether everything the calendar is *built* from has arrived.
+ *
+ * Wider than useSettingsLoaded, and events are the reason. DayFlow renders
+ * whichever events array existed on its very first render — see
+ * use-dayflow-sync, which exists entirely because of that — so anything
+ * arriving later has to be pushed in imperatively, from an effect, after the
+ * grid has already painted. On an account with a handful of events nobody sees
+ * it. On one with a synced university calendar, the grid paints empty and a few
+ * hundred events appear a frame later, which is exactly the flash reported on
+ * one account and not the other.
+ *
+ * Waiting is the whole fix: build once, with the events already in hand, and
+ * there is nothing left to pop in. Tasks and goals are here for the same reason
+ * — both are drawn onto the grid too.
+ *
+ * Same shape as useSettingsLoaded, and the same non-cost: these query keys are
+ * already being observed by useAppState, so reading them again serves the
+ * existing observers rather than fetching anything.
+ */
+export function useCalendarDataLoaded(): boolean {
+  const ctx = useStoreContext();
+  const userId = ctx?.userId ?? "anonymous";
+  const enabled = Boolean(ctx);
+
+  const settings = useQuery({ ...settingsQuery(userId), enabled });
+  const events = useQuery({ ...eventsQuery(userId), enabled });
+  const tasks = useQuery({ ...tasksQuery(userId), enabled });
+  const goals = useQuery({ ...goalsQuery(userId), enabled });
+  const courses = useQuery({ ...coursesQuery(userId), enabled });
+
+  return enabled && [settings, events, tasks, goals, courses].every((q) => q.data !== undefined);
+}
+
+/**
  * Selector read. Note the selector is applied to an already-memoized AppState,
  * so an inline arrow at the call site is fine here (it was not under the old
  * useSyncExternalStore implementation, which resubscribed every render).

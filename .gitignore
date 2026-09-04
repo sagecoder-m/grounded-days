@@ -47,3 +47,6 @@ pending-migrations.sql
 
 # Calendar provider credentials (see .env.calendar.example).
 .env.calendar
+
+# Supabase CLI scratch — written by `supabase link`, machine-specific.
+supabase/.temp/

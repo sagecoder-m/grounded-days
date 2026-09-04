@@ -29,7 +29,7 @@ import {
 } from "@dayflow/react";
 import { ViewType, type Event as DayFlowEvent } from "@dayflow/core";
 
-import { actions, useAppState, useSettingsLoaded } from "@/lib/store";
+import { actions, useAppState, useCalendarDataLoaded } from "@/lib/store";
 import type { Area, CalEvent, CalView } from "@/lib/store-types";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { conflictingEventIds } from "@/lib/schedule";
@@ -158,7 +158,7 @@ const VIEW_FOR_SETTING: Record<CalView, ViewType> = {
  */
 export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) {
   const { user } = useSession();
-  const settingsLoaded = useSettingsLoaded();
+  const dataLoaded = useCalendarDataLoaded();
   const connections = useQuery({
     ...calendarConnectionsQuery(user?.id ?? ""),
     enabled: Boolean(user),
@@ -177,8 +177,16 @@ export function CalendarDayFlow({ heading = "Schedule" }: { heading?: string }) 
 
     `data !== undefined` rather than isSuccess, for the same reason: a disabled
     query is not a failed one, and it never succeeds either.
+
+    The wait covers the events, tasks and goals as well as the settings, and
+    that widening is what finally explained why one account flashed and another
+    did not. DayFlow renders whichever events array existed on its first render;
+    everything later is pushed in from an effect, after paint. With a handful of
+    events nobody notices. With a synced university calendar the grid paints
+    empty and several hundred events land a frame later. Same code, different
+    amount of data — which is why it looked like a bug that came and went.
   */
-  const ready = !user || (settingsLoaded && connections.data !== undefined);
+  const ready = !user || (dataLoaded && connections.data !== undefined);
 
   /*
     The same block the route's pending component draws, deliberately.
