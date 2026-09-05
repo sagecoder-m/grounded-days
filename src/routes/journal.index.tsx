@@ -58,6 +58,8 @@ function JournalPage() {
     navigate({ to: "/journal", search: d === today ? {} : { date: d }, replace: true });
 
   const entry = state.journal.find((e) => e.date === selected);
+  /* Lifted out of Editor so the page can give the pad the full width. */
+  const [handwriting, setHandwriting] = useState(false);
   const affirmation = affirmationForDate(selected);
 
   // Last two weeks, oldest first, for the strip.
@@ -88,9 +90,23 @@ function JournalPage() {
         one thing you came to do. They are context, not steps — moving them
         beside the box puts the cursor at the top of the page where it belongs.
       */}
-      <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      {/*
+        The right-hand column steps aside while handwriting.
+
+        Typed, the affirmation and the fortnight of days beside the box are
+        useful context. Handwritten, they are taking a third of the width from
+        the one thing that needs it: on an iPad the writing column came out
+        around 380px, which is four or five words a line — the report was that
+        there was nowhere to write, and this is half of why.
+      */}
+      <div
+        className={
+          handwriting ? "grid gap-8" : "grid gap-8 @3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]"
+        }
+      >
         <div>
           <Editor
+            onModeChange={setHandwriting}
             key={selected}
             date={selected}
             body={entry?.body ?? ""}
@@ -258,12 +274,14 @@ function Editor({
   mood,
   gratitude,
   inkPath,
+  onModeChange,
 }: {
   date: string;
   body: string;
   mood?: Mood;
   gratitude: string;
   inkPath?: string;
+  onModeChange?: (writing: boolean) => void;
 }) {
   const [draftBody, setDraftBody] = useState(body);
   const [draftGratitude, setDraftGratitude] = useState(gratitude);
@@ -277,6 +295,7 @@ function Editor({
   const canHandwrite = usePenSurface();
   const { user } = useSession();
   const [writing, setWriting] = useState(false);
+  useEffect(() => onModeChange?.(writing), [writing, onModeChange]);
   const [savingInk, setSavingInk] = useState(false);
 
   /* The pad hands back a PNG on every stroke end. Uploading each one would be

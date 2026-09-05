@@ -54,6 +54,15 @@ const PAGE = 42;
 const MORE = 24;
 const MAX_HEIGHT = PAGE + MORE * 4;
 
+/**
+ * College rule: 7.1mm between lines, which is 27px at 96dpi.
+ *
+ * Wide rule — the 8.7mm this started with — is what school exercise books use
+ * and is generous for adult handwriting. College rule is the notebook most
+ * people mean, and fits about a third more on a page.
+ */
+const RULE = 27;
+
 export function HandwritingPad({
   onChange,
   initialImage,
@@ -326,16 +335,47 @@ export function HandwritingPad({
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
-        {/* Ruled like paper. Writing on a blank rectangle drifts uphill; a line
-            to sit on is the whole reason paper has them. */}
+        {/*
+          College rule, and actually visible.
+
+          The first version drew wide rule at 45% opacity, which on the iPad was
+          faint enough to be no line at all — writing still drifted uphill,
+          which is the entire thing ruling exists to prevent. So: the real
+          college measure, and an opacity you can see without it competing with
+          the handwriting.
+
+          Two layers rather than one, because a ruled sheet is two different
+          things. The horizontals repeat forever and are drawn with a gradient.
+          The margin is a single line at a fixed distance from the left edge,
+          which a repeating gradient cannot express — it would tile.
+        */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              "repeating-linear-gradient(var(--card) 0 33px, var(--border) 33px 34px)",
-            opacity: 0.45,
+            /*
+              One line plus background-size, not a repeating gradient with two
+              stops. Both tile the same way in theory; in practice the
+              two-stop version lands its 1px band on fractional pixels as the
+              pattern repeats, so at a device ratio of 2 some lines round to a
+              pixel and some to two — the sheet comes out visibly uneven, which
+              is worse than no ruling. Sizing a single-line tile leaves the
+              rounding to the browser once per tile instead of once per stop.
+            */
+            backgroundImage: "linear-gradient(to bottom, var(--border-c) 1px, transparent 1px)",
+            backgroundSize: `100% ${RULE}px`,
+            // Half a line down, so the first rule sits below the top edge the
+            // way it does on a sheet rather than hard against it.
+            backgroundPosition: `0 ${Math.round(RULE / 2)}px`,
+            opacity: 0.8,
           }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-10 w-px"
+          /* The margin, in clay rather than the rule colour — it is the one
+             line on a page that is not for writing on. */
+          style={{ backgroundColor: "var(--clay)", opacity: 0.28 }}
         />
         <canvas
           ref={canvasRef}
