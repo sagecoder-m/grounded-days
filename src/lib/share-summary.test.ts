@@ -160,3 +160,28 @@ describe("summarise", () => {
     expect(all(s)).toContain("Goals are underway in Personal");
   });
 });
+
+describe("no denominators", () => {
+  /*
+    The rule one step past vocabulary, and the one I broke while building the
+    page: "tended on 17 of the last 56 days" is factually neutral and hands the
+    reader a subtraction. Presence is stated; absence is left alone.
+  */
+  it("never states a count against a total", () => {
+    const s = summarise({
+      since: SINCE,
+      today: TODAY,
+      areas: ["personal", "professional", "education"] as Area[],
+      completions: [{ area: "personal", date: "2026-08-20" }],
+      openWork: [],
+      goals: [],
+      habitCheckins: [{ date: "2026-08-20" }, { date: "2026-08-21" }],
+    });
+    const text = s.sentences.join(" ");
+    expect(text).toMatch(/2 days/);
+    expect(text, "a count against a total invites a subtraction").not.toMatch(
+      /\bof the last \d+ days/,
+    );
+    expect(text).not.toMatch(/\d+\s*\/\s*\d+/);
+  });
+});

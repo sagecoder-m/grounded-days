@@ -65,6 +65,11 @@ export function ShareSummaryView({ data, today }: { data: SharedView; today: str
 
   const peak = Math.max(1, ...summary.weeks.map((w) => w.total));
 
+  /* Underway first and furthest-along first; everything still at zero becomes a
+     count below rather than a row of empty bars. */
+  const moving = data.goals.filter((g) => g.progress > 0).sort((a, b) => b.progress - a.progress);
+  const notStarted = data.goals.filter((g) => g.progress === 0);
+
   return (
     <div className="space-y-10">
       {/* The reading, in sentences. First because it is the only part that does
@@ -149,8 +154,17 @@ export function ShareSummaryView({ data, today }: { data: SharedView; today: str
       {data.goals.length > 0 && (
         <section>
           <h2 className="font-serif text-xl">Goals</h2>
+          {/*
+            The ones that are moving, and a count of the rest.
+
+            Ten goals rendered as ten progress bars is the wall this page was
+            rebuilt to stop being — and most of that wall is bars at zero, which
+            is the least useful thing here and the most easily read as a row of
+            failures. A goal that has not started yet is a plan, not a lapse, so
+            it is counted rather than displayed.
+          */}
           <div className="mt-4 space-y-3">
-            {data.goals.map((goal) => (
+            {moving.map((goal) => (
               <div key={goal.id} className="rounded-2xl border border-border bg-card p-4">
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                   <span className="text-sm font-medium">{goal.name}</span>
@@ -162,6 +176,14 @@ export function ShareSummaryView({ data, today }: { data: SharedView; today: str
               </div>
             ))}
           </div>
+          {notStarted.length > 0 && (
+            <p className="mt-3 text-sm text-ink-soft">
+              {moving.length > 0 ? "Also " : ""}
+              {notStarted.length} {notStarted.length === 1 ? "goal is" : "goals are"} written down
+              and not started yet
+              {moving.length === 0 ? " — the plan is there" : ""}.
+            </p>
+          )}
         </section>
       )}
 
@@ -170,7 +192,7 @@ export function ShareSummaryView({ data, today }: { data: SharedView; today: str
           <h2 className="font-serif text-xl">Daily habits</h2>
           <p className="mt-1 mb-3 text-sm text-ink-soft">
             {hasHistory && summary.habitDays > 0
-              ? `Tended on ${summary.habitDays} of the last ${summary.windowDays} days.`
+              ? `Tended on ${summary.habitDays} ${summary.habitDays === 1 ? "day" : "days"} in the last ${Math.round(summary.windowDays / 7)} weeks.`
               : "What is being tended to, day to day."}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -234,9 +256,13 @@ function AreaCard({ standing, attention }: { standing: AreaStanding; attention: 
       {goals > 0 && goalProgress !== null && (
         <div className="mt-3">
           <p className="mb-1.5 text-[11px] text-ink-soft">
-            {goals} {goals === 1 ? "goal" : "goals"} · {goalProgress}% along
+            {goals} {goals === 1 ? "goal" : "goals"}
+            {goalProgress > 0 ? ` · ${goalProgress}% along` : " · not started yet"}
           </p>
-          <SoftProgress value={goalProgress} tint={AREA_TINT[area]} />
+          {/* No bar at zero. An empty trough reads as a failed attempt; the
+              words already say the honest thing, which is that these are
+              written down and waiting. */}
+          {goalProgress > 0 && <SoftProgress value={goalProgress} tint={AREA_TINT[area]} />}
         </div>
       )}
     </div>

@@ -18,6 +18,10 @@ import type { Area } from "@/lib/store-types";
  * - No streaks, no percentages of days, no "missed", no "behind", no red.
  *   Absence is never counted. Six finished things is six finished things; it is
  *   not "60% of ten".
+ * - No denominators either, which is the same rule one step further and easy to
+ *   miss: "tended on 17 of the last 56 days" states a presence and hands the
+ *   reader a subtraction. "17 days in the last 8 weeks" says the same true
+ *   thing with nothing to fall short of.
  * - "Waiting" for work past its date, not "overdue" or "late". The work is
  *   waiting; the person is not failing.
  * - A quiet area is described as quiet, and quiet is allowed. Someone in a hard
@@ -245,7 +249,7 @@ function sentencesFor({
     );
   } else if (habitDays > 0) {
     out.push(
-      `Nothing is sitting past its date. Daily habits were tended on ${habitDays} of the last ${windowDays} days.`,
+      `Nothing is sitting past its date. Daily habits were tended on ${habitDays} ${habitDays === 1 ? "day" : "days"} in the last ${span}.`,
     );
   } else {
     out.push("Nothing is sitting past its date.");
