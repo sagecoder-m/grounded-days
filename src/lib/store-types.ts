@@ -163,6 +163,12 @@ export interface JournalEntry {
   body: string;
   mood?: Mood;
   gratitude?: string;
+  /**
+   * Storage path of a handwritten page, when the day was written rather than
+   * typed. An entry can carry both — a page of writing and a typed note under
+   * it are the same day, not two.
+   */
+  inkPath?: string;
 }
 
 export type CalendarProvider = "google" | "microsoft" | "ical";

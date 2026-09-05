@@ -212,6 +212,7 @@ export function rowToJournalEntry(row: Tables<"journal_entries">): JournalEntry 
     body: row.body,
     mood: (MOODS as readonly string[]).includes(row.mood ?? "") ? (row.mood as Mood) : undefined,
     gratitude: row.gratitude ?? undefined,
+    inkPath: row.ink_path ?? undefined,
   };
 }
 

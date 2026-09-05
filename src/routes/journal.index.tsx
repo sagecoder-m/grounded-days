@@ -1,12 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
+import { PenLine } from "lucide-react";
+import { toast } from "sonner";
 
 import { dateKey } from "@/lib/dates";
 import { actions, useAppState } from "@/lib/store";
 import type { JournalEntry, Mood } from "@/lib/store-types";
 import { affirmationForDate } from "@/lib/affirmations";
 import { useMounted } from "@/lib/use-mounted";
+import { usePenSurface } from "@/lib/use-pen-surface";
+import { useSession } from "@/lib/use-session";
+import { deleteInk, signedInkUrl, uploadInk } from "@/lib/journal-ink";
+import { HandwritingPad } from "@/components/handwriting-pad";
+import { JournalInkView } from "@/components/journal-ink-view";
 
 export const Route = createFileRoute("/journal/")({
   component: JournalPage,
@@ -89,6 +96,7 @@ function JournalPage() {
             body={entry?.body ?? ""}
             mood={entry?.mood}
             gratitude={entry?.gratitude ?? ""}
+            inkPath={entry?.inkPath}
           />
         </div>
 
@@ -249,15 +257,73 @@ function Editor({
   body,
   mood,
   gratitude,
+  inkPath,
 }: {
   date: string;
   body: string;
   mood?: Mood;
   gratitude: string;
+  inkPath?: string;
 }) {
   const [draftBody, setDraftBody] = useState(body);
   const [draftGratitude, setDraftGratitude] = useState(gratitude);
   const dirty = useRef(false);
+
+  /*
+    Handwriting is offered on a tablet and nowhere else — see usePenSurface for
+    why that is detected rather than sniffed. A phone and a desktop still show
+    any page already written, below; only the pad itself is withheld.
+  */
+  const canHandwrite = usePenSurface();
+  const { user } = useSession();
+  const [writing, setWriting] = useState(false);
+  const [savingInk, setSavingInk] = useState(false);
+
+  /* The pad hands back a PNG on every stroke end. Uploading each one would be
+     a request per stroke, so the newest blob is held and written once the hand
+     has been still for a moment — the same debounce the text takes, and for the
+     same reason. */
+  const pendingInk = useRef<Blob | null>(null);
+  const inkDirty = useRef(false);
+
+  /* Any page already written for this day, so continuing it does not mean
+     starting from a blank sheet. Signed URLs expire, so this is fetched rather
+     than kept on the entry. */
+  const [inkUrl, setInkUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!inkPath) {
+      setInkUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void signedInkUrl(inkPath).then((u) => !cancelled && setInkUrl(u));
+    return () => {
+      cancelled = true;
+    };
+  }, [inkPath]);
+
+  useEffect(() => {
+    if (!inkDirty.current || !user) return;
+    const timer = window.setTimeout(async () => {
+      const blob = pendingInk.current;
+      inkDirty.current = false;
+      setSavingInk(true);
+      try {
+        if (blob) {
+          const path = await uploadInk(user.id, date, blob);
+          actions.saveJournalEntry(date, { inkPath: path });
+        } else {
+          if (inkPath) await deleteInk(inkPath);
+          actions.saveJournalEntry(date, { inkPath: null });
+        }
+      } catch {
+        toast.error("That page couldn't be saved. Your typing is safe.");
+      } finally {
+        setSavingInk(false);
+      }
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [date, user, inkPath]);
 
   // Debounced save. Writing per keystroke to a network store drops characters
   // when responses land out of order — the same reason the display name field
@@ -332,6 +398,48 @@ function Editor({
           placeholder="One sentence is a complete entry."
           className="w-full resize-y rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed outline-none focus:border-primary"
         />
+
+        {/* Writing by hand, on a tablet. Offered under the typing rather than
+            beside it: they are two ways to put the same day down, not a choice
+            you have to make before you start. */}
+        {canHandwrite && !writing && (
+          <button
+            type="button"
+            onClick={() => setWriting(true)}
+            className="inline-flex items-center gap-1.5 text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
+          >
+            <PenLine className="h-3.5 w-3.5" />
+            {inkPath ? "Add to the handwritten page" : "Write by hand instead"}
+          </button>
+        )}
+
+        {canHandwrite && writing && (
+          <div className="space-y-2">
+            <HandwritingPad
+              initialImage={inkUrl}
+              onChange={(blob) => {
+                pendingInk.current = blob;
+                inkDirty.current = true;
+              }}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs italic text-ink-soft">
+                {savingInk ? "Saving your page…" : "Saved as you write."}
+              </span>
+              <button
+                type="button"
+                onClick={() => setWriting(false)}
+                className="text-xs text-ink-soft underline underline-offset-4 hover:text-ink"
+              >
+                Done writing
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* The page as it stands, on every device. Reading is never gated —
+            an entry you cannot open on your phone is an entry you have lost. */}
+        {inkPath && !writing && <JournalInkView path={inkPath} alt={`Handwriting from ${date}`} />}
       </div>
 
       <div className="space-y-2">

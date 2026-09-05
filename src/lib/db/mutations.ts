@@ -725,7 +725,10 @@ export const actions = {
    * saves on a debounce as you type, and a first keystroke racing its own
    * follow-up would otherwise produce two rows for one day.
    */
-  saveJournalEntry(date: string, patch: { body?: string; mood?: Mood | null; gratitude?: string }) {
+  saveJournalEntry(
+    date: string,
+    patch: { body?: string; mood?: Mood | null; gratitude?: string; inkPath?: string | null },
+  ) {
     track("journal_entry_add");
     const { userId, queryClient } = requireStoreContext();
     const existing = (
@@ -739,6 +742,9 @@ export const actions = {
       body: patch.body ?? existing?.body ?? "",
       mood: patch.mood === null ? undefined : (patch.mood ?? existing?.mood),
       gratitude: patch.gratitude ?? existing?.gratitude,
+      // null clears the page, undefined leaves whatever is there — the same
+      // distinction the task patches draw, for the same reason.
+      inkPath: patch.inkPath === null ? undefined : (patch.inkPath ?? existing?.inkPath),
     };
 
     void write(
@@ -760,6 +766,7 @@ export const actions = {
             body: merged.body,
             mood: merged.mood ?? null,
             gratitude: merged.gratitude ?? null,
+            ink_path: merged.inkPath ?? null,
           },
           { onConflict: "user_id,date" },
         ),

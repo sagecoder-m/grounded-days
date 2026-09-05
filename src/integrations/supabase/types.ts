@@ -588,6 +588,7 @@ export type Database = {
           created_at: string;
           date: string;
           gratitude: string | null;
+          ink_path: string | null;
           id: string;
           mood: string | null;
           updated_at: string;
@@ -598,6 +599,7 @@ export type Database = {
           created_at?: string;
           date: string;
           gratitude?: string | null;
+          ink_path?: string | null;
           id?: string;
           mood?: string | null;
           updated_at?: string;
@@ -608,6 +610,7 @@ export type Database = {
           created_at?: string;
           date?: string;
           gratitude?: string | null;
+          ink_path?: string | null;
           id?: string;
           mood?: string | null;
           updated_at?: string;
