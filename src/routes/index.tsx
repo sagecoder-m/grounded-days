@@ -19,6 +19,7 @@ import { RhythmGrid } from "@/components/rhythm-grid";
 import { RhythmRiver } from "@/components/rhythm-river";
 import { FirstThing } from "@/components/first-thing";
 import { isNewAccount } from "@/lib/user-insights";
+import { useAccountDataLoaded } from "@/lib/store";
 import { WaitingAWhile } from "@/components/waiting-a-while";
 import { OneThing } from "@/components/one-thing";
 import { AreaBalance } from "@/components/area-balance";
@@ -63,6 +64,7 @@ function greeting(name: string) {
 
 function Overview() {
   const state = useAppState();
+  const accountLoaded = useAccountDataLoaded();
   const today = new Date();
   /*
     The day, as a stable value the memos below can depend on.
@@ -202,7 +204,16 @@ function Overview() {
 
   if (oneThing) return <OneThing state={state} onClose={() => setOneThing(false)} />;
 
-  if (isNewAccount(state) && !lookingAround) {
+  /*
+    Only once the collections have actually arrived.
+
+    isNewAccount reads "every collection is empty", which is also what the store
+    reports while the queries are in flight — so without this an established
+    account was shown the first-run screen on every page open, for as long as
+    the round trip took, before the dashboard replaced it. A genuinely new
+    account waits the same moment and then sees it properly.
+  */
+  if (accountLoaded && isNewAccount(state) && !lookingAround) {
     return <FirstThing onLookAround={() => setLookingAround(true)} />;
   }
 

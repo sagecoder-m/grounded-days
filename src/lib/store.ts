@@ -205,6 +205,41 @@ export function useSettingsLoaded(): boolean {
 }
 
 /**
+ * Whether the account's own collections have loaded.
+ *
+ * Narrower than the calendar's flag — it does not wait on connections — and it
+ * exists for one question that must never be answered early: is this a brand
+ * new account?
+ *
+ * isNewAccount asks whether every collection is empty, and every collection is
+ * empty while the queries are in flight, so on every single page open an
+ * established account looked new for a moment and was shown the first-run
+ * screen before the dashboard replaced it. The default is once again a real,
+ * applicable answer, which is what makes it dangerous.
+ */
+export function useAccountDataLoaded(): boolean {
+  const ctx = useStoreContext();
+  const userId = ctx?.userId ?? "anonymous";
+  const enabled = Boolean(ctx);
+
+  const tasks = useQuery({ ...tasksQuery(userId), enabled });
+  const habits = useQuery({ ...habitsQuery(userId), enabled });
+  const goals = useQuery({ ...goalsQuery(userId), enabled });
+  const journal = useQuery({ ...journalQuery(userId), enabled });
+  const courses = useQuery({ ...coursesQuery(userId), enabled });
+  const projects = useQuery({ ...projectsQuery(userId), enabled });
+  const focusSessions = useQuery({ ...focusSessionsQuery(userId), enabled });
+  const events = useQuery({ ...eventsQuery(userId), enabled });
+
+  return (
+    enabled &&
+    [tasks, habits, goals, journal, courses, projects, focusSessions, events].every(
+      (q) => q.data !== undefined,
+    )
+  );
+}
+
+/**
  * Whether everything the calendar is *built* from has arrived.
  *
  * Wider than useSettingsLoaded, and events are the reason. DayFlow renders

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 
-import { useCalendarDataLoaded } from "./store";
+import { useAccountDataLoaded, useCalendarDataLoaded } from "./store";
 import { setStoreContext } from "./db/context";
 import { qk } from "./db/keys";
 
@@ -97,5 +97,55 @@ describe("useCalendarDataLoaded", () => {
 
     const { result } = renderHook(() => useCalendarDataLoaded(), { wrapper: wrapper(client) });
     expect(result.current).toBe(true);
+  });
+});
+
+/**
+ * The same trap, a third time.
+ *
+ * isNewAccount asks "is every collection empty", which is exactly what the
+ * store reports while the queries are in flight. So an account with a hundred
+ * and twenty-seven events was shown the brand-new-user screen on every page
+ * open, until the data landed and replaced it. Theme, calendar, and now this:
+ * a default that is a real, applicable answer is the recurring shape of bug in
+ * this codebase, and it is worth a test each time it is closed.
+ */
+describe("useAccountDataLoaded", () => {
+  const COLLECTIONS = [
+    qk.tasks(USER),
+    qk.habits(USER),
+    qk.goals(USER),
+    qk.journal(USER),
+    qk.courses(USER),
+    qk.projects(USER),
+    qk.focusSessions(USER),
+    qk.events(USER),
+  ];
+
+  it("is false while any collection is still in flight", () => {
+    const client = emptyClient();
+    setStoreContext({ queryClient: client, userId: USER });
+    // Everything but the events, which is enough to look like a new account.
+    for (const key of COLLECTIONS.slice(0, -1)) seed(client, key, []);
+
+    const { result } = renderHook(() => useAccountDataLoaded(), { wrapper: wrapper(client) });
+    expect(result.current).toBe(false);
+  });
+
+  it("is true once they have all arrived, empty or not", () => {
+    const client = emptyClient();
+    setStoreContext({ queryClient: client, userId: USER });
+    for (const key of COLLECTIONS) seed(client, key, []);
+
+    const { result } = renderHook(() => useAccountDataLoaded(), { wrapper: wrapper(client) });
+    // Genuinely empty is a real answer and must not wait forever for content.
+    expect(result.current).toBe(true);
+  });
+
+  it("is false with nobody signed in", () => {
+    setStoreContext(null);
+    const client = emptyClient();
+    const { result } = renderHook(() => useAccountDataLoaded(), { wrapper: wrapper(client) });
+    expect(result.current).toBe(false);
   });
 });
