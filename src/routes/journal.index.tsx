@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
-import { PenLine } from "lucide-react";
+import { Keyboard, PenLine } from "lucide-react";
 import { toast } from "sonner";
 
 import { dateKey } from "@/lib/dates";
@@ -383,11 +383,14 @@ function Editor({
       <div className="space-y-2">
         <label
           htmlFor="journal-body"
-          className="block text-[10px] uppercase tracking-widest text-ink-soft"
+          className={`block text-[10px] uppercase tracking-widest text-ink-soft ${
+            writing ? "sr-only" : ""
+          }`}
         >
           Anything you want to put down
         </label>
         <textarea
+          hidden={writing}
           id="journal-body"
           value={draftBody}
           onChange={(e) => {
@@ -399,18 +402,39 @@ function Editor({
           className="w-full resize-y rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed outline-none focus:border-primary"
         />
 
-        {/* Writing by hand, on a tablet. Offered under the typing rather than
-            beside it: they are two ways to put the same day down, not a choice
-            you have to make before you start. */}
-        {canHandwrite && !writing && (
-          <button
-            type="button"
-            onClick={() => setWriting(true)}
-            className="inline-flex items-center gap-1.5 text-xs text-ink-soft underline underline-offset-4 transition-colors hover:text-ink"
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            {inkPath ? "Add to the handwritten page" : "Write by hand instead"}
-          </button>
+        {/*
+          Type or handwrite, as a switch rather than a link.
+
+          It was "Write by hand instead", which read as a one-way door and left
+          both surfaces on screen at once. A day is written one way or the
+          other; the switch says so, and either way the entry is the same day —
+          swapping back does not throw away what is already there.
+        */}
+        {canHandwrite && (
+          <div className="flex overflow-hidden rounded-full border border-tan text-xs">
+            <button
+              type="button"
+              onClick={() => setWriting(false)}
+              aria-pressed={!writing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+                !writing ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary"
+              }`}
+            >
+              <Keyboard className="h-3.5 w-3.5" />
+              Type
+            </button>
+            <button
+              type="button"
+              onClick={() => setWriting(true)}
+              aria-pressed={writing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors ${
+                writing ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary"
+              }`}
+            >
+              <PenLine className="h-3.5 w-3.5" />
+              Handwrite
+            </button>
+          </div>
         )}
 
         {canHandwrite && writing && (
@@ -422,18 +446,9 @@ function Editor({
                 inkDirty.current = true;
               }}
             />
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs italic text-ink-soft">
-                {savingInk ? "Saving your page…" : "Saved as you write."}
-              </span>
-              <button
-                type="button"
-                onClick={() => setWriting(false)}
-                className="text-xs text-ink-soft underline underline-offset-4 hover:text-ink"
-              >
-                Done writing
-              </button>
-            </div>
+            <p className="text-xs italic text-ink-soft">
+              {savingInk ? "Saving your page…" : "Saved as you write."}
+            </p>
           </div>
         )}
 
