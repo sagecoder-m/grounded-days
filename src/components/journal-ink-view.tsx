@@ -47,10 +47,16 @@ export function JournalInkView({ path, alt }: { path: string; alt?: string }) {
         <img
           src={url}
           alt={alt ?? "A handwritten journal page"}
-          /* Full width, natural height. A handwritten page has a shape the
-             person chose by writing on it; cropping it to a tidy box would cut
-             off the end of their own sentences. */
-          className="block w-full"
+          /*
+            Full width, natural height. A handwritten page has a shape the
+            person chose by writing on it; cropping it to a tidy box would cut
+            off the end of their own sentences.
+
+            Inverted in dark mode, matching the pad. Pages are stored with dark
+            ink on transparency — one stored form so a page written in one theme
+            is legible in the other — and the flip happens at paint time here.
+          */
+          className="block w-full dark:invert"
         />
       ) : (
         <div className="h-48 animate-pulse bg-secondary/40" />

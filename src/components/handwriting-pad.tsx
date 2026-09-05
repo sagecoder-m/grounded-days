@@ -43,6 +43,21 @@ interface Stroke {
 
 type Tool = "ink" | "erase";
 
+/**
+ * One ink, always this colour, in both themes.
+ *
+ * Not a themed value, and the reason is what gets *saved*. The page is stored
+ * as a PNG, so whatever colour is drawn is the colour kept forever — write in
+ * dark mode with pale ink and that page is invisible the next morning in light
+ * mode, and vice versa. A journal is read back for years; it cannot depend on
+ * which theme somebody happened to be in.
+ *
+ * So the ink is always dark and the *display* is inverted in dark mode, by CSS,
+ * on the canvas and on the saved page alike. A filter is a paint-time effect
+ * and never touches the backing store, so toBlob still writes dark strokes —
+ * one stored form, correct in either theme, including for pages written before
+ * any of this existed.
+ */
 const INK = "#2f2a24";
 const BASE_WIDTH = 2.4;
 const ERASER_WIDTH = 22;
@@ -466,7 +481,10 @@ export function HandwritingPad({
             */
             touchAction: "manipulation",
           }}
-          className="relative block w-full"
+          /* dark:invert — see INK. Dark strokes are stored; the screen shows
+             them light in dark mode. Transparent pixels stay transparent, so
+             only the writing flips. */
+          className="relative block w-full dark:invert"
         />
       </div>
 
