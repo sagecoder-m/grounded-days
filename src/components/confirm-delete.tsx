@@ -72,7 +72,14 @@ export function ConfirmDeleteButton({
       </button>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {itemLabel}?</AlertDialogTitle>
+          {/* No second question mark when the name already ends in one. Chat
+              titles are taken from the first thing asked, so "Delete What
+              should I do first today??" is the common case rather than an edge
+              one. Same for a name ending in a full stop or exclamation. */}
+          <AlertDialogTitle>
+            Delete {itemLabel}
+            {/[?!.]$/.test(itemLabel.trim()) ? "" : "?"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {consequence ?? "This cannot be undone."} Type DELETE to confirm.
           </AlertDialogDescription>

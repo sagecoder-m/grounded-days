@@ -501,6 +501,7 @@ function AssistantPage() {
           activeId={activeId}
           onSelect={setActiveId}
           onNew={startNewChat}
+          onDelete={deleteConversation}
         />
 
         <div className="min-w-0 space-y-6">
