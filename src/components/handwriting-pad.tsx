@@ -165,25 +165,47 @@ export function HandwritingPad({
   }, [initialImage, repaint, sync]);
 
   /*
-    Stop the Pencil scrolling the page.
+    Stop the Pencil scrolling the page — at the touch layer, which is the only
+    one Safari listens to.
 
-    With touch-action handed back to fingers, a pen drag would otherwise pan the
-    sheet as it draws. preventDefault on the pen's own events suppresses that
-    without taking scrolling away from touch — but it only works from a listener
-    registered non-passively, which React's props cannot express, so this is
-    attached by hand.
+    The first attempt preventDefault'd the pen's *pointer* events, and on the
+    iPad the page still moved: erasing scrolled the sheet instead of rubbing
+    anything out. Safari decides a scroll from the touch stream, and by the time
+    a pointermove is dispatched the pan has already been committed, so
+    cancelling there is too late.
+
+    Pencil input also arrives as a TouchEvent whose touch reports
+    touchType === "stylus" — Safari's own extension, and the only thing that
+    distinguishes a Pencil from a finger at this level. Cancelling those, and
+    only those, is what leaves one finger scrolling and two fingers pinching
+    while the pen writes without moving anything.
   */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const block = (e: PointerEvent) => {
+
+    /** Safari-only, and absent everywhere else — hence the widened type. */
+    const isStylus = (touch: Touch) =>
+      (touch as Touch & { touchType?: string }).touchType === "stylus";
+
+    const blockStylusScroll = (e: TouchEvent) => {
+      if (Array.from(e.touches).some(isStylus)) e.preventDefault();
+    };
+    /* Kept as well, for browsers where it does work — Chrome on a Surface
+       honours it, and it costs nothing where it does not. */
+    const blockPenScroll = (e: PointerEvent) => {
       if (e.pointerType === "pen") e.preventDefault();
     };
-    canvas.addEventListener("pointerdown", block, { passive: false });
-    canvas.addEventListener("pointermove", block, { passive: false });
+
+    canvas.addEventListener("touchstart", blockStylusScroll, { passive: false });
+    canvas.addEventListener("touchmove", blockStylusScroll, { passive: false });
+    canvas.addEventListener("pointerdown", blockPenScroll, { passive: false });
+    canvas.addEventListener("pointermove", blockPenScroll, { passive: false });
     return () => {
-      canvas.removeEventListener("pointerdown", block);
-      canvas.removeEventListener("pointermove", block);
+      canvas.removeEventListener("touchstart", blockStylusScroll);
+      canvas.removeEventListener("touchmove", blockStylusScroll);
+      canvas.removeEventListener("pointerdown", blockPenScroll);
+      canvas.removeEventListener("pointermove", blockPenScroll);
     };
   }, []);
 
@@ -321,7 +343,15 @@ export function HandwritingPad({
       the canvas.
     */
     <div className="select-none space-y-2 [-webkit-touch-callout:none] [-webkit-user-select:none]">
-      <div className="flex flex-wrap items-center gap-2">
+      {/*
+        The tools stay put while the page scrolls past them.
+
+        A sheet can now be many screens tall, and in the recording the toolbar
+        had scrolled away entirely — the writing filled the screen with no way
+        to reach Erase or Undo without scrolling back up first. Sticky, with a
+        ground behind it so the ink does not run underneath the buttons.
+      */}
+      <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-full bg-background/85 py-1 backdrop-blur">
         <div className="flex overflow-hidden rounded-full border border-tan">
           <ToolButton active={tool === "ink"} onClick={() => setTool("ink")} label="Write">
             <PenLine className="h-3.5 w-3.5" />
