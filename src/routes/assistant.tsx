@@ -14,6 +14,7 @@ import {
 
 import { GrowingTextarea } from "@/components/growing-textarea";
 import { CopyButton } from "@/components/copy-button";
+import { ChatList } from "@/components/chat-list";
 import { toast } from "sonner";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -484,191 +485,212 @@ function AssistantPage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <ChatSwitcher
-            conversations={conversations}
-            loaded={conversationsLoaded}
-            activeId={activeId}
-            onSelect={setActiveId}
-            onNew={startNewChat}
-          />
-          {active && (
-            <InlineText
-              value={active.title ?? ""}
-              onSave={(v) => renameConversation(active.id, v)}
-              placeholder="Name this chat"
-              showIcon
-              className="min-w-0 truncate font-serif text-lg"
-            />
+      {/*
+        The history beside the conversation, from md up.
+
+        A rail rather than the dropdown it used to be, because past chats are
+        context and not a destination: what you asked last week is usually what
+        you want to pick up, and behind a menu that thread gets abandoned rather
+        than continued. The dropdown stays below md, where a permanent rail
+        would take a third of the width from the conversation itself.
+      */}
+      <div className="md:grid md:grid-cols-[13.5rem_minmax(0,1fr)] md:gap-8">
+        <ChatList
+          conversations={conversations}
+          loaded={conversationsLoaded}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onNew={startNewChat}
+        />
+
+        <div className="min-w-0 space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2 md:hidden">
+              <ChatSwitcher
+                conversations={conversations}
+                loaded={conversationsLoaded}
+                activeId={activeId}
+                onSelect={setActiveId}
+                onNew={startNewChat}
+              />
+            </div>
+            {/* The title, on its own from md up — the switcher beside it is phone
+            only, and a chat still needs a name you can edit. */}
+            {active && (
+              <InlineText
+                value={active.title ?? ""}
+                onSave={(v) => renameConversation(active.id, v)}
+                placeholder="Name this chat"
+                showIcon
+                className="min-w-0 flex-1 truncate font-serif text-lg"
+              />
+            )}
+            {active && (
+              <ConfirmDeleteButton
+                itemLabel={active.title ?? "this chat"}
+                consequence="Every message in it goes with it. This cannot be undone."
+                onConfirm={() => deleteConversation(active.id)}
+                className="reveal-control grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-soft hover:text-[color:var(--clay)] md:opacity-40 md:hover:opacity-100"
+                iconClassName="h-3.5 w-3.5"
+                aria-label="Delete this chat"
+              />
+            )}
+          </div>
+
+          {loaded && !activeId && (
+            <div className="space-y-3">
+              <div className="card-soft flex items-start gap-3 p-5">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <p className="text-sm text-ink-soft">
+                  Ask for the next small step rather than a whole plan, or send a photo of a
+                  syllabus or schedule — that is what it is best at.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => void send(s)}
+                    disabled={busy}
+                    className="chip bg-secondary text-ink-soft transition-colors hover:text-ink disabled:opacity-50"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
-        {active && (
-          <ConfirmDeleteButton
-            itemLabel={active.title ?? "this chat"}
-            consequence="Every message in it goes with it. This cannot be undone."
-            onConfirm={() => deleteConversation(active.id)}
-            className="reveal-control grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-soft hover:text-[color:var(--clay)] md:opacity-40 md:hover:opacity-100"
-            iconClassName="h-3.5 w-3.5"
-            aria-label="Delete this chat"
-          />
-        )}
-      </div>
 
-      {loaded && !activeId && (
-        <div className="space-y-3">
-          <div className="card-soft flex items-start gap-3 p-5">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <p className="text-sm text-ink-soft">
-              Ask for the next small step rather than a whole plan, or send a photo of a syllabus or
-              schedule — that is what it is best at.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {STARTERS.map((s) => (
-              <button
-                key={s}
-                onClick={() => void send(s)}
-                disabled={busy}
-                className="chip bg-secondary text-ink-soft transition-colors hover:text-ink disabled:opacity-50"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {messages.length > 0 && (
-        <div className="space-y-3">
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                m.role === "user"
-                  ? "ml-auto bg-primary text-primary-foreground"
-                  : "card-soft whitespace-pre-wrap"
-              }`}
-            >
-              {m.attachments.map((a) =>
-                imageUrls[a.path] ? (
-                  <img
-                    key={a.path}
-                    src={imageUrls[a.path]}
-                    alt="Attached"
-                    className="mb-2 max-h-64 rounded-xl object-contain"
-                  />
-                ) : (
-                  <div
-                    key={a.path}
-                    className="mb-2 h-32 w-full animate-pulse rounded-xl bg-black/10"
-                  />
-                ),
-              )}
-              {m.content}
-              {/* Replies only. There is nothing to copy from your own message
+          {messages.length > 0 && (
+            <div className="space-y-3">
+              {messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    m.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : "card-soft whitespace-pre-wrap"
+                  }`}
+                >
+                  {m.attachments.map((a) =>
+                    imageUrls[a.path] ? (
+                      <img
+                        key={a.path}
+                        src={imageUrls[a.path]}
+                        alt="Attached"
+                        className="mb-2 max-h-64 rounded-xl object-contain"
+                      />
+                    ) : (
+                      <div
+                        key={a.path}
+                        className="mb-2 h-32 w-full animate-pulse rounded-xl bg-black/10"
+                      />
+                    ),
+                  )}
+                  {m.content}
+                  {/* Replies only. There is nothing to copy from your own message
                   that you did not just write. */}
-              {m.role === "assistant" && m.content && (
-                <div className="-mb-1 mt-2 flex justify-end">
-                  <CopyButton text={m.content} />
+                  {m.role === "assistant" && m.content && (
+                    <div className="-mb-1 mt-2 flex justify-end">
+                      <CopyButton text={m.content} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {busy && (
+                <div className="card-soft max-w-[85%] px-4 py-3 text-sm italic text-ink-soft">
+                  Thinking…
                 </div>
               )}
-            </div>
-          ))}
-          {busy && (
-            <div className="card-soft max-w-[85%] px-4 py-3 text-sm italic text-ink-soft">
-              Thinking…
+              <div ref={endRef} />
             </div>
           )}
-          <div ref={endRef} />
-        </div>
-      )}
 
-      {error && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-tan bg-secondary/60 px-4 py-3 text-sm text-ink-soft">
-          <span className="min-w-0 flex-1">{error}</span>
-          {/* The question is still in the conversation above, so the only thing
+          {error && (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-tan bg-secondary/60 px-4 py-3 text-sm text-ink-soft">
+              <span className="min-w-0 flex-1">{error}</span>
+              {/* The question is still in the conversation above, so the only thing
               a failure should cost is one tap — not retyping what they wrote. */}
-          {retry && !busy && (
-            <button
-              type="button"
-              onClick={() => void ask(retry)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-tan px-3 py-1 text-xs text-ink transition-colors hover:bg-secondary"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Try again
-            </button>
+              {retry && !busy && (
+                <button
+                  type="button"
+                  onClick={() => void ask(retry)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-tan px-3 py-1 text-xs text-ink transition-colors hover:bg-secondary"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Try again
+                </button>
+              )}
+            </div>
           )}
-        </div>
-      )}
 
-      {pendingImage && (
-        <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-3 py-2">
-          <img
-            src={pendingImage.previewUrl}
-            alt="Selected"
-            className="h-14 w-14 shrink-0 rounded-lg object-cover"
-          />
-          <span className="flex-1 text-xs text-ink-soft">
-            {pendingImage.uploading ? "Uploading…" : "Attached — sent with your next message"}
-          </span>
-          <button
-            type="button"
-            onClick={clearPendingImage}
-            aria-label="Remove image"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-secondary hover:text-ink"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+          {pendingImage && (
+            <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border px-3 py-2">
+              <img
+                src={pendingImage.previewUrl}
+                alt="Selected"
+                className="h-14 w-14 shrink-0 rounded-lg object-cover"
+              />
+              <span className="flex-1 text-xs text-ink-soft">
+                {pendingImage.uploading ? "Uploading…" : "Attached — sent with your next message"}
+              </span>
+              <button
+                type="button"
+                onClick={clearPendingImage}
+                aria-label="Remove image"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-ink-soft hover:bg-secondary hover:text-ink"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send(draft);
-        }}
-        className="flex items-end gap-2"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file) void pickImage(file);
-          }}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="h-12 w-12 shrink-0 rounded-full border-tan"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={busy}
-          aria-label="Attach an image"
-          title="Attach a photo — a syllabus, a schedule, a handwritten list"
-        >
-          <ImageIcon className="h-4 w-4" />
-        </Button>
-        <GrowingTextarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter sends, shift+enter makes a new line — the convention for
-            // anything chat-shaped.
-            if (e.key === "Enter" && !e.shiftKey) {
+          <form
+            onSubmit={(e) => {
               e.preventDefault();
               void send(draft);
-            }
-          }}
-          placeholder="Ask about your week, or attach a photo…"
-          className="min-h-12 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
-        />
-        {busy ? (
-          /*
+            }}
+            className="flex items-end gap-2"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void pickImage(file);
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 shrink-0 rounded-full border-tan"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+              aria-label="Attach an image"
+              title="Attach a photo — a syllabus, a schedule, a handwritten list"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </Button>
+            <GrowingTextarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends, shift+enter makes a new line — the convention for
+                // anything chat-shaped.
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send(draft);
+                }
+              }}
+              placeholder="Ask about your week, or attach a photo…"
+              className="min-h-12 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+            />
+            {busy ? (
+              /*
             Stop, in the send button's place rather than beside it.
 
             A reply you no longer want — a misread question, a wrong course — is
@@ -677,32 +699,34 @@ function AssistantPage() {
             It replaces Send because there is nothing to send while one is in
             flight, and two buttons where one is always dead is worse.
           */
-          <Button
-            type="button"
-            variant="outline"
-            onClick={stop}
-            className="h-12 shrink-0 rounded-full border-tan px-4"
-            aria-label="Stop"
-            title="Stop generating"
-          >
-            <Square className="h-3.5 w-3.5 fill-current" />
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            disabled={(!draft.trim() && !pendingImage) || pendingImage?.uploading}
-            className="h-12 shrink-0 rounded-full px-4"
-            aria-label="Send"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
-      </form>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={stop}
+                className="h-12 shrink-0 rounded-full border-tan px-4"
+                aria-label="Stop"
+                title="Stop generating"
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={(!draft.trim() && !pendingImage) || pendingImage?.uploading}
+                className="h-12 shrink-0 rounded-full px-4"
+                aria-label="Send"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            )}
+          </form>
 
-      <p className="text-[11px] italic text-ink-soft">
-        Saved to your account, so it is here when you come back. Start a new chat any time — each
-        one keeps its own history.
-      </p>
+          <p className="text-[11px] italic text-ink-soft">
+            Saved to your account, so it is here when you come back. Start a new chat any time —
+            each one keeps its own history.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
