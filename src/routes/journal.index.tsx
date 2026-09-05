@@ -430,7 +430,16 @@ function Editor({
           swapping back does not throw away what is already there.
         */}
         {canHandwrite && (
-          <div className="flex overflow-hidden rounded-full border border-tan text-xs">
+          /*
+            inline-flex, not flex.
+
+            A block-level flex container fills its parent, so on the page this
+            stretched the full width of the editor with the two buttons crammed
+            into the left end of a wide empty pill — it read as a broken input
+            rather than a switch. inline-flex sizes it to its own content, which
+            is what a segmented control is.
+          */
+          <div className="inline-flex overflow-hidden rounded-full border border-tan text-xs">
             <button
               type="button"
               onClick={() => setWriting(false)}

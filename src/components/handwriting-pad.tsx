@@ -52,7 +52,16 @@ const ERASER_WIDTH = 22;
  *  nowhere to actually write. */
 const PAGE = 42;
 const MORE = 24;
-const MAX_HEIGHT = PAGE + MORE * 4;
+/*
+  No page limit worth calling a limit.
+
+  This was four pages, which is an arbitrary number to meet on a day you have a
+  lot to say. The only real ceiling is the canvas itself: browsers stop
+  allocating a backing store somewhere past 16384px on a side, and at a device
+  ratio of 2 that is about 500rem of page. Sitting well under it means "add
+  another page" never fails, and nobody writing a journal will ever arrive here.
+*/
+const MAX_HEIGHT = 400;
 
 /**
  * College rule: 7.1mm between lines, which is 27px at 96dpi.
@@ -155,6 +164,29 @@ export function HandwritingPad({
     img.src = initialImage;
   }, [initialImage, repaint, sync]);
 
+  /*
+    Stop the Pencil scrolling the page.
+
+    With touch-action handed back to fingers, a pen drag would otherwise pan the
+    sheet as it draws. preventDefault on the pen's own events suppresses that
+    without taking scrolling away from touch — but it only works from a listener
+    registered non-passively, which React's props cannot express, so this is
+    attached by hand.
+  */
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const block = (e: PointerEvent) => {
+      if (e.pointerType === "pen") e.preventDefault();
+    };
+    canvas.addEventListener("pointerdown", block, { passive: false });
+    canvas.addEventListener("pointermove", block, { passive: false });
+    return () => {
+      canvas.removeEventListener("pointerdown", block);
+      canvas.removeEventListener("pointermove", block);
+    };
+  }, []);
+
   const emit = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || canvas.width === 0) return;
@@ -174,14 +206,17 @@ export function HandwritingPad({
 
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     /*
-      Pen only, once a pen has been seen.
+      The Pencil, and nothing else, ever.
 
-      Not "pen only, always": that leaves the pad dead on a tablet with no
-      stylus to hand. A finger draws until the first Pencil stroke arrives, and
-      from then on only the Pencil marks the page and a resting hand is ignored.
+      This used to let a finger draw until the first Pencil stroke arrived, on
+      the reasoning that a pad which ignores every input is a pad that looks
+      broken. On the device that reasoning was wrong twice over: a finger draws
+      badly enough that nobody wants the option, and more importantly, fingers
+      have a much better job on this page now — they scroll and pinch the sheet
+      while the Pencil writes on it. An input cannot both navigate and draw.
     */
-    if (e.pointerType === "pen") setPenSeen(true);
-    else if (penSeen) return;
+    if (e.pointerType !== "pen") return;
+    setPenSeen(true);
 
     /* Capture is an optimisation and must not be able to take the stroke down
        with it: it throws for a pointer the browser is not tracking, and an
@@ -201,7 +236,7 @@ export function HandwritingPad({
   const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const stroke = current.current;
     if (!stroke) return;
-    if (penSeen && e.pointerType !== "pen") return;
+    if (e.pointerType !== "pen") return;
 
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
@@ -384,9 +419,24 @@ export function HandwritingPad({
           onPointerUp={endStroke}
           onPointerCancel={endStroke}
           onPointerLeave={endStroke}
-          style={{ height: `${height}rem`, cursor: tool === "erase" ? "cell" : "crosshair" }}
-          /* touch-none stops the page scrolling under the hand mid-word. */
-          className="relative block w-full touch-none"
+          style={{
+            height: `${height}rem`,
+            cursor: tool === "erase" ? "cell" : "crosshair",
+            /*
+              Fingers navigate; the Pencil writes.
+
+              This was touch-action:none, which stopped the page scrolling under
+              a palm and also stopped pinch-zoom entirely — the report was "I
+              can't zoom in and out", and that was why. Now that only the Pencil
+              can draw, touch has no drawing job to conflict with, so it gets
+              its normal one back: one finger pans, two pinch. What still must
+              not scroll is the pen, and that is handled by preventing its
+              default in the effect below rather than by disabling touch for
+              everybody.
+            */
+            touchAction: "manipulation",
+          }}
+          className="relative block w-full"
         />
       </div>
 
@@ -394,7 +444,7 @@ export function HandwritingPad({
         <p className="text-xs text-ink-soft">
           {penSeen
             ? "Pencil only — your hand won't leave a mark."
-            : "Write with an Apple Pencil, or a finger if you'd rather."}
+            : "Write with your Apple Pencil. Fingers scroll and pinch to zoom."}
         </p>
         {/* A notebook adds a page rather than asking you to write smaller. */}
         {height < MAX_HEIGHT && (
