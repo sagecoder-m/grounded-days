@@ -105,29 +105,17 @@ and two of the seven phases pay off in seven days.
 
 ---
 
-## What Option B means concretely
+## Who does what
 
-**Jack, before 13 September**
+The split changed: Jack reviews the backend rather than building it, and Mulanga implements by
+prompting Claude with Jack's review. **The roles, and the capacity problem that split creates,
+are in [the introduction](./01-introduction.md)** — this document stays about what gets built.
 
-1. §6 onboarding — one screen, multi-select, mapping into `src/lib/db/mappers.ts` defaults.
-   Skippable in one tap. Re-editable in Profile. No copy that labels anyone.
-2. §2 check-in, available to any account. Four fields, the mirror preview, "Not this week"
-   as a recorded value, no nagging and no counters.
-3. Admin console surfacing what is already measured (see corrections below — less work than
-   we thought).
-
-**Deliberately not building:** clinician codes, `clinicians`, `clinician_links`, the
-consent flow, `/clinician`. Those wait.
-
-**Kamillah, before 13 September** — the check-in wording is hers, not the spec's. The four
-fields go in front of testers; whoever writes the survey should write these too, so they
-match. She also has to define "a return visit" before Jack instruments anything against it.
-
-**Mulanga** — hold the three provider conversations and find out whether the dashboard in
-§5 is the one they would use. That answer, not our design instinct, unblocks phases 1, 3
-and 5.
-
----
+What Option B means in practice: **Mulanga** builds §6 onboarding and §2 check-in unbundled
+from the clinician link, plus the admin console surfacing what is already measured. **Jack**
+reviews each of those before it meets testers — data model, RLS, and the journal-isolation
+boundary above all. **Kamillah** writes the check-in wording and defines a return visit before
+anything is instrumented against it.
 
 ## Corrections that apply whichever option we pick
 
@@ -218,14 +206,38 @@ reasoning written down — not a line added to an allowlist.
 
 ---
 
+## Bugs on the list
+
+| What | Status | Note |
+| --- | --- | --- |
+| Calendar reverted to light on open, in dark mode | **Fixed** — `4595bd0` | DayFlow resolves event colours in JavaScript from a theme mode it keeps internally, defaulting to light. We only told it in a `useEffect`, which runs *after* the first paint, so every mount painted a frame of light chips. Now set on the constructor via `theme: { mode }`, with the effect kept for a live toggle |
+| Overview page across phone, tablet and desktop | Open | **The one bug that is also a pilot risk** — the first screen every tester meets, on whatever device they own. Needs scoping before it can be estimated. Worth fixing before the 13th even under Option C |
+
+## Two more for discussion
+
+Both are covered in full in [the introduction](./01-introduction.md) under "What we are
+actually deciding" — decisions 2 and 4. The short versions:
+
+**The clinician / therapist point of view.** The pitch can lead clinician-first immediately and
+costs nothing to build. The clinician *surface* is §1, §3 and §5 — still deferred until a
+provider says what they want. Pitch where we are going; demo what exists.
+
+**Modernising the look.** Safe to change craft (type, spacing, motion, contrast); not safe to
+change semantics (no scores, streaks or red states). Scope now, do it 25–31 October when the
+deck is being built.
+
 ## Decisions needed, and by when
 
 | By | Decision | Who |
 | --- | --- | --- |
 | **Mon 8 Sept** | Option A, B or C | All three |
+| **Mon 8 Sept** | Who takes the scheduling half of provider outreach | All three |
+| **Mon 8 Sept** | Scope the Overview breakpoint work — which device, which surface, what "fixed" means | Mulanga + Jack |
+| **Tue 9 Sept** | Pitch leads clinician-first — yes or no | Mulanga |
 | **Tue 9 Sept** | Habit consistency in the shared bundle — yes, no, or reduced | All three |
 | **Tue 9 Sept** | Check-in wording, all four fields | Kamillah |
 | **Tue 9 Sept** | Definition of a return visit | Kamillah, then Jack instruments |
 | **Wed 10 Sept** | Clinical-first vs consumer-first positioning | Mulanga |
 | **Wed 10 Sept** | Spec corrections folded in before anyone builds from it | Jack |
 | After first provider call | "Worth asking about," and whether §5 is the dashboard they want | Mulanga |
+| Late October | Visual modernisation — scoped now, done in the 25–31 Oct window | All three |
