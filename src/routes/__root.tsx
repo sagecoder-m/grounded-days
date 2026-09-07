@@ -70,7 +70,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "A gentle, ADHD-friendly personal care platform for building habits across Personal, Professional, and Education.",
+          "A calm space for people with different brains to readjust, organize and grow — across Personal, Professional, and Education.",
       },
       { name: "author", content: "grounded" },
       { property: "og:title", content: "grounded — calm habits, gently held" },
