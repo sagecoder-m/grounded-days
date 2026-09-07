@@ -447,6 +447,23 @@ function CalendarBoard({ heading }: { heading: string }) {
     [persistMove],
   );
 
+  /*
+    Which theme the calendar is in.
+
+    Read before the app is built, not after, because the build needs it — see
+    the note on `theme` in the config below.
+
+    Not "auto", which would take the mode from the operating system and put us
+    straight back to the calendar disagreeing with the app whenever someone's
+    machine is set the other way. The app's own resolved theme is the answer,
+    including when that answer came from the OS via "Follow my device".
+
+    `known` is left at its default here, unlike in the app shell: this component
+    only mounts once the settings query has resolved, so `state.settings.theme`
+    is never the placeholder by the time it is read.
+  */
+  const resolvedTheme = useResolvedTheme(state.settings.theme);
+
   const calendar = useCalendarApp(
     {
       views,
@@ -454,6 +471,24 @@ function CalendarBoard({ heading }: { heading: string }) {
       calendars,
       plugins,
       defaultCalendar: "personal",
+      /*
+        The theme has to be here, in the initial config, and not only in the
+        effect below.
+
+        DayFlow resolves event colours in JavaScript — resolveColors(),
+        getLineColor(), getSelectedBgColor() — from a theme mode it keeps
+        internally, and that mode defaults to light. An effect runs after the
+        first paint, so setting it there alone meant one frame of light-mode
+        chips on every mount: open the calendar in dark mode and it flashed
+        cream, then corrected itself. Handing the mode to the constructor means
+        the first frame is already right.
+
+        Deliberately NOT added to the version string below. The effect is what
+        handles a later toggle; putting the theme in the version would rebuild
+        the CalendarApp on every switch, and rebuilding discards the current
+        view and date — trading a one-frame flash for losing someone's place.
+      */
+      theme: { mode: resolvedTheme },
       // On a phone the saved week/month/year preference is overridden to day,
       // because the saved value was chosen on a screen where a week fits.
       defaultView: narrow
@@ -472,22 +507,13 @@ function CalendarBoard({ heading }: { heading: string }) {
   );
 
   /*
-    Tell DayFlow which theme it is in.
+    Keep it in step with a later toggle.
 
-    Pointing its CSS variables at this app's tokens gets the chrome right, and
-    that is genuinely all it gets: DayFlow also resolves event colours in
-    JavaScript — resolveColors(), getLineColor(), getSelectedBgColor() — from a
-    theme mode it keeps internally, and that mode defaults to light and never
-    hears about the toggle. So the calendar sat in a dark app rendering
-    light-mode event chips on a light-mode surface, which is exactly what it
-    looked like: one cream panel in the middle of a dark page.
-
-    Not "auto", which would take the mode from the operating system and put us
-    straight back to the calendar disagreeing with the app whenever someone's
-    machine is set the other way. The app's own resolved theme is the answer,
-    including when that answer came from the OS via "Follow my device".
+    The constructor above covers the first paint; this covers someone pressing
+    the theme switch while the calendar is already open. Pointing DayFlow's CSS
+    variables at this app's tokens gets the chrome right, but the JavaScript
+    colour resolution needs telling, and this is what tells it.
   */
-  const resolvedTheme = useResolvedTheme(state.settings.theme);
   useEffect(() => {
     // setTheme lives on the app instance, not on the hook's return value.
     calendar?.app?.setTheme?.(resolvedTheme);
