@@ -55,7 +55,7 @@ after a hard few weeks, which is the moment the entire product exists to protect
 - More than one connected calendar account
 - Unlimited handwritten pages and their storage
 - Export — PDF and CSV of everything you have written
-- Assistant use beyond a monthly allowance *(the one line with real marginal cost)*
+- Assistant use beyond a monthly allowance *(the one line with real marginal cost — about a cent a message)*
 
 **Price.** $4.99–7.99/month, or $40–48/year. Annual is the better fit: the honest usage
 pattern is episodic — someone reaches for this when a term gets hard or a move goes badly —
@@ -109,12 +109,17 @@ take its clients' goodwill with it.
 | A three-clinician practice | $5,364/yr | The realistic first account |
 | A 25-client caseload, per client | $12/mo | Inside the $8–15 comparable range |
 | Marginal cost of a client seat | cents | Database rows and image storage. A handwritten page a day is roughly 100MB a year; a thousand users stay inside a Supabase Pro allowance |
-| Marginal cost of assistant use | $0 today | **The one number that can spoil the margin.** The assistant runs on free models. When it moves to paid ones this becomes the only cost that scales with engagement — meter it before it matters, not after |
+| Marginal cost of assistant use | ~$0.009/msg | **The one cost that scales with engagement** — every other line is flat. On Claude Haiku 4.5 ($1/M in, $5/M out), counted from the real payload: roughly a cent a message. At moderate use across break-even caseloads that is **6% of revenue**; at heavy use, **23%**. Derivation in the cost model |
 
 Gross margin on a clinician seat is very high — ordinary SaaS economics, and not the
 interesting part. The interesting part is that **client seats cost us almost nothing and are
 the acquisition channel**, which is why giving them away is a business decision rather than a
 charitable one.
+
+**The allowance is a margin control, not a sales tactic.** The assistant is the only cost in
+the model that rises with how much someone uses grounded. At moderate use it takes 6% of
+revenue and nobody notices; at heavy use it takes 23%. An allowance is what keeps a good week
+from being expensive — and it is the reason the B2C paid tier prices assistant use at all.
 
 ---
 
