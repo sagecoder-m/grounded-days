@@ -191,9 +191,77 @@ share link. If a change would touch that, it stops and comes to the whole team.
 
 ---
 
+## Getting it onto phones and tablets
+
+The ask: a test app testers can install on a phone or tablet, with push notifications. Worth
+doing — most of the 30 testers will live on a phone — and there are two things to separate:
+how it gets installed, and what a notification is allowed to say.
+
+### Where it is today
+
+**Not installable at all.** No web manifest, no service worker, no apple-touch-icon, no
+theme-colour. It is a website that happens to work on a phone. Everything below is from
+scratch.
+
+### Two routes
+
+| | Installable web app (PWA) | Wrapped native app |
+| --- | --- | --- |
+| **What it is** | Manifest, service worker, icons, web push | The same web app in a native shell (Capacitor), shipped through TestFlight and Play internal testing |
+| **Ready by 13 Sept** | **Yes** | **No** — needs an Apple Developer account, signing, a build pipeline and store setup |
+| **Push on Android** | Yes | Yes |
+| **Push on iPhone / iPad** | **Only once added to the home screen** (iOS 16.4+) | Yes, ordinary push |
+| **Cost** | Nothing | Apple $99/yr, Google $25 once — not currently in the cost model |
+| **Feels like an app** | Mostly — own icon, no browser chrome | Yes |
+
+**Recommendation: PWA for the pilot, wrapped app as a November item.** Six days before thirty
+strangers arrive is not the moment to add a dependency on app review. The PWA gets an icon on
+their home screen and push on both platforms, and every piece of it is reused by the wrapper
+later — nothing is wasted by doing it in this order.
+
+### The consequence for the tutorial — easy to miss
+
+On iPhone and iPad, web push only works *after* the app has been added to the home screen. A
+tester who opens the link in Safari and never installs it gets no notifications, ever, and no
+error.
+
+So **Kamillah's tutorial needs an "Add to Home Screen" step**, with screenshots, before the
+notification permission prompt. Without it, iPhone testers silently receive nothing and we will
+misread the platform difference in the numbers as behaviour rather than plumbing.
+
+### What a notification is allowed to say
+
+This needs deciding before anything is built, because **push is the single easiest way to break
+the product's central promise**. grounded exists so that a bad week is not made worse, and the
+clinical spec puts it plainly: never reference the gap, never acknowledge the length of an
+absence. The entire industry-standard notification playbook — re-engagement nudges, streak
+reminders, "we miss you" — *is* that harm, delivered to the lock screen.
+
+> **The rule: notify about the calendar, never about the person.**
+>
+> If it is something they put on their own schedule and asked to be told about, it is theirs.
+> If it is about their behaviour, it is a nudge, and it does not ship.
+
+**Ships** — an event starting soon, an assignment due tomorrow, a focus session ending. All
+three are information the person set up and can turn off individually. Every type is **off by
+default**.
+
+**Never ships** — "you haven't opened grounded in 5 days"; anything about a streak; "we miss
+you" in any wording; anything triggered *by* absence; a badge count that accumulates while
+someone is away.
+
+That last one matters more than it looks. A badge sitting on the icon showing 14 is a tally of
+a hard fortnight, waiting on the home screen. It is a streak with a different shape.
+
+**This is also a pitch answer.** "We are the planner that will not nag you, and that is
+enforced in what we allow ourselves to build" is a sharper, more checkable claim than any
+feature on the roadmap — and it costs nothing to say, because it is what we are already doing.
+
+---
+
 ## What we are actually deciding
 
-Four open questions. The first is the oldest and most consequential; the others arrived this
+Five open questions. The first is the oldest and most consequential; the others arrived this
 week.
 
 ### 1 · Consumer app or clinical buyer first?
@@ -239,3 +307,11 @@ comparison against what was possible.
 **On timing** — this has the weakest claim on the next seven days. It produces no evidence and
 nobody leaves a pilot over type scale. Scope it now, do it in the **25–31 October** window: the
 deck gets built that week and will be full of screenshots, which is when a visual pass pays.
+
+### 5 · PWA now, or wait for the wrapped app?
+
+Covered above. The recommendation is PWA before the 13th and the native wrapper in November —
+but it is a decision because it commits Mulanga's build time in the one week that has none
+spare, and because the notification rule needs agreeing before any of it is written.
+
+**By Monday 8 September**, alongside the build-scope choice.
