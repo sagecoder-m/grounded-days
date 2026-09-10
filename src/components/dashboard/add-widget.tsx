@@ -1,4 +1,4 @@
-import { Plus, RotateCcw } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import type { WidgetPlacement } from "@/lib/store-types";
 import {
@@ -10,71 +10,40 @@ import {
 import { MOVABLE_WIDGETS } from "./widget-registry";
 
 /**
- * Putting a widget back on the board.
+ * The list of widgets you can put back on the board.
  *
  * Only lists what is currently off it — a menu that offers to add something
  * already sitting on the board is a menu that has to explain itself. When
- * everything is on, the button says so rather than opening onto nothing.
+ * everything is on, nothing here renders at all: EditWidgetControl checks
+ * that and drops the "Add widget" tab entirely rather than offering a mode
+ * that opens onto nothing.
  *
- * Removing is the X on each tile, not a second list here: the thing you want to
- * remove is the thing you are looking at.
+ * Removing is still the X on each tile, not a second list here: the thing you
+ * want to remove is the thing you are looking at.
  */
-export function AddWidgetMenu({
+export function AddMenu({
   placements,
   onAdd,
-  onReset,
 }: {
   placements: WidgetPlacement[];
   onAdd: (key: string) => void;
-  /** Puts every widget back where it started, keeping which ones are on. */
-  onReset: () => void;
 }) {
   const on = new Set(placements.filter((p) => p.enabled).map((p) => p.key));
   // MOVABLE_WIDGETS, not WIDGETS: pinned furniture is never off the board, so
   // offering to add it would be offering something that cannot happen.
   const available = MOVABLE_WIDGETS.filter((w) => !on.has(w.key));
 
-  return (
-    <div className="flex items-center gap-2">
-      {/*
-        A way back to a board that makes sense.
+  if (available.length === 0) return null;
 
-        Free positioning means a board can be got into a state nobody wants —
-        and until the collision bug was fixed, it could get there on its own.
-        Without this the only remedy is dragging every widget back by hand.
-        Positions only: which widgets are on the board is a separate decision
-        and stays as it was.
-      */}
-      <button
-        type="button"
-        onClick={onReset}
-        title="Put every widget back where it started"
-        className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-tan hover:text-ink"
-      >
-        <RotateCcw className="h-3.5 w-3.5" />
-        Reset layout
-      </button>
-      {available.length > 0 && <AddMenu available={available} onAdd={onAdd} />}
-    </div>
-  );
-}
-
-function AddMenu({
-  available,
-  onAdd,
-}: {
-  available: typeof MOVABLE_WIDGETS;
-  onAdd: (key: string) => void;
-}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-tan hover:text-ink"
+          className="flex items-center gap-1.5 rounded-full border border-tan px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-tan hover:text-ink"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add a widget
+          Choose a widget
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">

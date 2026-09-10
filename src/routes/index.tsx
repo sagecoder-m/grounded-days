@@ -11,8 +11,9 @@ import { AgendaWidget } from "@/components/agenda-widget";
 import { TodoWidget } from "@/components/todo-widget";
 import { FocusTimer } from "@/components/focus-timer";
 import { DashboardCanvas } from "@/components/dashboard/dashboard-canvas";
-import { AddWidgetMenu } from "@/components/dashboard/add-widget";
+import { EditWidgetControl, type EditMode } from "@/components/dashboard/edit-widget-control";
 import { widgetSpec } from "@/components/dashboard/widget-registry";
+import { RotateCcw } from "lucide-react";
 import { placeBelow } from "@/components/dashboard/layout-engine";
 import { DEFAULT_WIDGETS } from "@/lib/store";
 import { RhythmGrid } from "@/components/rhythm-grid";
@@ -144,6 +145,17 @@ function Overview() {
   const [oneThing, setOneThing] = useState(false);
 
   /**
+   * Whether the board can be dragged or resized right now, and which of the
+   * two ways of editing it is open.
+   *
+   * Starts, and always reloads, at "view" rather than remembering whatever was
+   * open last. Persisting it would mean a page refresh mid-edit — or simply
+   * coming back tomorrow — could hand someone a board that is still armed for
+   * dragging without them having asked for that today.
+   */
+  const [editMode, setEditMode] = useState<EditMode>("view");
+
+  /**
    * The backlog offer, and whether it has been waved away this session.
    *
    * Session-only on purpose. Persisting a dismissal would mean the pile can be
@@ -221,8 +233,28 @@ function Overview() {
     <div className="min-w-0">
       {showBacklog && <WaitingAWhile tasks={waiting} onDismiss={() => setBacklogDismissed(true)} />}
 
-      <div className="mb-3 flex items-center justify-end">
-        <AddWidgetMenu placements={settings.widgets} onAdd={addWidget} onReset={resetLayout} />
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+        {/*
+          Its own button, unbundled from the edit door. Putting the board back
+          where it started is a one-shot action with nothing to step out of
+          afterwards, not a mode — it stays reachable whether or not "Edit
+          Widget" is open, same as it always could.
+        */}
+        <button
+          type="button"
+          onClick={resetLayout}
+          title="Put every widget back where it started"
+          className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs text-ink-soft transition-colors hover:border-tan hover:text-ink"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset layout
+        </button>
+        <EditWidgetControl
+          mode={editMode}
+          onModeChange={setEditMode}
+          placements={settings.widgets}
+          onAdd={addWidget}
+        />
       </div>
 
       {/*
@@ -235,6 +267,7 @@ function Overview() {
         onPersist={persistLayout}
         onRemove={removeWidget}
         render={renderSection}
+        editingSize={editMode === "size"}
       />
     </div>
   );

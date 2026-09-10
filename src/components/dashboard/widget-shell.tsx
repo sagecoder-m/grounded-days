@@ -35,11 +35,33 @@ export const WidgetShell = forwardRef<
     /** Pinned furniture gets no grip: there is nothing to drag it by. */
     pinned?: boolean;
     dragging?: boolean;
+    /**
+     * Whether the grip renders at all.
+     *
+     * The grip used to be faintly visible all the time, which was right when
+     * dragging was always live: a control nobody can see is a control nobody
+     * finds. Now that dragging only works inside "Edit size", showing the grip
+     * outside it would be worse than the old problem — a handle that looks
+     * grabbable but does nothing is the exact confusion the always-on version
+     * was built to avoid. So it only exists while this is true, matching
+     * dashboard-canvas's own isDraggable for the same tile exactly.
+     */
+    editingSize?: boolean;
     className?: string;
     style?: React.CSSProperties;
   } & React.HTMLAttributes<HTMLDivElement>
 >(function WidgetShell(
-  { title, children, onRemove, pinned = false, dragging = false, className, style, ...rest },
+  {
+    title,
+    children,
+    onRemove,
+    pinned = false,
+    dragging = false,
+    editingSize = false,
+    className,
+    style,
+    ...rest
+  },
   ref,
 ) {
   return (
@@ -70,7 +92,7 @@ export const WidgetShell = forwardRef<
       )}
       {...rest}
     >
-      {!pinned && (
+      {!pinned && editingSize && (
         /*
           The grip is the whole drag surface. It sits over the top-left corner
           rather than in a header row, so it costs no height and the widget's
@@ -81,11 +103,12 @@ export const WidgetShell = forwardRef<
           className={cn(
             DRAG_HANDLE_CLASS,
             /*
-              Always there, faintly. Not reveal-control: this is the only thing
-              that moves a widget, and a control you cannot see until you happen
-              to hover the right tile is a control nobody finds. Faint enough to
-              stay out of the way, solid on hover so it is obvious what you are
-              reaching for.
+              Faint rather than hidden, for as long as it exists at all. Not
+              reveal-control: this is the only thing that moves a widget, and a
+              control you cannot see until you happen to hover the right tile is
+              a control nobody finds while "Edit size" is actually open. Faint
+              enough to stay out of the way, solid on hover so it is obvious
+              what you are reaching for.
 
               reveal-control would also make it pointer-events:none until the
               hover lands, which is a race worth not having on the one element
@@ -118,7 +141,36 @@ export const WidgetShell = forwardRef<
         </button>
       )}
 
-      <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      {/*
+        {children} renders directly here, one level up from where it used to
+        sit — and that level matters more than it looks like it should.
+
+        The engine does not pass resize handles to this component as a
+        separate prop. It clones whatever element `children` resolves to and
+        rewrites that element's OWN children array to be
+        [original content, ...handle spans] — see react-resizable's Resizable,
+        which is where the array actually gets built. Those handles are meant
+        to land as direct children of the grid item, siblings of everything
+        else in the tile, because the library's own stylesheet hides them with
+        `.react-resizable-hide > .react-resizable-handle { display: none }` —
+        a selector that only matches a *direct* child.
+
+        A nested wrapper div here used to sit between them and that class,
+        so every handle was two levels down instead of one and the selector
+        never matched — meaning display:none never applied, and a "not
+        resizable" tile kept fully live, fully draggable resize handles
+        sitting on it invisibly. It went unnoticed for as long as every
+        widget was resizable all the time, because there was never a
+        "should be hidden" case to expose it. There is now: outside "Edit
+        size" every movable widget is meant to be locked, and this is the
+        difference between actually locked and locked-looking.
+
+        The scroll containment that div used to provide (min-h-0, flex-1,
+        overflow-hidden) moves to wrap the widget's own content at the call
+        site instead, so the content still gets it — just no longer as the
+        thing standing between the handles and the class that hides them.
+      */}
+      {children}
     </div>
   );
 });

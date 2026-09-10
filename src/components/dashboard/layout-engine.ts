@@ -48,18 +48,18 @@ export const BOARD_MARGIN: readonly [number, number] = [14, 14];
  */
 export const CANVAS_MIN_WIDTH = 760;
 
-/** Every corner and every edge, so a tile can be resized from wherever the
- *  pointer happens to be. */
-export const RESIZE_HANDLES: readonly ResizeHandleAxis[] = [
-  "s",
-  "w",
-  "e",
-  "n",
-  "sw",
-  "nw",
-  "se",
-  "ne",
-];
+/**
+ * The four corners, and only the corners.
+ *
+ * Used to be all eight — every corner and every edge — so a tile could be
+ * grabbed from wherever the pointer happened to land. That suited a board you
+ * could reach into at any moment. Resizing is now its own mode you step into
+ * deliberately, and the brief for it is explicit: four handles, one on each
+ * corner, appearing while you are in it. Edge dragging is dropped rather than
+ * kept alongside — four visible handles read as a control; four corners plus
+ * four invisible edge bands read as a tile that resizes if you brush it.
+ */
+export const RESIZE_HANDLES: readonly ResizeHandleAxis[] = ["sw", "nw", "se", "ne"];
 
 /**
  * Dragging happens by a handle, and only by a handle.
@@ -87,25 +87,32 @@ export const DRAG_HANDLE_SELECTOR = `.${DRAG_HANDLE_CLASS}`;
 export const DRAG_THRESHOLD = 6;
 
 /**
- * Freeform, and nothing moves that was not grabbed.
- *
- * Two separate behaviours, and both are needed.
+ * Freeform, and a tile that is not being touched holds still unless something
+ * lands on it.
  *
  * noCompactor is what stops the board pulling every tile upward, so a gap left
  * on purpose stays a gap.
  *
- * preventCollision is what stops a drag rearranging the widgets around it. Left
- * off — which is noCompactor's default — dragging one tile onto another pushes
- * that one out of the way, and because nothing ever compacts it back, every
- * move permanently displaced whatever it passed. The board could not be kept in
- * any arrangement for longer than the next drag. With it on, a tile that would
- * land on an occupied spot simply does not land there, and everything else
- * stays exactly where it was put.
+ * preventCollision used to be on, and the reasoning was sound for what dragging
+ * was at the time: it could start from any accidental brush of the handle, so
+ * a drag that displaced a neighbour was very often a drag nobody meant to make,
+ * and the displacement was permanent because nothing ever compacted the board
+ * back. Blocking the overlap outright was the safe default.
+ *
+ * Dragging is no longer that exposed. It only runs inside "Edit size," a mode
+ * someone has to choose to enter, so a collision during it is no longer an
+ * accident to guard against — it is the point: push the widget in your way,
+ * gently, and leave both where they land. preventCollision is what was
+ * blocking exactly that. off restores react-grid-layout's own default
+ * behaviour, which nudges a colliding tile aside in the direction of the drag
+ * rather than refusing to move at all — still nothing pulls it back afterwards,
+ * which is the same "stays where it lands" rule noCompactor already gives
+ * everything else.
  */
 export const COMPACTOR: Compactor = {
   type: noCompactor.type,
   allowOverlap: false,
-  preventCollision: true,
+  preventCollision: false,
   compact: (layout, cols) => noCompactor.compact(layout, cols),
 };
 

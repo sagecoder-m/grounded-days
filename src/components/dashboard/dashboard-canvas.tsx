@@ -75,6 +75,7 @@ export function DashboardCanvas({
   onPersist,
   onRemove,
   render,
+  editingSize = false,
 }: {
   placements: WidgetPlacement[];
   /** Called once per gesture, on release — never mid-drag. */
@@ -82,6 +83,19 @@ export function DashboardCanvas({
   onRemove: (key: string) => void;
   /** Draws one widget's contents. The shell and placement are handled here. */
   render: (key: string) => ReactNode;
+  /**
+   * Whether the board may be dragged or resized right now.
+   *
+   * Off by default, which matters: the board used to be draggable the instant
+   * it was on screen, and the grip and handles sat there faintly all the time
+   * whether anyone meant to use them or not. That is exactly the exposure
+   * behind "if someone is scrolling and their intention is not to move a
+   * widget" — a board that can be grabbed at any moment is a board a stray
+   * touch can rearrange. Dragging and resizing now only run while this is
+   * true, which is only while "Edit size" is open. Every other gesture on the
+   * page — scrolling included — passes straight through the tiles underneath.
+   */
+  editingSize?: boolean;
 }) {
   const { ref: containerRef, width } = useMeasuredWidth();
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -92,6 +106,7 @@ export function DashboardCanvas({
     () =>
       onBoard.map((p) => {
         const spec = widgetSpec(p.key);
+        const pinned = spec?.pinned === true;
         return {
           i: p.key,
           x: p.x,
@@ -101,18 +116,26 @@ export function DashboardCanvas({
           minW: spec?.min?.w ?? MIN_W,
           minH: spec?.min?.h ?? MIN_H,
           /*
-            Pinned furniture. All three flags, not just `static`: static alone
-            still rendered the eight resize handles, so the header could be
-            pulled out of shape even though it could not be dragged. isDraggable
-            and isResizable are what actually withhold the gestures; static is
-            what makes the other tiles lay out around it rather than through it.
+            Pinned furniture is withheld regardless of mode — all three flags,
+            not just `static`: static alone still rendered the resize handles,
+            so the header could be pulled out of shape even though it could not
+            be dragged. isDraggable and isResizable are what actually withhold
+            the gestures; static is what makes the other tiles lay out around
+            it rather than through it.
+
+            Everything else follows `editingSize`: locked outside it, both
+            gestures available inside it. Nothing here distinguishes "Edit
+            size" from "Add widget" beyond that one flag — dragging is offered
+            wherever resizing is, on the reasoning that both are "arranging
+            this tile" and a mode named for one should not quietly withhold
+            the other.
           */
-          static: spec?.pinned === true,
-          isDraggable: spec?.pinned !== true,
-          isResizable: spec?.pinned !== true,
+          static: pinned,
+          isDraggable: !pinned && editingSize,
+          isResizable: !pinned && editingSize,
         };
       }),
-    [onBoard],
+    [onBoard, editingSize],
   );
 
   /* Saved on release only — see the note above about drag state. */
@@ -145,6 +168,9 @@ export function DashboardCanvas({
       title={widgetSpec(p.key)?.label ?? p.key}
       onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
       pinned={isPinned(p.key)}
+      // No editingSize here, deliberately: the stacked layout only renders
+      // below CANVAS_MIN_WIDTH, where the grid engine is bypassed entirely and
+      // nothing on the page can be dragged or resized regardless of mode.
       /*
         A height budget, which is what makes the lists stop being endless.
 
@@ -164,7 +190,12 @@ export function DashboardCanvas({
       */
       className={trimsOwnContent(p.key) ? "max-h-[26rem]" : undefined}
     >
-      {render(p.key)}
+      {/* min-h-0/flex-1/overflow-hidden used to live inside WidgetShell
+          itself; it moved out here — see the comment in widget-shell.tsx for
+          why nesting it there quietly broke the resize handles' hidden state
+          on the grid branch. This branch never resizes, but the containment
+          still belongs on the content, so it comes along here too. */}
+      <div className="min-h-0 flex-1 overflow-hidden">{render(p.key)}</div>
     </WidgetShell>
   );
 
@@ -225,14 +256,17 @@ export function DashboardCanvas({
               containerPadding: [0, 0],
             }}
             dragConfig={{
-              enabled: true,
+              // Belt and braces with the per-item isDraggable above: the master
+              // switch and the per-tile flag both have to agree before a
+              // gesture can start.
+              enabled: editingSize,
               // Bounded so a tile cannot be dragged off the left edge into a
               // negative column and become unreachable.
               bounded: true,
               handle: DRAG_HANDLE_SELECTOR,
               threshold: DRAG_THRESHOLD,
             }}
-            resizeConfig={{ enabled: true, handles: RESIZE_HANDLES }}
+            resizeConfig={{ enabled: editingSize, handles: RESIZE_HANDLES }}
             onDragStart={(_l, item) => setDraggingKey(item?.i ?? null)}
             onDragStop={commit}
             onResizeStart={(_l, item) => setDraggingKey(item?.i ?? null)}
@@ -245,8 +279,20 @@ export function DashboardCanvas({
                 onRemove={isPinned(p.key) ? undefined : () => onRemove(p.key)}
                 pinned={isPinned(p.key)}
                 dragging={draggingKey === p.key}
+                editingSize={editingSize}
               >
-                {render(p.key)}
+                {/*
+                  Wrapped here rather than inside WidgetShell — this is the
+                  branch it matters for. The engine appends its resize-handle
+                  spans as siblings of whatever WidgetShell's *direct* children
+                  are; a wrapper div between them and WidgetShell's own element
+                  is what let the handles slip past the library's own
+                  `.react-resizable-hide > .react-resizable-handle` rule and
+                  stay live even while `isResizable` was false. Keeping the
+                  containment on this div rather than removing it just moves
+                  it out from between the two.
+                */}
+                <div className="min-h-0 flex-1 overflow-hidden">{render(p.key)}</div>
               </WidgetShell>
             ))}
           </GridLayout>
