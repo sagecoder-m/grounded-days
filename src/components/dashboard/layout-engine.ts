@@ -93,26 +93,31 @@ export const DRAG_THRESHOLD = 6;
  * noCompactor is what stops the board pulling every tile upward, so a gap left
  * on purpose stays a gap.
  *
- * preventCollision used to be on, and the reasoning was sound for what dragging
- * was at the time: it could start from any accidental brush of the handle, so
- * a drag that displaced a neighbour was very often a drag nobody meant to make,
- * and the displacement was permanent because nothing ever compacted the board
- * back. Blocking the overlap outright was the safe default.
+ * preventCollision has been on, briefly off, and is on again — the second
+ * change was wrong, and it's worth writing down why so it doesn't happen a
+ * third time.
  *
- * Dragging is no longer that exposed. It only runs inside "Edit size," a mode
- * someone has to choose to enter, so a collision during it is no longer an
- * accident to guard against — it is the point: push the widget in your way,
- * gently, and leave both where they land. preventCollision is what was
- * blocking exactly that. off restores react-grid-layout's own default
- * behaviour, which nudges a colliding tile aside in the direction of the drag
- * rather than refusing to move at all — still nothing pulls it back afterwards,
- * which is the same "stays where it lands" rule noCompactor already gives
- * everything else.
+ * With it off, dragging one tile onto another pushes the second one out of the
+ * way, and because nothing ever compacts the board back, that displacement is
+ * permanent. The mistake was thinking that only mattered when a drag could
+ * start by accident — brushing the handle while scrolling, say — and that
+ * gating dragging behind an explicit "Edit size" mode removed the problem by
+ * removing the accident. It didn't. A push you meant to start is exactly as
+ * disorienting to watch as one you didn't: you're moving tile A, and tile B —
+ * which you were not touching — jumps to a new spot and stays there. Meaning to
+ * drag A doesn't make B's unrequested move feel any better, and "gently" was
+ * the wrong word for what react-grid-layout's own collision resolution
+ * actually does, which is recompute B's position on every intermediate pointer
+ * frame near it, not ease it aside once.
+ *
+ * preventCollision: true is what makes only the thing you're dragging ever
+ * move. A tile that would land on an occupied spot simply doesn't land there —
+ * you feel the stop, you don't watch a neighbour relocate.
  */
 export const COMPACTOR: Compactor = {
   type: noCompactor.type,
   allowOverlap: false,
-  preventCollision: false,
+  preventCollision: true,
   compact: (layout, cols) => noCompactor.compact(layout, cols),
 };
 
