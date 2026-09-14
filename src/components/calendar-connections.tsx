@@ -226,16 +226,26 @@ export function CalendarConnectionsSection() {
       </p>
 
       {/*
-        The tab strip itself. Same plain-button, aria-pressed pattern as the
-        board's own Edit size / Add widget switch — one visual language for
-        "two or more views sharing a row" rather than a different control
-        every time this shape comes up.
+        The tab strip. Each tab is its own separate pill, not four labels
+        sharing one continuous pill outline.
+
+        It was one shared container — overflow-hidden, rounded-full, wrapping
+        its children. That reads fine as long as every tab fits on one line,
+        which is a desktop assumption: at phone width, "Working 2 / Needs
+        reconnecting 1 / Not syncing 1 / Terms & Privacy" does not fit in one
+        row, the row wraps to two, and a single rounded-full shape wrapped
+        around two rows is not a pill anymore — the corner radius clips into
+        the second row and the whole thing reads as broken rather than as
+        tabs. Giving every tab its own full radius and letting them wrap
+        independently, each one just a normal shape at every width — closer
+        to what "different folders" actually looks like than one strip trying
+        to hold its shape regardless of how much text is inside it.
 
         Each status tab carries a count so a problem is visible without a
         click — "Needs reconnecting 1" is the whole point of organizing this
         by reliability instead of one flat list.
       */}
-      <div className="flex flex-wrap items-center gap-1 overflow-hidden rounded-full border border-tan">
+      <div className="flex flex-wrap gap-1.5">
         {STATUS_TABS.map(({ status, label }) => (
           <TabButton key={status} active={activeTab === status} onClick={() => setTab(status)}>
             {label}
@@ -305,8 +315,13 @@ function TabButton({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "flex items-center px-3 py-1.5 text-xs transition-colors",
-        active ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary",
+        // Its own rounded-full and its own border, so it holds its shape
+        // regardless of which row it wraps onto — a folder tab, not a slice
+        // of a shared strip.
+        "flex items-center gap-0.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
+        active
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-tan text-ink-soft hover:bg-secondary",
       )}
     >
       {children}
