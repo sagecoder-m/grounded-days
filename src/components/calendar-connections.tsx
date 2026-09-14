@@ -1,20 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearch } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { CalendarCheck, RefreshCw, Unplug } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { calendarConnectionsQuery } from "@/lib/db/queries";
 import { actions, AREA_META } from "@/lib/store";
-import type {
-  Area,
-  CalendarConnection,
-  CalendarProvider,
-  ConnectionStatus,
-} from "@/lib/store-types";
+import type { Area, CalendarConnection, CalendarProvider } from "@/lib/store-types";
 import { useSession } from "@/lib/use-session";
 
 const PROVIDER_LABELS: Record<CalendarProvider, string> = {
@@ -34,7 +27,7 @@ const CONNECT_ERRORS: Record<string, string> = {
   // "you cancelled" to the second case sends a tester back to try the same thing
   // again forever, so the message names both.
   access_denied:
-    "Not connected. If you changed your mind, nothing happened. If Google said “access blocked”, that account has not been added to the tester list yet — send it to whoever set up the pilot.",
+    "Not connected. If you changed your mind, nothing happened. If Google said \u201caccess blocked\u201d, that account has not been added to the tester list yet \u2014 send it to whoever set up the pilot.",
   no_refresh_token:
     "The provider didn't grant long-term access. Try connecting again and accept every prompt.",
   unknown_or_expired_state: "That connection attempt timed out. Please try again.",
@@ -52,33 +45,6 @@ function relativeTime(iso?: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-/**
- * The four tabs a calendar connection can sit under.
- *
- * Three of them are `ConnectionStatus` itself — the field the sync function
- * already writes after every attempt — read as tiers of reliability rather
- * than as an internal enum: a calendar is either working, waiting on you to
- * reconnect it, or stuck. Nothing here is invented; it is the same status
- * `ConnectionRow` has always branched on, just used to sort rather than only
- * to decorate one row at a time.
- *
- * "policy" is not a connection state at all — it is a fixed fourth tab so
- * Terms and Privacy have a home next to the exact feature that raises "what
- * happens to my data" questions, rather than only at the bottom of the page
- * under Delete my data, which is where they used to live alone.
- */
-type Tab = ConnectionStatus | "policy";
-
-const STATUS_TABS: { status: ConnectionStatus; label: string; empty: string }[] = [
-  { status: "connected", label: "Working", empty: "Nothing connected yet — add one below." },
-  {
-    status: "needs_reauth",
-    label: "Needs reconnecting",
-    empty: "Nothing needs reconnecting. \u{1F44D}",
-  },
-  { status: "error", label: "Not syncing", empty: "Nothing is stuck." },
-];
-
 export function CalendarConnectionsSection() {
   const { user } = useSession();
   const router = useRouter();
@@ -89,7 +55,6 @@ export function CalendarConnectionsSection() {
     detail?: string;
   };
   const [busy, setBusy] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab | null>(null);
 
   const connections = useQuery({
     ...calendarConnectionsQuery(user?.id ?? ""),
@@ -151,14 +116,7 @@ export function CalendarConnectionsSection() {
     }
   }
 
-  /*
-    Memoized on connections.data itself, not on a `?? []` fallback of it. The
-    fallback reads fine but creates a new empty array on every render while
-    the query is loading — a fresh reference each time, which would make the
-    grouping below "depend on rows" in name only and recompute regardless of
-    whether anything actually changed.
-  */
-  const rows = useMemo(() => connections.data ?? [], [connections.data]);
+  const rows = connections.data ?? [];
   /**
    * How many of each kind are already connected.
    *
@@ -171,35 +129,6 @@ export function CalendarConnectionsSection() {
     acc[c.provider] = (acc[c.provider] ?? 0) + 1;
     return acc;
   }, {});
-
-  const byStatus = useMemo(() => {
-    const groups: Record<ConnectionStatus, CalendarConnection[]> = {
-      connected: [],
-      needs_reauth: [],
-      error: [],
-    };
-    for (const c of rows) groups[c.status].push(c);
-    return groups;
-  }, [rows]);
-
-  /*
-    Which tab is open first, decided once per visit rather than pinned.
-
-    Profile is somewhere you go to manage things, not a passive dashboard, so
-    if a calendar is actually stuck it leads — most severe first among
-    whichever tabs are non-empty. A page with nothing broken opens on "Working"
-    instead of forcing a click past two empty tabs to see the good news. Once
-    someone has touched a tab by hand this stops recomputing, so switching to
-    "Terms & Privacy" to read something does not get yanked back the moment a
-    background sync changes a status underneath them.
-  */
-  const defaultTab: Tab =
-    byStatus.error.length > 0
-      ? "error"
-      : byStatus.needs_reauth.length > 0
-        ? "needs_reauth"
-        : "connected";
-  const activeTab = tab ?? defaultTab;
 
   return (
     <section className="card-soft p-6 space-y-4">
@@ -225,58 +154,16 @@ export function CalendarConnectionsSection() {
         comes in read-only; grounded never changes anything at the source.
       </p>
 
-      {/*
-        The tab strip. Each tab is its own separate pill, not four labels
-        sharing one continuous pill outline.
-
-        It was one shared container — overflow-hidden, rounded-full, wrapping
-        its children. That reads fine as long as every tab fits on one line,
-        which is a desktop assumption: at phone width, "Working 2 / Needs
-        reconnecting 1 / Not syncing 1 / Terms & Privacy" does not fit in one
-        row, the row wraps to two, and a single rounded-full shape wrapped
-        around two rows is not a pill anymore — the corner radius clips into
-        the second row and the whole thing reads as broken rather than as
-        tabs. Giving every tab its own full radius and letting them wrap
-        independently, each one just a normal shape at every width — closer
-        to what "different folders" actually looks like than one strip trying
-        to hold its shape regardless of how much text is inside it.
-
-        Each status tab carries a count so a problem is visible without a
-        click — "Needs reconnecting 1" is the whole point of organizing this
-        by reliability instead of one flat list.
-      */}
-      <div className="flex flex-wrap gap-1.5">
-        {STATUS_TABS.map(({ status, label }) => (
-          <TabButton key={status} active={activeTab === status} onClick={() => setTab(status)}>
-            {label}
-            {byStatus[status].length > 0 && (
-              <span className="ml-1 tabular-nums opacity-70">{byStatus[status].length}</span>
-            )}
-          </TabButton>
-        ))}
-        <TabButton active={activeTab === "policy"} onClick={() => setTab("policy")}>
-          Terms &amp; Privacy
-        </TabButton>
-      </div>
-
-      {activeTab === "policy" ? (
-        <PolicyPanel />
-      ) : (
+      {rows.length > 0 && (
         <ul className="space-y-3">
-          {byStatus[activeTab].length === 0 ? (
-            <li className="rounded-2xl border border-dashed border-border p-4 text-center text-sm italic text-ink-soft">
-              {STATUS_TABS.find((t) => t.status === activeTab)?.empty}
-            </li>
-          ) : (
-            byStatus[activeTab].map((connection) => (
-              <ConnectionRow
-                key={connection.id}
-                connection={connection}
-                busy={busy !== null}
-                onReconnect={() => void connect(connection.provider)}
-              />
-            ))
-          )}
+          {rows.map((connection) => (
+            <ConnectionRow
+              key={connection.id}
+              connection={connection}
+              busy={busy !== null}
+              onReconnect={() => void connect(connection.provider)}
+            />
+          ))}
         </ul>
       )}
 
@@ -297,68 +184,6 @@ export function CalendarConnectionsSection() {
 
       <AddFeedForm />
     </section>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        // Its own rounded-full and its own border, so it holds its shape
-        // regardless of which row it wraps onto — a folder tab, not a slice
-        // of a shared strip.
-        "flex items-center gap-0.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-tan text-ink-soft hover:bg-secondary",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
- * What connecting a calendar means for your data, and the two full documents.
- *
- * Short on purpose. The full Terms and Privacy pages already exist and are
- * linked, not duplicated — copying their text in here would give the app two
- * places that can quietly say different things. This panel exists to answer
- * the one question specific to being *here*, on the calendar tab, which the
- * full policies do not lead with: what does connecting an account actually
- * hand over. The line already used above the connection list says it — this
- * just puts it where someone reaching for reassurance about a calendar is
- * already looking, instead of only at the very bottom of the page.
- */
-function PolicyPanel() {
-  return (
-    <div className="space-y-3 rounded-2xl border border-dashed border-border p-4">
-      <p className="text-sm text-ink-soft">
-        Calendars connect read-only. grounded reads your events to show them alongside your tasks;
-        it never edits, moves, or deletes anything at Google, Microsoft, or wherever a feed is
-        published. Disconnecting a calendar removes it from grounded and changes nothing where it
-        came from.
-      </p>
-      <div className="flex flex-wrap gap-4 text-sm">
-        <Link to="/privacy" className="underline underline-offset-4 hover:text-ink">
-          Privacy policy
-        </Link>
-        <Link to="/terms" className="underline underline-offset-4 hover:text-ink">
-          Terms of use
-        </Link>
-      </div>
-    </div>
   );
 }
 
