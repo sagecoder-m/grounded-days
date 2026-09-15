@@ -20,7 +20,7 @@
  *   - HQ is pointed at the admin console, which already has a roster review
  *     built for it and does not need a second one here.
  */
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -34,7 +34,7 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { useIsClinicianAccount } from "@/lib/use-is-clinician-account";
 import { useIsDemoAccount } from "@/lib/use-is-demo-account";
 import { useSession } from "@/lib/use-session";
-import { useCanUseClinicianPOV } from "@/lib/use-clinician-pov";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -60,34 +60,129 @@ function ClinicianPage() {
     return <div className="card-soft h-64 animate-pulse rounded-2xl bg-secondary/60" />;
   }
 
-  if (isDemoAccount) return <DemoSelfPreview />;
-  if (isClinicianAccount) return <Roster />;
-  if (isAdmin) return <AdminPointer />;
+  const canView = isAdmin || isDemoAccount || isClinicianAccount;
 
   return (
-    <div className="card-soft mx-auto max-w-md p-8 text-center">
-      <h1 className="font-serif text-2xl">Not this door</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        This page previews work that has not shipped yet.
-      </p>
-      <Link to="/" className="mt-4 inline-block text-sm underline underline-offset-4">
-        Back to overview
+    <div className="space-y-6">
+      {/* The toggle itself. Shown above whichever of the three views below
+          renders, so however you got to this page there is always a plain
+          "Consumer" / "Clinician" switch back — not just the nav icon that
+          got you here in the first place. */}
+      {canView && <PovSwitch />}
+
+      {isDemoAccount ? (
+        <DemoSelfPreview />
+      ) : isClinicianAccount ? (
+        <Roster />
+      ) : isAdmin ? (
+        <AdminPointer />
+      ) : (
+        <div className="card-soft mx-auto max-w-md p-8 text-center">
+          <h1 className="font-serif text-2xl">Not this door</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            This page previews work that has not shipped yet.
+          </p>
+          <Link to="/" className="mt-4 inline-block text-sm underline underline-offset-4">
+            Back to overview
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The literal Consumer / Clinician switch.
+ *
+ * "Switching" is still ordinary navigation underneath — the same choice made
+ * for the first version of this page, so there is one source of truth (the
+ * route) instead of a stored POV that could disagree with where you actually
+ * are. What changed is discoverability: a link to "/" read as a way out, not
+ * as one half of a toggle back to the other. This is the same pair of
+ * destinations, styled as the segmented control the rest of the app already
+ * uses for this shape of choice — see the journal's Type/Handwrite switch and
+ * the handwriting pad's Write/Erase tool switch.
+ */
+function PovSwitch() {
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const onClinician = pathname.startsWith("/clinician");
+
+  return (
+    <div className="inline-flex overflow-hidden rounded-full border border-tan text-xs">
+      <Link
+        to="/"
+        aria-pressed={!onClinician}
+        className={cn(
+          "px-3 py-1.5 transition-colors",
+          !onClinician ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary",
+        )}
+      >
+        Consumer
+      </Link>
+      <Link
+        to="/clinician"
+        aria-pressed={onClinician}
+        className={cn(
+          "px-3 py-1.5 transition-colors",
+          onClinician ? "bg-primary text-primary-foreground" : "text-ink-soft hover:bg-secondary",
+        )}
+      >
+        Clinician
       </Link>
     </div>
   );
 }
 
+/**
+ * HQ has no roster of its own — clinician_patients only ever links a real
+ * clinician account to a patient — but is authorized to preview any account,
+ * the same as it can from the admin console's roster panel. This is that,
+ * reachable directly: type an email, see exactly what a clinician assigned to
+ * that account would see, through the same PatientDetail a real roster uses.
+ */
 function AdminPointer() {
+  const { patient } = Route.useSearch();
+  const [email, setEmail] = useState(patient ?? "");
+  const navigate = useNavigate();
+
+  if (patient) {
+    return <PatientDetail email={patient} backLabel="Back to search" />;
+  }
+
   return (
-    <div className="card-soft mx-auto max-w-md p-8 text-center">
-      <h1 className="font-serif text-2xl">See it from HQ</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Clinician rosters and previews are reviewed from the admin console, not from here — it
-        already has a roster panel built for exactly this.
-      </p>
-      <Link to="/admin" className="mt-4 inline-block text-sm underline underline-offset-4">
-        Open HQ
-      </Link>
+    <div className="space-y-6">
+      <header>
+        <p className="chip bg-secondary text-ink-soft">HQ</p>
+        <h1 className="mt-3 font-serif text-2xl md:text-3xl">Preview any account</h1>
+        <p className="mt-2 max-w-prose text-ink-soft">
+          HQ has no roster of its own, but can preview anyone — the same view a clinician sees for
+          an assigned patient. Roster assignment itself still happens from{" "}
+          <Link to="/admin" className="underline underline-offset-4">
+            the admin console
+          </Link>
+          .
+        </p>
+      </header>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const trimmed = email.trim();
+          if (trimmed) void navigate({ to: "/clinician", search: { patient: trimmed } });
+        }}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="tester@example.com"
+          className="min-w-0 flex-1 rounded-2xl border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+        />
+        <Button type="submit" className="rounded-full">
+          Preview
+        </Button>
+      </form>
     </div>
   );
 }
@@ -175,7 +270,15 @@ function Roster() {
   );
 }
 
-function PatientDetail({ email, row }: { email: string; row?: Patient }) {
+function PatientDetail({
+  email,
+  row,
+  backLabel = "Back to your patients",
+}: {
+  email: string;
+  row?: Patient;
+  backLabel?: string;
+}) {
   const navigate = useNavigate();
   const preview = useQuery({
     queryKey: ["clinician-patient-preview", email],
@@ -196,7 +299,7 @@ function PatientDetail({ email, row }: { email: string; row?: Patient }) {
         className="inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to your patients
+        {backLabel}
       </button>
 
       <header>
@@ -206,33 +309,46 @@ function PatientDetail({ email, row }: { email: string; row?: Patient }) {
         </h1>
       </header>
 
-      <Tabs defaultValue="summary">
-        <TabsList>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-          <TabsTrigger value="plan">Treatment plan</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-        </TabsList>
+      {(() => {
+        const summary = preview.isLoading ? (
+          <div className="card-soft h-64 animate-pulse rounded-2xl bg-secondary/60" />
+        ) : preview.isError || !preview.data ? (
+          <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
+            Could not load this account's summary.
+          </p>
+        ) : (
+          <ShareSummaryView data={preview.data} today={todayISO()} />
+        );
 
-        <TabsContent value="summary" className="pt-4">
-          {preview.isLoading ? (
-            <div className="card-soft h-64 animate-pulse rounded-2xl bg-secondary/60" />
-          ) : preview.isError || !preview.data ? (
-            <p className="rounded-2xl border border-dashed border-border px-4 py-8 text-center text-sm italic text-ink-soft">
-              Could not load this patient's summary.
-            </p>
-          ) : (
-            <ShareSummaryView data={preview.data} today={todayISO()} />
-          )}
-        </TabsContent>
+        /*
+          Plan and Notes need a roster row — they belong to the clinician who
+          is assigned, and HQ previewing an arbitrary email by hand has no
+          such assignment to write against. Rather than show two tabs that
+          would fail on the first save, HQ gets the summary alone, which is
+          the thing it actually came here to check.
+        */
+        if (!row) return <div className="pt-2">{summary}</div>;
 
-        <TabsContent value="plan" className="pt-4">
-          {row && <PlanEditor patientUserId={row.patient_user_id} />}
-        </TabsContent>
+        return (
+          <Tabs defaultValue="summary">
+            <TabsList>
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="plan">Treatment plan</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="notes" className="pt-4">
-          {row && <NotesLog patientUserId={row.patient_user_id} />}
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="summary" className="pt-4">
+              {summary}
+            </TabsContent>
+            <TabsContent value="plan" className="pt-4">
+              <PlanEditor patientUserId={row.patient_user_id} />
+            </TabsContent>
+            <TabsContent value="notes" className="pt-4">
+              <NotesLog patientUserId={row.patient_user_id} />
+            </TabsContent>
+          </Tabs>
+        );
+      })()}
     </div>
   );
 }
