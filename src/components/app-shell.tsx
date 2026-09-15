@@ -14,8 +14,10 @@ import {
   RefreshCw,
   Sparkles,
   Sprout,
+  Stethoscope,
   Sun,
   User,
+  type LucideIcon,
 } from "lucide-react";
 
 import { actions, AREA_META, useApp, useSettingsLoaded, useSyncStatus } from "@/lib/store";
@@ -24,6 +26,7 @@ import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
 import { useResolvedTheme, useTheme } from "@/lib/use-theme";
 import { installErrorReporting, track } from "@/lib/telemetry";
+import { useCanUseClinicianPOV } from "@/lib/use-clinician-pov";
 
 /**
  * One order, used by all three layouts — the side rail, the desktop top tabs and
@@ -62,6 +65,32 @@ const NAV = [
   { to: "/assistant", label: "Assistant", icon: Sparkles, group: "tools" },
   { to: "/profile", label: "Profile", icon: User, group: "tools" },
 ] as const;
+
+/**
+ * NAV is a fixed-length tuple (`as const`), so TypeScript infers each row's
+ * own exact literal shape rather than one common type — `(typeof NAV)[number]`
+ * is a union of eight specific objects, none of which is "any nav item with a
+ * different `to`". A plain, loosely-typed shape is what every consumer below
+ * actually needs, and what a ninth, conditionally-present item has to be.
+ */
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  group: (typeof RAIL_GROUPS)[number]["key"];
+}
+
+/**
+ * Appended, not merged into NAV, because it does not apply to NAV as written:
+ * NAV is every account's nav, and this is two accounts' nav. See
+ * useCanUseClinicianPOV for who and clinician.tsx for why.
+ */
+const CLINICIAN_NAV_ITEM: NavItem = {
+  to: "/clinician",
+  label: "Clinician",
+  icon: Stethoscope,
+  group: "tools",
+};
 
 /**
  * How the side rail breaks the list up. Eight undifferentiated rows is a list to
@@ -138,6 +167,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Collapsing is a per-session preference, not worth a round trip to store.
   const [railCollapsed, setRailCollapsed] = useState(false);
 
+  // The Clinician tab, for the two accounts that get one. Computed once here
+  // and threaded to all three nav renderings (top tabs, side rail, the
+  // narrow-screen bar) so they cannot disagree about who sees it.
+  const canUseClinicianPOV = useCanUseClinicianPOV();
+  const nav: NavItem[] = canUseClinicianPOV ? [...NAV, CLINICIAN_NAV_ITEM] : [...NAV];
+
   // Telemetry lives here because AppShell only mounts behind the passcode gate:
   // a page_view can never fire for a locked or signed-out screen. track() sends
   // the route name only — see telemetry.ts for the full privacy contract.
@@ -183,7 +218,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand />
           <AccountBox compact />
         </div>
-        <NavChips pathname={pathname} />
+        <NavChips pathname={pathname} nav={nav} />
       </header>
 
       {topLayout ? (
@@ -211,7 +246,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-label="Sections"
                 className="flex min-w-0 flex-1 items-center justify-center gap-1"
               >
-                {NAV.map((n) => {
+                {nav.map((n) => {
                   const active = pathname === n.to;
                   return (
                     <Link
@@ -305,7 +340,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <nav className="flex-1 px-3" aria-label="Sections">
               {RAIL_GROUPS.map((group, groupIndex) => {
-                const items = NAV.filter((n) => n.group === group.key);
+                const items = nav.filter((n) => n.group === group.key);
                 if (items.length === 0) return null;
                 return (
                   <div key={group.key} className={groupIndex === 0 ? "" : "mt-5"}>
@@ -392,7 +427,7 @@ function RailLink({
   active,
   collapsed,
 }: {
-  item: (typeof NAV)[number];
+  item: NavItem;
   active: boolean;
   collapsed: boolean;
 }) {
@@ -423,10 +458,10 @@ function RailLink({
   );
 }
 
-function NavChips({ pathname }: { pathname: string }) {
+function NavChips({ pathname, nav }: { pathname: string; nav: NavItem[] }) {
   return (
     <nav className="flex items-center justify-between gap-1 px-3 pb-2" aria-label="Sections">
-      {NAV.map((n) => {
+      {nav.map((n) => {
         const active = pathname === n.to;
         return (
           <Link

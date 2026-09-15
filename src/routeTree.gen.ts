@@ -16,6 +16,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PersonalRouteImport } from './routes/personal'
 import { Route as EducationRouteImport } from './routes/education'
+import { Route as ClinicianRouteImport } from './routes/clinician'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AssistantRouteImport } from './routes/assistant'
@@ -59,6 +60,11 @@ const PersonalRoute = PersonalRouteImport.update({
 const EducationRoute = EducationRouteImport.update({
   id: '/education',
   path: '/education',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClinicianRoute = ClinicianRouteImport.update({
+  id: '/clinician',
+  path: '/clinician',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalendarRoute = CalendarRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/clinician': typeof ClinicianRoute
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/clinician': typeof ClinicianRoute
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/assistant': typeof AssistantRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
+  '/clinician': typeof ClinicianRoute
   '/education': typeof EducationRoute
   '/personal': typeof PersonalRoute
   '/privacy': typeof PrivacyRoute
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/clinician'
     | '/education'
     | '/personal'
     | '/privacy'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/clinician'
     | '/education'
     | '/personal'
     | '/privacy'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/assistant'
     | '/auth'
     | '/calendar'
+    | '/clinician'
     | '/education'
     | '/personal'
     | '/privacy'
@@ -225,6 +237,7 @@ export interface RootRouteChildren {
   AssistantRoute: typeof AssistantRoute
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
+  ClinicianRoute: typeof ClinicianRoute
   EducationRoute: typeof EducationRoute
   PersonalRoute: typeof PersonalRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       path: '/education'
       fullPath: '/education'
       preLoaderRoute: typeof EducationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clinician': {
+      id: '/clinician'
+      path: '/clinician'
+      fullPath: '/clinician'
+      preLoaderRoute: typeof ClinicianRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calendar': {
@@ -361,6 +381,7 @@ const rootRouteChildren: RootRouteChildren = {
   AssistantRoute: AssistantRoute,
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
+  ClinicianRoute: ClinicianRoute,
   EducationRoute: EducationRoute,
   PersonalRoute: PersonalRoute,
   PrivacyRoute: PrivacyRoute,

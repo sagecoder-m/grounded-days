@@ -48,7 +48,37 @@ export type Database = {
         };
         Relationships: [];
       };
+      demo_emails: {
+        Row: {
+          created_at: string;
+          email: string;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+        };
+        Update: {
+          created_at?: string;
+          email?: string;
+        };
+        Relationships: [];
+      };
       admin_users: {
+        Row: {
+          created_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      demo_users: {
         Row: {
           created_at: string;
           user_id: string;
@@ -921,6 +951,7 @@ export type Database = {
           week_start: string;
         }[];
       };
+      admin_clinician_preview: { Args: never; Returns: Json };
       change_passcode: {
         Args: { new_passcode: string; old_passcode: string };
         Returns: boolean;

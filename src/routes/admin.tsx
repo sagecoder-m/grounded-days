@@ -27,6 +27,9 @@ import { SetupPanel } from "@/components/hq-setup";
 import type { ActivityWeek } from "@/lib/hq-analytics";
 import { FeatureTrendChart } from "@/components/hq-feature-trend";
 import { HqFeatureVerdicts } from "@/components/hq-feature-verdicts";
+import { ShareSummaryView } from "@/components/share-summary-view";
+import type { SharedView } from "@/lib/share";
+import { todayISO } from "@/lib/store";
 import { format, parseISO, subDays } from "date-fns";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
@@ -216,6 +219,22 @@ function Portal() {
     },
   });
 
+  /**
+   * The demo account's data, reshaped through the same clinician-preview
+   * rules the Clinician POV page uses on its own account — see
+   * admin_clinician_preview() and clinician-view.ts. Hardcoded server-side to
+   * the one demo account; this query can never be pointed at anyone else's
+   * data, no matter what is passed to it, because nothing is passed to it.
+   */
+  const clinicianPreview = useQuery({
+    queryKey: ["hq-clinician-preview"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("admin_clinician_preview");
+      if (error) throw error;
+      return data as unknown as SharedView;
+    },
+  });
+
   const pilotTruncated = (pilotEvents.data?.length ?? 0) >= PILOT_ROW_LIMIT;
 
   return (
@@ -268,6 +287,11 @@ function Portal() {
         accounts={accounts.data}
         loading={accounts.isLoading}
         error={accounts.isError}
+      />
+      <ClinicianPreviewPanel
+        data={clinicianPreview.data}
+        loading={clinicianPreview.isLoading}
+        error={clinicianPreview.isError}
       />
       <SetupPanel />
       <PilotChecklist />
@@ -634,6 +658,49 @@ function AccountsPanel({
         </div>
         <CreateAccountCard />
         <SeedDemoCard />
+      </div>
+    </section>
+  );
+}
+
+/**
+ * What the demo account's Clinician POV currently renders, read-only.
+ *
+ * Reuses ShareSummaryView directly — the same component the Clinician page
+ * and a public share link both render through — so this is never a second
+ * implementation to keep in sync, only a second place the first one is shown.
+ * See admin_clinician_preview() for why this can only ever be the demo
+ * account's data: the RPC takes no target, so there is nothing here to point
+ * at anyone else.
+ */
+function ClinicianPreviewPanel({
+  data,
+  loading,
+  error,
+}: {
+  data?: SharedView;
+  loading: boolean;
+  error: boolean;
+}) {
+  return (
+    <section>
+      <h2 className="mb-3 font-serif text-lg">Clinician POV preview</h2>
+      <p className="mb-4 max-w-xl text-sm text-ink-soft">
+        What the demo account sees when it switches to Clinician view. Not a live feature — see the
+        Build Scope Decision brief for why the real clinical layer is deferred until a provider has
+        asked for it.
+      </p>
+      <div className="card-soft p-4 md:p-6">
+        {loading ? (
+          <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
+        ) : error || !data ? (
+          <p className="text-sm text-ink-soft">
+            Could not load the preview — the demo account may not exist yet, or the migration that
+            registers it has not run.
+          </p>
+        ) : (
+          <ShareSummaryView data={data} today={todayISO()} />
+        )}
       </div>
     </section>
   );
