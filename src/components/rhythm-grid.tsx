@@ -31,6 +31,21 @@ import type { AppState } from "@/lib/store-types";
 const WEEKS = 12;
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
+/**
+ * Width budget per column, in rem — 26rem spread over the full twelve weeks.
+ *
+ * The cap used to be a flat 26rem regardless of how many columns there
+ * actually were. That's the right number for twelve, and much too wide for
+ * fewer: a new account showing one or two trimmed-in weeks got a row capped
+ * at the full 26rem anyway, flex-1 stretched that one skinny column out to
+ * fill it, and the aspect-ratio below — driven by that same column count —
+ * turned an already-too-wide box into an enormous one, seven times its width
+ * in height. Scaling the cap by the actual column count keeps each column
+ * the width it would have been at twelve, so the height aspect-ratio derives
+ * from it stays the same regardless of how many weeks are on screen.
+ */
+const MAX_COL_REM = 26 / WEEKS;
+
 /** Five steps is enough to read as a gradient and few enough that one extra
  *  thing on a day does not visibly change the shade — the eye should see a
  *  rhythm, not a measurement. */
@@ -110,8 +125,11 @@ export function RhythmGrid({ state }: { state: AppState }) {
             {/* Capped so the squares stay squares. Unbounded, twelve columns
                 across a full-width widget grow to ~50px each and the thing reads
                 as a calendar you are meant to click rather than a pattern you
-                are meant to glance at. It still fills the width when narrow. */}
-            <div className="flex max-w-[26rem] gap-1.5">
+                are meant to glance at. It still fills the width when narrow.
+                The cap itself scales with how many columns there are — see
+                MAX_COL_REM — so a trimmed-down account isn't stretched wide
+                and then blown tall by the aspect-ratio below. */}
+            <div className="flex gap-1.5" style={{ maxWidth: `${weeks.length * MAX_COL_REM}rem` }}>
               <div className="hidden shrink-0 flex-col justify-between py-[1px] @sm:flex">
                 {WEEKDAY_LABELS.map((d, i) => (
                   <span key={i} className="text-[9px] leading-none text-ink-soft/70">
