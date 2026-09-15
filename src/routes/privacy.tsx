@@ -44,9 +44,9 @@ function PrivacyPage() {
         </p>
         <ul>
           <li>
-            <strong>Your journal is never read by the assistant.</strong> Not the entries, not the
-            moods, not the gratitude notes. The assistant is built with a list of what it may see
-            and the journal is not on it.
+            <strong>Your journal is never read by Grace, the assistant.</strong> Not the entries,
+            not the moods, not the gratitude notes. The assistant is built with a list of what it
+            may see and the journal is not on it.
           </li>
           <li>
             <strong>

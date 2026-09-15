@@ -84,10 +84,10 @@ interface Conversation {
 /** Openers that produce something useful rather than "how can I help?". */
 const STARTERS = [
   "What should I do first today?",
+  "I'm behind — where do I start?",
   "Break my next goal into smaller steps",
   "Is my week too full?",
   "I have 30 minutes — what is worth doing?",
-  "Add a task to draft my assignment",
 ];
 
 /** Private bucket, one folder per user — see the migration that created it. */
@@ -476,11 +476,22 @@ function AssistantPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="chip bg-secondary text-ink-soft">Assistant</p>
-          <h1 className="mt-3 font-serif text-2xl md:text-3xl">Think it through with me</h1>
+          {/*
+            Named, not labelled "Assistant".
+
+            An assistant is a tool you operate and a name is someone you talk
+            to, and the difference decides how honest people are with it. Grace
+            is the word for what this is meant to be a place for — coming here
+            on a day that went badly and not having to present it well first.
+            The heading says that outright, because a name alone is decoration
+            until something explains it.
+          */}
+          <p className="chip bg-secondary text-ink-soft">Grace</p>
+          <h1 className="mt-3 font-serif text-2xl md:text-3xl">Somewhere to be honest about it</h1>
           <p className="mt-2 max-w-lg text-ink-soft">
-            It can see your goals, tasks, projects, habits and schedule, and it can add tasks for
-            you from what you type or a photo you send. It cannot see your journal.
+            Grace can see your goals, tasks, projects, habits and schedule, and can add things for
+            you from what you type or a photo you send. She cannot see your journal — that stays
+            yours.
           </p>
         </div>
       </header>
@@ -540,12 +551,28 @@ function AssistantPage() {
 
           {loaded && !activeId && (
             <div className="space-y-3">
+              {/*
+                What this is for, said once, on the empty screen.
+
+                It replaces a line of usage advice — "ask for the next small
+                step rather than a whole plan" — which was true and read as
+                instructions for operating a tool. Someone opening this on a bad
+                day needs to know they have not arrived somewhere that will
+                measure them. That is the whole reason for the name, and it only
+                works if it is said plainly before the first message.
+              */}
               <div className="card-soft flex items-start gap-3 p-5">
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <p className="text-sm text-ink-soft">
-                  Ask for the next small step rather than a whole plan, or send a photo of a
-                  syllabus or schedule — that is what it is best at.
-                </p>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    Start wherever you actually are. Behind, tired, scattered, or fine — none of it
+                    needs tidying up before you say it.
+                  </p>
+                  <p className="text-ink-soft">
+                    Grace will not tell you to catch up or do more. Ask for the next small thing
+                    rather than a whole plan, or send a photo of a syllabus and let her sort it out.
+                  </p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {STARTERS.map((s) => (

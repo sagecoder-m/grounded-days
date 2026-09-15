@@ -123,7 +123,7 @@ const PROFILE_TABS: { key: ProfileTab; label: string; icon: LucideIcon }[] = [
   { key: "profile", label: "Profile", icon: UserRound },
   { key: "appearance", label: "Appearance", icon: Palette },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
-  { key: "assistant", label: "Assistant", icon: Bot },
+  { key: "assistant", label: "Grace", icon: Bot },
 ];
 
 function ProfilePage() {
@@ -446,7 +446,7 @@ function AssistantSection({ settings }: { settings: Settings }) {
   return (
     <section className="card-soft space-y-5 p-6">
       <div>
-        <h2 className="font-serif text-lg">Your assistant</h2>
+        <h2 className="font-serif text-lg">Grace</h2>
         <p className="mt-1 text-sm text-ink-soft">
           How it should talk to you. It already sees your goals, tasks, habits and schedule — never
           your journal.

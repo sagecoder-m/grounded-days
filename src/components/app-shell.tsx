@@ -62,7 +62,9 @@ const NAV = [
     group: "areas",
   },
   { to: "/calendar", label: "Calendar", icon: CalendarDays, group: "tools" },
-  { to: "/assistant", label: "Assistant", icon: Sparkles, group: "tools" },
+  // The route stays /assistant — a bookmark should not break over a
+  // rename — but what people read is her name.
+  { to: "/assistant", label: "Grace", icon: Sparkles, group: "tools" },
   { to: "/profile", label: "Profile", icon: User, group: "tools" },
 ] as const;
 
