@@ -660,6 +660,7 @@ function AccountsPanel({
         </div>
         <CreateAccountCard />
         <SeedDemoCard />
+        <ResetPasswordCard />
       </div>
     </section>
   );
@@ -1150,6 +1151,120 @@ function CreateAccountCard() {
 
           <p className="mt-2 text-ink-soft">
             Shown once — it isn&rsquo;t stored anywhere you can read it back.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Set a tester's password for them, and hand it over the same way a new
+ * account's is handed over.
+ *
+ * /auth can send a reset link to anyone whose email works. This is for when it
+ * doesn't: a typo'd address, a dead inbox, a tester on a call who needs to be
+ * back in now. Without it the only route was the Supabase dashboard.
+ */
+function ResetPasswordCard() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState(suggestPassword);
+  const [busy, setBusy] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const [reset, setReset] = useState<{ email: string; password: string } | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Two presses, because this lands immediately: their current password stops
+    // working whether or not the new one ever reaches them.
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "reset_password", email: email.trim(), password },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setReset({ email: email.trim(), password });
+      toast.success("Password reset");
+      setEmail("");
+      setPassword(suggestPassword());
+    } catch (err) {
+      toast.error("Couldn't reset that password", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+      setArmed(false);
+    }
+  };
+
+  return (
+    <div className="card-soft space-y-4 p-4 md:p-6">
+      <div>
+        <h3 className="text-sm text-ink-soft">Reset a password</h3>
+        <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+          For a tester who can&rsquo;t use the reset link on the sign-in page — a wrong address, or
+          an inbox they no longer have.
+        </p>
+      </div>
+
+      <form onSubmit={submit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>Account email</Label>
+          <Input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setArmed(false);
+            }}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>New password</Label>
+          <Input
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setArmed(false);
+            }}
+          />
+        </div>
+        <Button type="submit" disabled={busy} variant="outline" className="w-full rounded-full">
+          {busy ? "Resetting…" : armed ? "Press again to confirm" : "Reset password"}
+        </Button>
+      </form>
+
+      {reset && (
+        <div className="rounded-2xl border border-dashed border-tan bg-secondary/60 p-3 text-xs">
+          <p className="font-medium">Hand these to the tester:</p>
+
+          <div className="mt-2 space-y-1.5">
+            <CopyRow label="Email" value={reset.email} />
+            <CopyRow label="Password" value={reset.password} />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2.5 h-8 w-full rounded-full border-tan text-xs"
+            onClick={() =>
+              void copyText(`Email: ${reset.email}\nPassword: ${reset.password}`, "Both copied")
+            }
+          >
+            <Copy className="h-3.5 w-3.5" /> Copy both
+          </Button>
+
+          <p className="mt-2 text-ink-soft">
+            Shown once — their old password stopped working, and this one isn&rsquo;t stored
+            anywhere you can read it back.
           </p>
         </div>
       )}

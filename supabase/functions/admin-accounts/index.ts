@@ -34,6 +34,26 @@ interface ListPayload {
 }
 
 /**
+ * Set a new password on one account, by email.
+ *
+ * The counterpart to create. Credentials are handed to testers directly and
+ * email_confirm is on, so a tester who forgets their password — or whose
+ * generated one was never written down — has no way back short of the Supabase
+ * dashboard. The self-serve reset on /auth covers anyone whose email works;
+ * this covers the rest, and is the only answer when the address itself is the
+ * problem.
+ *
+ * By email rather than by id, for the same reason "seed" is: the admin knows
+ * the address, and a typo then fails to find anyone instead of quietly landing
+ * on some other tester's account.
+ */
+interface ResetPasswordPayload {
+  action: "reset_password";
+  email: string;
+  password: string;
+}
+
+/**
  * Fill one account with sample data, by email.
  *
  * By email rather than by id because the admin knows the demo's address and
@@ -61,7 +81,13 @@ interface RosterPayload {
   patientEmail: string;
 }
 
-type Payload = CreatePayload | ListPayload | SeedPayload | ListCliniciansPayload | RosterPayload;
+type Payload =
+  | CreatePayload
+  | ListPayload
+  | ResetPasswordPayload
+  | SeedPayload
+  | ListCliniciansPayload
+  | RosterPayload;
 
 async function requireAdmin(req: Request): Promise<string> {
   const user = await requireUser(req);
@@ -140,6 +166,34 @@ Deno.serve(async (req) => {
       }
 
       return jsonResponse({ id: data.user.id, email: data.user.email });
+    }
+
+    if (payload.action === "reset_password") {
+      const email = payload.email?.trim().toLowerCase();
+      const password = payload.password ?? "";
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new HttpError(400, "A valid email is required");
+      }
+      if (password.length < 8) {
+        throw new HttpError(400, "Password must be at least 8 characters");
+      }
+
+      const { data, error } = await serviceClient().auth.admin.listUsers({
+        page: 1,
+        perPage: 500,
+      });
+      if (error) throw new HttpError(500, error.message);
+      const target = data.users.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (!target) throw new HttpError(404, `No account for ${email}`);
+
+      // The new password is never logged and never returned: the admin already
+      // has it, since their own browser generated it. The response says only
+      // which account it landed on.
+      const { error: updateError } = await serviceClient().auth.admin.updateUserById(target.id, {
+        password,
+      });
+      if (updateError) throw new HttpError(400, updateError.message);
+      return jsonResponse({ id: target.id, email: target.email });
     }
 
     if (payload.action === "seed") {
