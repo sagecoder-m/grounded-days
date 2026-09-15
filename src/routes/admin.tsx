@@ -738,11 +738,11 @@ function ClinicianRosterRow({
   const unassign = async (patientEmail: string) => {
     setBusyEmail(patientEmail);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "unassign-patient", clinicianEmail: clinician.email, patientEmail },
+      await callAdminAccounts({
+        action: "unassign-patient",
+        clinicianEmail: clinician.email,
+        patientEmail,
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
       onChanged();
     } catch (err) {
       toast.error("Couldn't remove that patient", {
@@ -829,11 +829,12 @@ function CreateClinicianCard({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "create", email, password, kind: "clinician" },
+      const data = await callAdminAccounts({
+        action: "create",
+        email,
+        password,
+        kind: "clinician",
       });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
       setCreated({ email, password });
       toast.success(data?.warning ? data.warning : "Clinician account created");
       setEmail("");
@@ -891,11 +892,7 @@ function AssignPatientCard({ onAssigned }: { onAssigned: () => void }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "assign-patient", clinicianEmail, patientEmail },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      await callAdminAccounts({ action: "assign-patient", clinicianEmail, patientEmail });
       toast.success("Patient assigned");
       setPatientEmail("");
       onAssigned();
@@ -949,6 +946,35 @@ function suggestPassword() {
   return btoa(String.fromCharCode(...bytes))
     .replace(/[+/=]/g, "")
     .slice(0, 12);
+}
+
+/**
+ * Call admin-accounts and surface what it actually said.
+ *
+ * supabase-js flattens every non-2xx into the same "Edge Function returned a
+ * non-2xx status code" and leaves the function's own message — already
+ * registered, no account for that email, not a clinician account — in the
+ * response body hanging off the error. Without reading that back, every
+ * distinct failure looks identical, and a function behaving exactly as
+ * designed reads as a broken one.
+ */
+async function callAdminAccounts(body: Record<string, unknown>) {
+  const { data, error } = await supabase.functions.invoke("admin-accounts", { body });
+  if (error) {
+    let message = error.message;
+    const response = (error as { context?: Response }).context;
+    if (response && typeof response.json === "function") {
+      try {
+        const parsed = await response.json();
+        if (typeof parsed?.error === "string") message = parsed.error;
+      } catch {
+        // Not JSON. Keep the generic message rather than inventing a reason.
+      }
+    }
+    throw new Error(message);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
 }
 
 /**
@@ -1012,11 +1038,7 @@ function SeedDemoCard() {
     if (!armed) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "seed", email: email.trim() },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      const data = await callAdminAccounts({ action: "seed", email: email.trim() });
       const total = Object.values((data?.counts ?? {}) as Record<string, number>).reduce(
         (sum, n) => sum + n,
         0,
@@ -1086,11 +1108,7 @@ function CreateAccountCard() {
     e.preventDefault();
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "create", email, password },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      await callAdminAccounts({ action: "create", email, password });
       setCreated({ email, password });
       toast.success("Account created");
       setEmail("");
@@ -1183,11 +1201,7 @@ function ResetPasswordCard() {
     }
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-accounts", {
-        body: { action: "reset_password", email: email.trim(), password },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
+      await callAdminAccounts({ action: "reset_password", email: email.trim(), password });
       setReset({ email: email.trim(), password });
       toast.success("Password reset");
       setEmail("");
