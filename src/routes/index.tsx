@@ -374,9 +374,16 @@ function Overview() {
     if (key === "chart" && w("chart"))
       return (
         <section key={key}>
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-serif text-lg">{encouragement.headline}</h2>
           </div>
+          {/* The headline above is encouragement, not a caption — it changes with
+              how things have been going and never says what the shapes below it
+              actually are. This does, plainly, so the chart doesn't rely on
+              someone already knowing what a two-week area breakdown looks like. */}
+          <p className="mb-3 text-sm text-ink-soft">
+            The last two weeks, day by day, split by area — taller means more finished.
+          </p>
           <div className="card-soft p-4 md:p-6">
             <div className="grid gap-6 @3xl:grid-cols-[2fr_1fr]">
               <div className="h-56">

@@ -225,9 +225,15 @@ export function RhythmRiver({ state }: { state: AppState }) {
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Your rhythm</h2>
       </div>
+      {/* What the shape means, stated once and always visible — it used to live
+          only in the legend row below, hidden until the widget was wide enough
+          to fit it, which most on-board sizes never reach. */}
+      <p className="mb-3 text-sm text-ink-soft">
+        Wider bands mean more of that week leaned toward that area. Each dot is one thing done.
+      </p>
 
       <div className="card-soft p-4 md:p-5">
         {enough ? (
@@ -340,7 +346,6 @@ export function RhythmRiver({ state }: { state: AppState }) {
                   {AREA_META[s.key].label}
                 </span>
               ))}
-              <span className="ml-auto hidden @xl:inline">Each dot is one thing done.</span>
             </div>
           </>
         ) : (

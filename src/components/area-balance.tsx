@@ -73,9 +73,13 @@ export function AreaBalance({ state }: { state: AppState }) {
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Where your attention went</h2>
       </div>
+      <p className="mb-3 text-sm text-ink-soft">
+        Width shows how many things you attended to in each area that week &mdash; there&rsquo;s no
+        total to compare against.
+      </p>
 
       <div className="card-soft p-4 md:p-5">
         {anything ? (
@@ -149,8 +153,6 @@ export function AreaBalance({ state }: { state: AppState }) {
                   {s.label}
                 </span>
               ))}
-              {/* Names the unit honestly. */}
-              <span className="ml-auto hidden @xl:inline">Things attended to, by week.</span>
             </div>
           </>
         ) : (

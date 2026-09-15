@@ -88,7 +88,7 @@ export function RhythmGrid({ state }: { state: AppState }) {
 
   return (
     <section>
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-serif text-lg">Your rhythm</h2>
         <span className="text-xs italic text-ink-soft">
           {weeks.length >= WEEKS
@@ -98,6 +98,9 @@ export function RhythmGrid({ state }: { state: AppState }) {
               : `The last ${weeks.length} weeks`}
         </span>
       </div>
+      <p className="mb-3 text-sm text-ink-soft">
+        Each square is a day, darker means more happened — gaps aren&rsquo;t counted against you.
+      </p>
 
       <div className="card-soft p-4 md:p-5">
         {anything ? (
@@ -165,11 +168,6 @@ export function RhythmGrid({ state }: { state: AppState }) {
                 ))}
               </span>
               <span>fuller</span>
-              {/* Says the thing outright, because a grid of squares has a strong
-                  cultural association with streaks and this one is not that. */}
-              <span className="ml-auto hidden @lg:inline">
-                Gaps are part of it &mdash; nothing is being counted against you.
-              </span>
             </div>
           </>
         ) : (
