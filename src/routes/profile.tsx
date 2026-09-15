@@ -3,7 +3,6 @@ import {
   actions,
   deleteAllUserData,
   useAppState,
-  PINNED_WIDGETS,
   type AccentVariant,
   type CalView,
   type Density,
@@ -16,7 +15,6 @@ import {
 } from "@/lib/store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -34,13 +32,13 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ShareLinksSection } from "@/components/share-links";
 import {
-  ArrowDown,
-  ArrowUp,
-  GripVertical,
+  Bot,
+  CalendarDays,
   Monitor,
   Moon,
-  Pin,
+  Palette,
   Sun,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -49,24 +47,6 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
-
-/** Also the set of keys that still exist. Anything saved against an older
- *  layout — "tasks", from when today's work had its own section above "A look
- *  at today" — is filtered out rather than shown as a switch that toggles
- *  nothing. */
-const WIDGET_LABELS: Record<string, string> = {
-  greeting: "Greeting & date",
-  goals: "Area progress",
-  chart: "Two-week rhythm chart",
-  day: "A look at today",
-  focus: "Focus",
-  agenda: "Agenda",
-  upcoming: "Upcoming",
-  river: "Your rhythm (river)",
-  rhythm: "Rhythm grid",
-  balance: "Where your attention went",
-  movement: "How it's been going",
-};
 
 const THEMES: { key: Theme; label: string; hint: string; icon: LucideIcon }[] = [
   {
@@ -137,8 +117,18 @@ function AdminSection() {
   );
 }
 
+type ProfileTab = "profile" | "appearance" | "calendar" | "assistant";
+
+const PROFILE_TABS: { key: ProfileTab; label: string; icon: LucideIcon }[] = [
+  { key: "profile", label: "Profile", icon: UserRound },
+  { key: "appearance", label: "Appearance", icon: Palette },
+  { key: "calendar", label: "Calendar", icon: CalendarDays },
+  { key: "assistant", label: "Assistant", icon: Bot },
+];
+
 function ProfilePage() {
   const settings = useAppState().settings;
+  const [tab, setTab] = useState<ProfileTab>("profile");
 
   return (
     <div className="space-y-10">
@@ -152,140 +142,244 @@ function ProfilePage() {
 
       <AdminSection />
 
-      <DisplayNameSection value={settings.displayName} />
+      {/*
+        The rail sits on the right on a wide screen, mirroring the app's own
+        left-hand side rail — same rounded pill, same tinted active state, same
+        accent bar — just facing the other way, since it sits beside content
+        rather than beside the window edge. On a phone there's no side to put
+        it on, so it becomes a horizontal scroll of the same chips, above the
+        section it controls rather than beside it.
+      */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+        <ProfileTabRail active={tab} onSelect={setTab} className="order-1 md:order-2" />
 
-      <CalendarConnectionsSection />
+        <div className="order-2 min-w-0 flex-1 space-y-10 md:order-1">
+          {tab === "profile" && (
+            <>
+              <DisplayNameSection value={settings.displayName} />
+              <PasscodeSettings />
+              <DataSection />
+              <ShareLinksSection />
+              <PrivacyTermsSection />
+            </>
+          )}
 
-      <ShareLinksSection />
+          {tab === "appearance" && (
+            <>
+              <ThemeSection theme={settings.theme} />
+              <AccentSection accent={settings.accent} />
+              <NavigationSection navLayout={settings.navLayout} />
+              <DensitySection density={settings.density} />
+            </>
+          )}
 
-      <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-lg">Light or dark</h2>
-        {/* The quick switch lives beside the lock in the sidebar, which is where
-            it gets used. This is here for the third option: "system" cannot be
-            reached by a two-state toggle, and it is the one worth keeping, since
-            it follows a device that already dims itself in the evening. */}
-        <p className="text-sm text-ink-soft">
-          There&rsquo;s a quicker switch next to Lock. This is where you can hand the choice back to
-          your device.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {THEMES.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => actions.updateSettings({ theme: t.key })}
-              className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
-                settings.theme === t.key ? "border-primary bg-accent" : "border-border"
-              }`}
-            >
-              <div className="flex items-center gap-2 font-medium">
-                <t.icon className="h-4 w-4" /> {t.label}
-              </div>
-              <div className="mt-1 text-xs text-ink-soft">{t.hint}</div>
-            </button>
-          ))}
+          {tab === "calendar" && (
+            <>
+              <CalendarConnectionsSection />
+              <DefaultCalendarViewSection defaultCalView={settings.defaultCalView} />
+              <WeekStartsOnSection weekStartsOn={settings.weekStartsOn} />
+            </>
+          )}
+
+          {tab === "assistant" && <AssistantSection settings={settings} />}
         </div>
-      </section>
-
-      <section className="card-soft p-6 space-y-5">
-        <h2 className="font-serif text-lg">Accent color</h2>
-        <div className="flex flex-wrap gap-3">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => actions.updateSettings({ accent: a.key })}
-              className={`flex items-center gap-2.5 rounded-full border px-4 py-2 transition-all ${settings.accent === a.key ? "border-ink" : "border-border hover:border-tan"}`}
-            >
-              <span className="h-4 w-4 rounded-full" style={{ backgroundColor: a.swatch }} />
-              <span className="text-sm">{a.label}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-lg">Navigation</h2>
-        <p className="text-sm text-ink-soft">
-          Where the tabs live on a wide screen. Phones always use the top bar.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {NAV_LAYOUTS.map((layout) => (
-            <button
-              key={layout.key}
-              onClick={() => actions.updateSettings({ navLayout: layout.key })}
-              className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
-                settings.navLayout === layout.key ? "border-primary bg-accent" : "border-border"
-              }`}
-            >
-              <div className="font-medium">{layout.label}</div>
-              <div className="mt-1 text-xs text-ink-soft">{layout.hint}</div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-lg">Density</h2>
-        <div className="flex gap-3">
-          {(["comfy", "compact"] as Density[]).map((d) => (
-            <button
-              key={d}
-              onClick={() => actions.updateSettings({ density: d })}
-              className={`rounded-2xl border px-5 py-3 text-left transition-all flex-1 max-w-xs ${settings.density === d ? "border-primary bg-accent" : "border-border"}`}
-            >
-              <div className="font-medium capitalize">{d}</div>
-              <div className="text-xs text-ink-soft mt-1">
-                {d === "comfy" ? "More breathing room" : "Show a little more at once"}
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-lg">Default calendar view</h2>
-        <div className="flex gap-2">
-          {(["week", "month", "year"] as CalView[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => actions.updateSettings({ defaultCalView: v })}
-              className={`chip capitalize ${settings.defaultCalView === v ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"}`}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card-soft p-6 space-y-4">
-        <h2 className="font-serif text-lg">Week starts on</h2>
-        <p className="text-sm text-ink-soft">
-          Sets the first column of the habit grid and the first day of the week on the calendar.
-        </p>
-        <div className="flex gap-2">
-          {WEEK_STARTS.map((w) => (
-            <button
-              key={w.key}
-              onClick={() => actions.updateSettings({ weekStartsOn: w.key })}
-              className={`chip ${
-                settings.weekStartsOn === w.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-ink-soft"
-              }`}
-            >
-              {w.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <AssistantSection settings={settings} />
-
-      <WidgetSection widgets={settings.widgets} />
-
-      <PasscodeSettings />
-
-      <DataSection />
+      </div>
     </div>
+  );
+}
+
+/**
+ * The tab rail. Visually the app's left-hand side rail, turned to face the
+ * other way: same rounded item, same tinted background and accent bar on the
+ * active one, same icon-plus-label row. It only ever holds these four
+ * sections, so unlike the real rail there's nothing to collapse to icons.
+ */
+function ProfileTabRail({
+  active,
+  onSelect,
+  className = "",
+}: {
+  active: ProfileTab;
+  onSelect: (tab: ProfileTab) => void;
+  className?: string;
+}) {
+  return (
+    <nav
+      aria-label="Profile sections"
+      className={`flex gap-2 overflow-x-auto pb-1 md:sticky md:top-6 md:w-48 md:shrink-0 md:flex-col md:gap-0.5 md:overflow-visible md:pb-0 ${className}`}
+    >
+      {PROFILE_TABS.map((t) => {
+        const isActive = t.key === active;
+        return (
+          <button
+            key={t.key}
+            onClick={() => onSelect(t.key)}
+            aria-current={isActive ? "page" : undefined}
+            className={`relative flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition-colors md:w-full md:shrink ${
+              isActive ? "font-medium text-ink" : "text-ink-soft hover:bg-secondary hover:text-ink"
+            }`}
+            style={
+              isActive
+                ? { backgroundColor: "color-mix(in oklab, var(--primary) 12%, transparent)" }
+                : undefined
+            }
+          >
+            {isActive && (
+              <span
+                aria-hidden
+                className="absolute right-0 top-1/2 hidden h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary md:block"
+              />
+            )}
+            <t.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary" : ""}`} />
+            <span className="whitespace-nowrap">{t.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function ThemeSection({ theme }: { theme: Theme }) {
+  return (
+    <section className="card-soft p-6 space-y-4">
+      <h2 className="font-serif text-lg">Light or dark</h2>
+      {/* The quick switch lives beside the lock in the sidebar, which is where
+          it gets used. This is here for the third option: "system" cannot be
+          reached by a two-state toggle, and it is the one worth keeping, since
+          it follows a device that already dims itself in the evening. */}
+      <p className="text-sm text-ink-soft">
+        There&rsquo;s a quicker switch next to Lock. This is where you can hand the choice back to
+        your device.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        {THEMES.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => actions.updateSettings({ theme: t.key })}
+            className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
+              theme === t.key ? "border-primary bg-accent" : "border-border"
+            }`}
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <t.icon className="h-4 w-4" /> {t.label}
+            </div>
+            <div className="mt-1 text-xs text-ink-soft">{t.hint}</div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AccentSection({ accent }: { accent: AccentVariant }) {
+  return (
+    <section className="card-soft p-6 space-y-5">
+      <h2 className="font-serif text-lg">Accent color</h2>
+      <div className="flex flex-wrap gap-3">
+        {ACCENTS.map((a) => (
+          <button
+            key={a.key}
+            onClick={() => actions.updateSettings({ accent: a.key })}
+            className={`flex items-center gap-2.5 rounded-full border px-4 py-2 transition-all ${accent === a.key ? "border-ink" : "border-border hover:border-tan"}`}
+          >
+            <span className="h-4 w-4 rounded-full" style={{ backgroundColor: a.swatch }} />
+            <span className="text-sm">{a.label}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function NavigationSection({ navLayout }: { navLayout: NavLayout }) {
+  return (
+    <section className="card-soft p-6 space-y-4">
+      <h2 className="font-serif text-lg">Navigation</h2>
+      <p className="text-sm text-ink-soft">
+        Where the tabs live on a wide screen. Phones always use the top bar.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        {NAV_LAYOUTS.map((layout) => (
+          <button
+            key={layout.key}
+            onClick={() => actions.updateSettings({ navLayout: layout.key })}
+            className={`flex-1 max-w-xs rounded-2xl border px-5 py-3 text-left transition-all ${
+              navLayout === layout.key ? "border-primary bg-accent" : "border-border"
+            }`}
+          >
+            <div className="font-medium">{layout.label}</div>
+            <div className="mt-1 text-xs text-ink-soft">{layout.hint}</div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DensitySection({ density }: { density: Density }) {
+  return (
+    <section className="card-soft p-6 space-y-4">
+      <h2 className="font-serif text-lg">Density</h2>
+      <div className="flex gap-3">
+        {(["comfy", "compact"] as Density[]).map((d) => (
+          <button
+            key={d}
+            onClick={() => actions.updateSettings({ density: d })}
+            className={`rounded-2xl border px-5 py-3 text-left transition-all flex-1 max-w-xs ${density === d ? "border-primary bg-accent" : "border-border"}`}
+          >
+            <div className="font-medium capitalize">{d}</div>
+            <div className="text-xs text-ink-soft mt-1">
+              {d === "comfy" ? "More breathing room" : "Show a little more at once"}
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DefaultCalendarViewSection({ defaultCalView }: { defaultCalView: CalView }) {
+  return (
+    <section className="card-soft p-6 space-y-4">
+      <h2 className="font-serif text-lg">Default calendar view</h2>
+      <div className="flex gap-2">
+        {(["week", "month", "year"] as CalView[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => actions.updateSettings({ defaultCalView: v })}
+            className={`chip capitalize ${defaultCalView === v ? "bg-primary text-primary-foreground" : "bg-secondary text-ink-soft"}`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function WeekStartsOnSection({ weekStartsOn }: { weekStartsOn: WeekStart }) {
+  return (
+    <section className="card-soft p-6 space-y-4">
+      <h2 className="font-serif text-lg">Week starts on</h2>
+      <p className="text-sm text-ink-soft">
+        Sets the first column of the habit grid and the first day of the week on the calendar.
+      </p>
+      <div className="flex gap-2">
+        {WEEK_STARTS.map((w) => (
+          <button
+            key={w.key}
+            onClick={() => actions.updateSettings({ weekStartsOn: w.key })}
+            className={`chip ${
+              weekStartsOn === w.key
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-ink-soft"
+            }`}
+          >
+            {w.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -426,61 +520,6 @@ function AssistantSection({ settings }: { settings: Settings }) {
   );
 }
 
-/**
- * Which widgets are on the board.
- *
- * Switches only. This used to reorder them too — a drag handle, up and down
- * arrows, and a "Position 3 · Half width" line under each name — and none of
- * that survives free positioning: a widget's place is now an x and a y it was
- * dragged to, so there is no order for a list to express and no named size to
- * report. Arranging happens on the board, which is the only place it can be
- * seen.
- */
-function WidgetSection({ widgets }: { widgets: Settings["widgets"] }) {
-  /*
-    Pinned furniture is left out entirely rather than shown with a disabled
-    switch. The greeting is the page's header, not a widget someone chose, and
-    a control that is always on and cannot be turned off is a control that only
-    raises the question of why it is there.
-  */
-  const shown = widgets.filter((w) => w.key in WIDGET_LABELS && !PINNED_WIDGETS.has(w.key));
-
-  return (
-    <section className="card-soft space-y-4 p-6">
-      <h2 className="font-serif text-lg">Overview widgets</h2>
-      <p className="text-sm text-ink-soft">
-        What appears on the board. Move and resize them on the Overview itself — drag a widget to
-        reposition it, or pull any edge or corner to change its size.
-      </p>
-
-      <div className="space-y-2">
-        {shown.map((w) => (
-          <div
-            key={w.key}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-border px-4 py-3"
-          >
-            <div className="min-w-0">
-              <div className="truncate text-sm font-medium">{WIDGET_LABELS[w.key] ?? w.key}</div>
-              <div className="text-[11px] text-ink-soft">
-                {w.enabled ? "On the board" : "Not on the board"}
-              </div>
-            </div>
-            <Switch
-              checked={w.enabled}
-              aria-label={WIDGET_LABELS[w.key] ?? w.key}
-              onCheckedChange={(v) =>
-                actions.reorderWidgets(
-                  widgets.map((x) => (x.key === w.key ? { ...x, enabled: v } : x)),
-                )
-              }
-            />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /** Bulk delete. Replaces the old "clear local data" button, which cleared a
  *  localStorage key that no longer backs anything. */
 function DataSection() {
@@ -530,10 +569,19 @@ function DataSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {/* Reachable from inside the app too, not only from the sign-in page —
-          someone who wants to check what happens to their calendar should not
-          have to sign out to find out. */}
-      <p className="text-xs text-ink-soft">
+    </section>
+  );
+}
+
+/** Reachable from inside the app too, not only from the sign-in page —
+ *  someone who wants to check what happens to their calendar should not have
+ *  to sign out to find out. Split out from the data card it used to sit
+ *  under so it can be its own line in the Profile tab. */
+function PrivacyTermsSection() {
+  return (
+    <section className="card-soft p-6 space-y-3">
+      <h2 className="font-serif text-lg">Privacy &amp; terms</h2>
+      <p className="text-sm text-ink-soft">
         <Link to="/privacy" className="underline underline-offset-4 hover:text-ink">
           Privacy policy
         </Link>
