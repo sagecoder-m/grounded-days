@@ -288,6 +288,7 @@ function Portal() {
         accounts={accounts.data}
         loading={accounts.isLoading}
         error={accounts.isError}
+        onChanged={() => void accounts.refetch()}
       />
       <ClinicianRosterPanel
         clinicians={clinicians.data}
@@ -617,10 +618,14 @@ function AccountsPanel({
   accounts,
   loading,
   error,
+  onChanged,
 }: {
   accounts?: AccountRow[];
   loading: boolean;
   error: boolean;
+  /** Refetches the table — a deleted account has to leave the list it was
+   *  deleted from, or the next action targets a row that no longer exists. */
+  onChanged: () => void;
 }) {
   return (
     <section>
@@ -661,6 +666,7 @@ function AccountsPanel({
         <CreateAccountCard />
         <SeedDemoCard />
         <ResetPasswordCard />
+        <TroubleshootAccountCard onChanged={onChanged} />
       </div>
     </section>
   );
@@ -1282,6 +1288,135 @@ function ResetPasswordCard() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The two things HQ needs when a tester is stuck in a way a new password
+ * won't fix, on one account at a time.
+ *
+ * Clearing a passcode is the common one and costs nothing: the passcode is the
+ * only lock with no self-serve way out, so a tester who forgets theirs is shut
+ * out of a working account. Deleting is the rare one and cannot be undone —
+ * the account's tasks, goals, journal and calendar go with it, by cascade in
+ * the database rather than by anything this file does.
+ */
+function TroubleshootAccountCard({ onChanged }: { onChanged: () => void }) {
+  const [email, setEmail] = useState("");
+  const [typedEmail, setTypedEmail] = useState("");
+  const [busy, setBusy] = useState<"passcode" | "delete" | null>(null);
+
+  const target = email.trim().toLowerCase();
+  // The confirmation is the address itself, not a fixed word. With a dozen
+  // similar addresses in the table beside this card, deleting the *wrong*
+  // account is the likelier mistake, and only re-typing the address catches it.
+  const armed = target.length > 0 && typedEmail.trim().toLowerCase() === target;
+
+  const clearPasscode = async () => {
+    if (!target) {
+      toast.error("Put the account's email in first");
+      return;
+    }
+    setBusy("passcode");
+    try {
+      await callAdminAccounts({ action: "clear_passcode", email: target });
+      toast.success("Passcode cleared", {
+        description: "They'll be asked to set a new one next time they open the app.",
+      });
+    } catch (err) {
+      toast.error("Couldn't clear that passcode", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!armed) return;
+    setBusy("delete");
+    try {
+      await callAdminAccounts({ action: "delete_account", email: target });
+      toast.success(`${target} deleted`);
+      setEmail("");
+      setTypedEmail("");
+      onChanged();
+    } catch (err) {
+      toast.error("Couldn't delete that account", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="card-soft space-y-4 p-4 md:p-6">
+      <div>
+        <h3 className="text-sm text-ink-soft">Troubleshoot an account</h3>
+        <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+          For a tester who is stuck in a way a new password won&rsquo;t fix.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Account email</Label>
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setTypedEmail("");
+          }}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy !== null}
+          onClick={() => void clearPasscode()}
+          className="w-full rounded-full"
+        >
+          {busy === "passcode" ? "Clearing…" : "Clear passcode lock"}
+        </Button>
+        <p className="text-[11px] leading-relaxed text-ink-soft">
+          For a forgotten passcode, or the lockout after five wrong tries. Their data is untouched —
+          they just set a new passcode next time they open the app.
+        </p>
+      </div>
+
+      {/* Delete is walled off from the button above it, because the two are one
+          mistyped click apart and only one of them is reversible. */}
+      <div className="space-y-1.5 border-t border-border pt-4">
+        <Label>
+          Delete this account and everything in it. Type <code>{target || "the email"}</code> to
+          confirm.
+        </Label>
+        <Input
+          value={typedEmail}
+          autoComplete="off"
+          onChange={(e) => setTypedEmail(e.target.value)}
+          // Enter must not fire the destructive action from a text field.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault();
+          }}
+        />
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={!armed || busy !== null}
+          onClick={() => void deleteAccount()}
+          className="w-full rounded-full"
+        >
+          {busy === "delete" ? "Deleting…" : "Delete account"}
+        </Button>
+        <p className="text-[11px] leading-relaxed text-ink-soft">
+          Their tasks, goals, habits, journal, calendar and settings go too. This cannot be undone.
+        </p>
+      </div>
     </div>
   );
 }

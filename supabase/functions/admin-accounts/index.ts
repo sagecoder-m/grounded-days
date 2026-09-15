@@ -66,6 +66,34 @@ interface SeedPayload {
   email: string;
 }
 
+/**
+ * Delete one account outright, by email.
+ *
+ * Nothing here has to tidy up after it: 28 of the 29 foreign keys into
+ * auth.users are ON DELETE CASCADE, so the tasks, goals, journal, calendar
+ * connections, passcode and settings all go in the same transaction as the
+ * user row. The one exception is deliberate — client_errors.user_id is SET
+ * NULL, because an error report is about the app, not the person who hit it.
+ */
+interface DeleteAccountPayload {
+  action: "delete_account";
+  email: string;
+}
+
+/**
+ * Forget one account's passcode, so the app offers to set a new one.
+ *
+ * The passcode is the one lock with no self-serve way out: the hash lives in
+ * user_security, which the client cannot read or write at all, and five wrong
+ * attempts start a backoff that reaches fifteen minutes. A tester who forgets
+ * their passcode is locked out of a working account with a correct password,
+ * and until now HQ could do nothing about it.
+ */
+interface ClearPasscodePayload {
+  action: "clear_passcode";
+  email: string;
+}
+
 /** Clinician accounts, each with the emails currently on its roster — what
  *  the admin console's roster editor renders. */
 interface ListCliniciansPayload {
@@ -85,6 +113,8 @@ type Payload =
   | CreatePayload
   | ListPayload
   | ResetPasswordPayload
+  | DeleteAccountPayload
+  | ClearPasscodePayload
   | SeedPayload
   | ListCliniciansPayload
   | RosterPayload;
@@ -99,6 +129,25 @@ async function requireAdmin(req: Request): Promise<string> {
   if (error) throw new HttpError(500, "Admin check failed");
   if (!data) throw new HttpError(403, "Not an admin");
   return user.id;
+}
+
+/**
+ * The account an admin named, or a 404 saying which address found nobody.
+ *
+ * Lookup is by email throughout these actions, so the admin types an address
+ * they already know instead of copying a uuid — and a typo then fails to find
+ * anyone rather than quietly matching some other tester's account.
+ */
+async function requireUserByEmail(raw: string | undefined) {
+  const email = raw?.trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new HttpError(400, "A valid email is required");
+  }
+  const { data, error } = await serviceClient().auth.admin.listUsers({ page: 1, perPage: 500 });
+  if (error) throw new HttpError(500, error.message);
+  const target = data.users.find((u) => (u.email ?? "").toLowerCase() === email);
+  if (!target) throw new HttpError(404, `No account for ${email}`);
+  return target;
 }
 
 Deno.serve(async (req) => {
@@ -194,6 +243,46 @@ Deno.serve(async (req) => {
       });
       if (updateError) throw new HttpError(400, updateError.message);
       return jsonResponse({ id: target.id, email: target.email });
+    }
+
+    if (payload.action === "delete_account") {
+      const target = await requireUserByEmail(payload.email);
+
+      // Admins are refused, which includes whoever is asking: an admin who
+      // deleted their own account would take HQ's only way in with them, and
+      // the cascade would erase the pilot's own data on the way out. Removing
+      // an admin is a deliberate enough act to deserve the dashboard.
+      const { data: adminRow } = await serviceClient()
+        .from("admin_users")
+        .select("user_id")
+        .eq("user_id", target.id)
+        .maybeSingle();
+      if (adminRow) {
+        throw new HttpError(400, `${target.email} is an admin account — delete it from Supabase`);
+      }
+
+      // Hard delete, stated rather than left to the default: a soft delete
+      // leaves the row in auth.users, so not one of the ON DELETE CASCADE keys
+      // fires and every table keeps its rows for an account nobody can sign
+      // into. The whole point here is that the data goes too.
+      const { error } = await serviceClient().auth.admin.deleteUser(target.id, false);
+      if (error) throw new HttpError(400, error.message);
+      return jsonResponse({ email: target.email });
+    }
+
+    if (payload.action === "clear_passcode") {
+      const target = await requireUserByEmail(payload.email);
+
+      // Deletes the row rather than blanking the hash, so failed_attempts and
+      // locked_until go with it — someone who tripped the lockout should not
+      // have to sit out the backoff as well. has_passcode() then returns false
+      // and the app offers to set a new one. Their data is untouched.
+      const { error } = await serviceClient()
+        .from("user_security")
+        .delete()
+        .eq("user_id", target.id);
+      if (error) throw new HttpError(500, error.message);
+      return jsonResponse({ email: target.email });
     }
 
     if (payload.action === "seed") {
