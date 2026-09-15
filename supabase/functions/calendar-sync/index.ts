@@ -12,8 +12,9 @@ import {
   ReauthRequiredError,
   refreshAccessToken,
 } from "../_shared/providers.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 import { parseIcs } from "../_shared/ics.ts";
-import { corsHeaders, jsonResponse, serviceClient } from "../_shared/supabase.ts";
+import { corsHeaders, jsonResponse, requireEnv, serviceClient } from "../_shared/supabase.ts";
 
 // How much calendar to mirror. Past days are kept small — Grounded shows what
 // is coming up, and back-filling months of history would bloat the table for
@@ -270,10 +271,35 @@ Deno.serve(async (req) => {
     // the schedule) syncs everything.
     const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
     let userId: string | null = null;
-    if (authHeader && authHeader !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
-      const { data, error } = await db.auth.getUser(authHeader);
-      if (error || !data.user) return jsonResponse({ error: "Invalid token" }, 401);
-      userId = data.user.id;
+    if (authHeader) {
+      const { data } = await db.auth.getUser(authHeader);
+      if (data.user) {
+        userId = data.user.id;
+      } else {
+        /*
+          Not a user session — either the schedule, or nothing valid at all.
+
+          This used to compare the header against this function's own copy of
+          SUPABASE_SERVICE_ROLE_KEY byte for byte, which is exactly the kind of
+          check that looks right in review and then quietly stops matching: two
+          independent copies of the same secret only stay identical for as long
+          as nobody ever rotates one without the other, and there is no error
+          when they drift apart — just a schedule that has been getting 401s
+          instead of syncing anyone.
+
+          Asking Supabase directly is neither of those things. A genuine
+          service-role key can call the Admin API; nothing else presented here
+          can, no matter what string it happens to equal — so this keeps working
+          across a rotation instead of needing to be re-synced with one by hand.
+        */
+        const asCaller = createClient(requireEnv("SUPABASE_URL"), authHeader);
+        const { error: privilegeError } = await asCaller.auth.admin.listUsers({
+          page: 1,
+          perPage: 1,
+        });
+        if (privilegeError) return jsonResponse({ error: "Invalid token" }, 401);
+        // Genuinely service-role: userId stays null, every connection syncs.
+      }
     }
 
     let query = db
