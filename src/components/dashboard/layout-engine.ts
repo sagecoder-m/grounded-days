@@ -12,7 +12,7 @@
  * maths — so this is a mature library rather than a hand-rolled drag system.
  */
 import {
-  noCompactor,
+  verticalCompactor,
   type Compactor,
   type Layout,
   type LayoutItem,
@@ -87,39 +87,38 @@ export const DRAG_HANDLE_SELECTOR = `.${DRAG_HANDLE_CLASS}`;
 export const DRAG_THRESHOLD = 6;
 
 /**
- * Freeform, and a tile that is not being touched holds still unless something
- * lands on it.
+ * Vertical compaction: a tile rises to close whatever gap is above it, and a
+ * tile dragged onto another pushes it aside rather than stopping short.
  *
- * noCompactor is what stops the board pulling every tile upward, so a gap left
- * on purpose stays a gap.
+ * This has moved three times now, and the history is worth keeping rather
+ * than erasing, because the previous two moves both looked like the obvious
+ * fix for whatever had just been reported:
  *
- * preventCollision has been on, briefly off, and is on again — the second
- * change was wrong, and it's worth writing down why so it doesn't happen a
- * third time.
+ * 1. Started as noCompactor + preventCollision: true — freeform, a gap left on
+ *    purpose stayed a gap, and a tile that would land on an occupied spot
+ *    simply didn't land there.
+ * 2. Turned to preventCollision: false alone, without compaction, for "Edit
+ *    Widget": dragging one tile onto another pushed the second one out of the
+ *    way, and because nothing ever compacted the board back, the displacement
+ *    was permanent. Reported back almost immediately — "every time i move one
+ *    the other jumps" — and reverted to (1). The mistake wasn't the push
+ *    itself, it was pushing with no compaction to make the result legible:
+ *    tile B relocated once and then just sat wherever it landed, disconnected
+ *    from anything explaining why.
+ * 3. Here: real vertical compaction (verticalCompactor), preventCollision:
+ *    false. Explicitly asked for again, after being shown this exact history
+ *    and told plainly that neighbours will visibly move on their own — this
+ *    time the request survived that warning. The difference from (2) is that
+ *    every displacement now resolves into the standard "things rise to fill
+ *    the space above them" shape, the same rule on every tile, every time,
+ *    rather than one tile landing wherever a collision happened to leave it.
  *
- * With it off, dragging one tile onto another pushes the second one out of the
- * way, and because nothing ever compacts the board back, that displacement is
- * permanent. The mistake was thinking that only mattered when a drag could
- * start by accident — brushing the handle while scrolling, say — and that
- * gating dragging behind an explicit "Edit size" mode removed the problem by
- * removing the accident. It didn't. A push you meant to start is exactly as
- * disorienting to watch as one you didn't: you're moving tile A, and tile B —
- * which you were not touching — jumps to a new spot and stays there. Meaning to
- * drag A doesn't make B's unrequested move feel any better, and "gently" was
- * the wrong word for what react-grid-layout's own collision resolution
- * actually does, which is recompute B's position on every intermediate pointer
- * frame near it, not ease it aside once.
- *
- * preventCollision: true is what makes only the thing you're dragging ever
- * move. A tile that would land on an occupied spot simply doesn't land there —
- * you feel the stop, you don't watch a neighbour relocate.
+ * Only non-pinned tiles compact. verticalCompactor skips anything `static`
+ * (see fromLayout below), so the greeting holds its position as a fixed
+ * obstacle the rest of the board compacts around, never as something that
+ * itself gets pulled up the board.
  */
-export const COMPACTOR: Compactor = {
-  type: noCompactor.type,
-  allowOverlap: false,
-  preventCollision: true,
-  compact: (layout, cols) => noCompactor.compact(layout, cols),
-};
+export const COMPACTOR: Compactor = verticalCompactor;
 
 /** Smallest a widget may be dragged down to, in grid units — roughly 200x120px,
  *  under which a card stops being able to say anything. */
