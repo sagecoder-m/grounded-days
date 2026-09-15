@@ -1,1 +1,5 @@
 project_id = "pbjpypcdiwvxegewxleu"
+
+[auth]
+site_url = "https://grounded-days.vercel.app"
+additional_redirect_urls = ["http://localhost:3000"]
