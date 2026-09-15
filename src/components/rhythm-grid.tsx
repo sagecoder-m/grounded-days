@@ -117,7 +117,23 @@ export function RhythmGrid({ state }: { state: AppState }) {
         Each square is a day, darker means more happened — gaps aren&rsquo;t counted against you.
       </p>
 
-      <div className="card-soft p-4 md:p-5">
+      <div
+        className="card-soft p-4 md:p-5"
+        // The card used to fill the whole widget regardless of how few
+        // columns were in it — fine at twelve weeks, where the grid nearly
+        // fills the space anyway, but a card three or four times wider than a
+        // one- or two-week grid actually needs. Capping the card itself, not
+        // just the row inside it, is what makes the card hug the grid instead
+        // of framing it in empty cream. The 2.5rem is p-5's padding on both
+        // sides — the wider of the two paddings this uses, kept as the floor
+        // so the cap is never a hair too tight at the breakpoint that uses it.
+        //
+        // Only while there's a grid to hug. With nothing recorded at all,
+        // `weeks` collapses to a single placeholder week (see the trim loop
+        // above) and this same cap would crush the "nothing to show yet"
+        // sentence into a column a few characters wide.
+        style={anything ? { maxWidth: `${weeks.length * MAX_COL_REM + 2.5}rem` } : undefined}
+      >
         {anything ? (
           <>
             {/* The weekday rail is hidden until there is room for it: at half
