@@ -1,21 +1,19 @@
 import { useIsAdmin } from "./use-is-admin";
+import { useIsClinicianAccount } from "./use-is-clinician-account";
 import { useIsDemoAccount } from "./use-is-demo-account";
 
 /**
- * Whether this account may see the Consumer/Clinician switch at all.
+ * Whether this account may see the Clinician nav item at all.
  *
- * Two accounts, by design: the demo account, whose own data this previews,
- * and HQ, who reviews it — see the "Build Scope Decision" brief and
- * clinician.tsx for why nobody else gets it. Combines the two existing
- * per-account checks rather than adding a third table.
- *
- * "Switching" is ordinary navigation, not a stored preference: the Clinician
- * nav item and the return link on that page are the whole mechanism. A
- * separate remembered POV would let a stale toggle disagree with the URL —
- * one truth (the route) beats two that can drift.
+ * Three kinds, by design: a real clinician account (its own roster of
+ * assigned patients), the demo account (previewing only itself, unchanged
+ * since the first version of this), and HQ (oversight, from the admin
+ * console). See clinician.tsx for what each of the three actually sees once
+ * there — the gate here only decides who gets the door.
  */
 export function useCanUseClinicianPOV(): boolean {
   const { isAdmin } = useIsAdmin();
   const { isDemoAccount } = useIsDemoAccount();
-  return isAdmin || isDemoAccount;
+  const { isClinicianAccount } = useIsClinicianAccount();
+  return isAdmin || isDemoAccount || isClinicianAccount;
 }

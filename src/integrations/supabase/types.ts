@@ -93,6 +93,84 @@ export type Database = {
         };
         Relationships: [];
       };
+      clinician_users: {
+        Row: {
+          created_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      clinician_patients: {
+        Row: {
+          clinician_user_id: string;
+          patient_user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          clinician_user_id: string;
+          patient_user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          clinician_user_id?: string;
+          patient_user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      clinician_patient_plans: {
+        Row: {
+          clinician_user_id: string;
+          patient_user_id: string;
+          body: string;
+          updated_at: string;
+        };
+        Insert: {
+          clinician_user_id: string;
+          patient_user_id: string;
+          body?: string;
+          updated_at?: string;
+        };
+        Update: {
+          clinician_user_id?: string;
+          patient_user_id?: string;
+          body?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      clinician_patient_notes: {
+        Row: {
+          id: string;
+          clinician_user_id: string;
+          patient_user_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          clinician_user_id: string;
+          patient_user_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          clinician_user_id?: string;
+          patient_user_id?: string;
+          body?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       assistant_conversations: {
         Row: {
           created_at: string;
@@ -951,7 +1029,11 @@ export type Database = {
           week_start: string;
         }[];
       };
-      admin_clinician_preview: { Args: never; Returns: Json };
+      clinician_patient_preview: { Args: { patient_email: string }; Returns: Json };
+      clinician_my_patients: {
+        Args: never;
+        Returns: { patient_user_id: string; patient_email: string; display_name: string | null }[];
+      };
       change_passcode: {
         Args: { new_passcode: string; old_passcode: string };
         Returns: boolean;

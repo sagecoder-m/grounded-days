@@ -298,6 +298,29 @@ interface ClientBrief {
   notes: string;
 }
 
+/**
+ * The clinician's research assistant — a different tool behind the same
+ * infrastructure, not a mode of the one above.
+ *
+ * Deliberately fed nothing. A clinician account has no personal plan of its
+ * own worth building context from, and the explicit ask was research, not
+ * client coaching — so this gets no buildContext() call, no patient data of
+ * any kind, and none of the task/course-creation tools, which only make
+ * sense against a personal planning account. Extending it to read a specific
+ * patient's data later is a real, separate decision — the standing rule that
+ * the personal assistant above never sees the journal was made with the same
+ * deliberateness this would need, not assumed by default.
+ */
+const CLINICIAN_SYSTEM_PROMPT = `You help a clinician think through general questions — about
+approaches, framing a session, or research they are doing. You are a reference and thinking
+partner, not a tool for coaching their clients directly, and you have no access to any specific
+patient's data: nothing about who they see, what those people have written, or how anyone's week
+has gone. If asked something that depends on a specific patient's information, say plainly that
+you were not given any and cannot see it — do not guess or generalize as if you had.
+
+Be direct and substantive. This is a professional using you for their own thinking, not someone
+who needs encouragement or a gentle tone.`;
+
 async function buildContext(userId: string): Promise<{ context: string; brief: ClientBrief }> {
   const db = serviceClient();
   const today = new Date();
@@ -910,16 +933,36 @@ Deno.serve(async (req) => {
     // turns, which is what a planning exchange actually needs.
     const recent = messages.slice(-12);
 
-    const { context, brief } = await buildContext(user.id);
+    /*
+      Which assistant this is. Checked here, before any of the personal-plan
+      machinery below runs, so a clinician account's call never triggers
+      buildContext() — the query that reads goals, tasks, events and courses
+      — even transiently. There is nothing to opt out of downstream if the
+      read never happens.
+    */
+    const { data: clinicianRow } = await serviceClient()
+      .from("clinician_users")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isClinician = Boolean(clinicianRow);
+
+    const { context, brief } = isClinician
+      ? { context: "", brief: { tone: "direct", length: "brief", notes: "" } as ClientBrief }
+      : await buildContext(user.id);
 
     // Attachments belong to the turn that was just sent — the last message in
     // the array, which the client always builds as the newest user message.
     // Only that message needs to become multimodal; everything before it is
     // plain text the model already answered once.
-    const { urls: imageUrls, skipped: skippedImages } = await loadImageDataUrls(
-      user.id,
-      body.attachments,
-    );
+    //
+    // Skipped entirely for the clinician assistant: reading a photo was
+    // always in service of extracting a syllabus or schedule into tasks, and
+    // a clinician account has neither tasks nor the tools below to file one
+    // under.
+    const { urls: imageUrls, skipped: skippedImages } = isClinician
+      ? { urls: [] as string[], skipped: [] as string[] }
+      : await loadImageDataUrls(user.id, body.attachments);
     const { primary, fallbacks } = await resolveModelChain({ requireVision: imageUrls.length > 0 });
 
     /*
@@ -934,15 +977,20 @@ Deno.serve(async (req) => {
       guess at somebody else's schema that goes stale silently.
     */
     // deno-lint-ignore no-explicit-any
-    const convo: any[] = [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "system", content: `Here is their current state:\n\n${context}` },
-      // Last, deliberately. This used to sit before the context block, so the
-      // length rule was the furthest thing from the model's generation point
-      // with a few thousand tokens of tasks and events in between.
-      { role: "system", content: briefPrompt(brief) },
-      ...recent,
-    ];
+    const convo: any[] = isClinician
+      ? // No context block, no brief — both are about a personal plan this
+        // account does not have, built from a read this account never made.
+        [{ role: "system", content: CLINICIAN_SYSTEM_PROMPT }, ...recent]
+      : [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: `Here is their current state:\n\n${context}` },
+          // Last, deliberately. This used to sit before the context block, so
+          // the length rule was the furthest thing from the model's
+          // generation point with a few thousand tokens of tasks and events
+          // in between.
+          { role: "system", content: briefPrompt(brief) },
+          ...recent,
+        ];
 
     if (imageUrls.length > 0) {
       // The chat-completions multimodal shape: content becomes an array of
@@ -997,7 +1045,10 @@ Deno.serve(async (req) => {
         }),
       });
 
-    let res = await callModel(true);
+    // Never offered to the clinician assistant: create_tasks and create_course
+    // both write to "their" account, which a clinician has no personal use
+    // for — the tools exist for the planning assistant above, not this one.
+    let res = await callModel(!isClinician);
 
     /**
      * Up to two rounds of tool calls, then a final answer.

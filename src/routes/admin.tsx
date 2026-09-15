@@ -220,18 +220,19 @@ function Portal() {
   });
 
   /**
-   * The demo account's data, reshaped through the same clinician-preview
-   * rules the Clinician POV page uses on its own account — see
-   * admin_clinician_preview() and clinician-view.ts. Hardcoded server-side to
-   * the one demo account; this query can never be pointed at anyone else's
-   * data, no matter what is passed to it, because nothing is passed to it.
+   * Every clinician account and who is currently on its roster — the
+   * admin-accounts function's own list, since it already has the service
+   * role and the is-admin check this needs, and clinician_users/
+   * clinician_patients carry no email of their own for the client to read.
    */
-  const clinicianPreview = useQuery({
-    queryKey: ["hq-clinician-preview"],
+  const clinicians = useQuery({
+    queryKey: ["hq-clinicians"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_clinician_preview");
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "list-clinicians" },
+      });
       if (error) throw error;
-      return data as unknown as SharedView;
+      return (data as { clinicians: ClinicianRow[] }).clinicians;
     },
   });
 
@@ -288,10 +289,11 @@ function Portal() {
         loading={accounts.isLoading}
         error={accounts.isError}
       />
-      <ClinicianPreviewPanel
-        data={clinicianPreview.data}
-        loading={clinicianPreview.isLoading}
-        error={clinicianPreview.isError}
+      <ClinicianRosterPanel
+        clinicians={clinicians.data}
+        loading={clinicians.isLoading}
+        error={clinicians.isError}
+        onChanged={() => void clinicians.refetch()}
       />
       <SetupPanel />
       <PilotChecklist />
@@ -663,46 +665,279 @@ function AccountsPanel({
   );
 }
 
+interface ClinicianRow {
+  email: string | null;
+  patients: string[];
+}
+
 /**
- * What the demo account's Clinician POV currently renders, read-only.
+ * Every clinician account, its roster, and the two admin actions this
+ * prototype needs: create a clinician login, and assign or remove a patient.
+ * No self-serve consent flow — every row here is HQ's own decision, per the
+ * Build Scope Decision brief's reasoning for deferring the real access model.
  *
- * Reuses ShareSummaryView directly — the same component the Clinician page
- * and a public share link both render through — so this is never a second
- * implementation to keep in sync, only a second place the first one is shown.
- * See admin_clinician_preview() for why this can only ever be the demo
- * account's data: the RPC takes no target, so there is nothing here to point
- * at anyone else.
+ * A "Preview" toggle per patient reuses ShareSummaryView and
+ * clinician_patient_preview() — the exact surface the clinician themselves
+ * sees — so HQ can check what a roster assignment actually shows without
+ * signing into the clinician account to look.
  */
-function ClinicianPreviewPanel({
-  data,
+function ClinicianRosterPanel({
+  clinicians,
   loading,
   error,
+  onChanged,
 }: {
-  data?: SharedView;
+  clinicians?: ClinicianRow[];
   loading: boolean;
   error: boolean;
+  onChanged: () => void;
 }) {
   return (
     <section>
-      <h2 className="mb-3 font-serif text-lg">Clinician POV preview</h2>
+      <h2 className="mb-3 font-serif text-lg">Clinician rosters</h2>
       <p className="mb-4 max-w-xl text-sm text-ink-soft">
-        What the demo account sees when it switches to Clinician view. Not a live feature — see the
-        Build Scope Decision brief for why the real clinical layer is deferred until a provider has
-        asked for it.
+        Prototype scope only — see the Build Scope Decision brief for why the real access model
+        (consent, self-service linking) is deferred until a provider has asked for it.
       </p>
-      <div className="card-soft p-4 md:p-6">
-        {loading ? (
-          <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />
-        ) : error || !data ? (
-          <p className="text-sm text-ink-soft">
-            Could not load the preview — the demo account may not exist yet, or the migration that
-            registers it has not run.
-          </p>
-        ) : (
-          <ShareSummaryView data={data} today={todayISO()} />
-        )}
+      <div className="grid gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
+        <div className="card-soft space-y-4 p-4 md:p-6">
+          {loading ? (
+            <div className="h-32 animate-pulse rounded-2xl bg-secondary/60" />
+          ) : error ? (
+            <p className="text-sm text-ink-soft">Could not load clinician accounts.</p>
+          ) : !clinicians || clinicians.length === 0 ? (
+            <p className="text-sm italic text-ink-soft">
+              No clinician accounts yet — create one alongside.
+            </p>
+          ) : (
+            clinicians.map((c) => (
+              <ClinicianRosterRow key={c.email} clinician={c} onChanged={onChanged} />
+            ))
+          )}
+        </div>
+        <div className="space-y-4">
+          <CreateClinicianCard onCreated={onChanged} />
+          <AssignPatientCard onAssigned={onChanged} />
+        </div>
       </div>
     </section>
+  );
+}
+
+function ClinicianRosterRow({
+  clinician,
+  onChanged,
+}: {
+  clinician: ClinicianRow;
+  onChanged: () => void;
+}) {
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [busyEmail, setBusyEmail] = useState<string | null>(null);
+
+  const unassign = async (patientEmail: string) => {
+    setBusyEmail(patientEmail);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "unassign-patient", clinicianEmail: clinician.email, patientEmail },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      onChanged();
+    } catch (err) {
+      toast.error("Couldn't remove that patient", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusyEmail(null);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border p-3">
+      <p className="text-sm font-medium">{clinician.email}</p>
+      {clinician.patients.length === 0 ? (
+        <p className="mt-1 text-xs italic text-ink-soft">No patients assigned yet.</p>
+      ) : (
+        <div className="mt-2 space-y-1.5">
+          {clinician.patients.map((email) => (
+            <div key={email} className="space-y-2">
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-ink-soft">{email}</span>
+                <span className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewing(previewing === email ? null : email)}
+                    className="underline underline-offset-4 hover:text-ink"
+                  >
+                    {previewing === email ? "Hide" : "Preview"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyEmail === email}
+                    onClick={() => void unassign(email)}
+                    className="underline underline-offset-4 hover:text-[color:var(--clay)] disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </span>
+              </div>
+              {previewing === email && <ClinicianPreviewInline email={email} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** One patient's summary, fetched on demand — the same RPC and component the
+ *  clinician's own roster page uses, so this is a second place it is shown
+ *  rather than a second implementation. */
+function ClinicianPreviewInline({ email }: { email: string }) {
+  const preview = useQuery({
+    queryKey: ["hq-clinician-patient-preview", email],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("clinician_patient_preview", {
+        patient_email: email,
+      });
+      if (error) throw error;
+      return data as unknown as SharedView;
+    },
+  });
+
+  if (preview.isLoading) {
+    return <div className="h-40 animate-pulse rounded-2xl bg-secondary/60" />;
+  }
+  if (preview.isError || !preview.data) {
+    return <p className="text-xs text-ink-soft">Could not load this preview.</p>;
+  }
+  return (
+    <div className="rounded-xl bg-secondary/40 p-3">
+      <ShareSummaryView data={preview.data} today={todayISO()} />
+    </div>
+  );
+}
+
+function CreateClinicianCard({ onCreated }: { onCreated: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState(suggestPassword);
+  const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "create", email, password, kind: "clinician" },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      setCreated({ email, password });
+      toast.success(data?.warning ? data.warning : "Clinician account created");
+      setEmail("");
+      setPassword(suggestPassword());
+      onCreated();
+    } catch (err) {
+      toast.error("Couldn't create the account", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-soft space-y-4 p-4 md:p-6">
+      <h3 className="text-sm text-ink-soft">Create a clinician account</h3>
+      <form onSubmit={submit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>Email</Label>
+          <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>First password</Label>
+          <Input
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <Button type="submit" disabled={busy} className="w-full rounded-full">
+          {busy ? "Creating…" : "Create clinician account"}
+        </Button>
+      </form>
+      {created && (
+        <div className="rounded-2xl border border-dashed border-tan bg-secondary/60 p-3 text-xs">
+          <p className="font-medium">Hand these to the clinician:</p>
+          <div className="mt-2 space-y-1.5">
+            <CopyRow label="Email" value={created.email} />
+            <CopyRow label="Password" value={created.password} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssignPatientCard({ onAssigned }: { onAssigned: () => void }) {
+  const [clinicianEmail, setClinicianEmail] = useState("");
+  const [patientEmail, setPatientEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-accounts", {
+        body: { action: "assign-patient", clinicianEmail, patientEmail },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      toast.success("Patient assigned");
+      setPatientEmail("");
+      onAssigned();
+    } catch (err) {
+      toast.error("Couldn't assign that patient", {
+        description: err instanceof Error ? err.message : undefined,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-soft space-y-4 p-4 md:p-6">
+      <h3 className="text-sm text-ink-soft">Assign a patient</h3>
+      <p className="text-xs leading-relaxed text-ink-soft">
+        Both accounts must already exist. The clinician gains the patient's trend summary, a
+        treatment plan and a note log for them — nothing is sent to the patient.
+      </p>
+      <form onSubmit={submit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label>Clinician's email</Label>
+          <Input
+            type="email"
+            required
+            value={clinicianEmail}
+            onChange={(e) => setClinicianEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Patient's email</Label>
+          <Input
+            type="email"
+            required
+            value={patientEmail}
+            onChange={(e) => setPatientEmail(e.target.value)}
+          />
+        </div>
+        <Button type="submit" disabled={busy} className="w-full rounded-full">
+          {busy ? "Assigning…" : "Assign"}
+        </Button>
+      </form>
+    </div>
   );
 }
 

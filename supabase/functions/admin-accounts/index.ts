@@ -22,6 +22,11 @@ interface CreatePayload {
   action: "create";
   email: string;
   password: string;
+  /** Omitted or "tester" for an ordinary pilot account. "clinician" also
+   *  writes the new user into clinician_users, in the same service-role
+   *  action that creates it — see the clinician_accounts migration for why
+   *  that table has no separate promotion trigger the way admin/demo do. */
+  kind?: "tester" | "clinician";
 }
 
 interface ListPayload {
@@ -41,7 +46,22 @@ interface SeedPayload {
   email: string;
 }
 
-type Payload = CreatePayload | ListPayload | SeedPayload;
+/** Clinician accounts, each with the emails currently on its roster — what
+ *  the admin console's roster editor renders. */
+interface ListCliniciansPayload {
+  action: "list-clinicians";
+}
+
+/** Add or remove one patient from one clinician's roster. By email on both
+ *  sides, for the same reason "seed" is: the admin types an address, and a
+ *  typo then fails closed instead of silently matching the wrong account. */
+interface RosterPayload {
+  action: "assign-patient" | "unassign-patient";
+  clinicianEmail: string;
+  patientEmail: string;
+}
+
+type Payload = CreatePayload | ListPayload | SeedPayload | ListCliniciansPayload | RosterPayload;
 
 async function requireAdmin(req: Request): Promise<string> {
   const user = await requireUser(req);
@@ -101,6 +121,24 @@ Deno.serve(async (req) => {
         email_confirm: true,
       });
       if (error) throw new HttpError(400, error.message);
+
+      if (payload.kind === "clinician") {
+        const { error: clinicianError } = await serviceClient()
+          .from("clinician_users")
+          .insert({ user_id: data.user.id });
+        // The auth user already exists at this point. Failing the whole
+        // request would leave HQ believing nothing happened when a working
+        // login actually was created — better to hand back the credentials
+        // and say plainly that the clinician flag needs a retry.
+        if (clinicianError) {
+          return jsonResponse({
+            id: data.user.id,
+            email: data.user.email,
+            warning: "Account created, but could not be marked as a clinician account.",
+          });
+        }
+      }
+
       return jsonResponse({ id: data.user.id, email: data.user.email });
     }
 
@@ -121,6 +159,86 @@ Deno.serve(async (req) => {
       // is destructive and must never be a surprise.
       const counts = await seedDemoData(target.id);
       return jsonResponse({ email, counts });
+    }
+
+    if (payload.action === "list-clinicians") {
+      const [{ data: clinicianRows, error: clinicianErr }, { data: userPage, error: usersErr }] =
+        await Promise.all([
+          serviceClient().from("clinician_users").select("user_id"),
+          serviceClient().auth.admin.listUsers({ page: 1, perPage: 500 }),
+        ]);
+      if (clinicianErr) throw new HttpError(500, clinicianErr.message);
+      if (usersErr) throw new HttpError(500, usersErr.message);
+
+      const emailById = new Map(userPage.users.map((u) => [u.id, u.email ?? null]));
+      const clinicianIds = (clinicianRows ?? []).map((r) => r.user_id as string);
+      if (clinicianIds.length === 0) return jsonResponse({ clinicians: [] });
+
+      // One query for every roster row across every clinician, then grouped
+      // in memory — a handful of clinicians in a pilot, not a scale where N
+      // round trips would matter.
+      const { data: rosterRows, error: rosterErr } = await serviceClient()
+        .from("clinician_patients")
+        .select("clinician_user_id, patient_user_id")
+        .in("clinician_user_id", clinicianIds);
+      if (rosterErr) throw new HttpError(500, rosterErr.message);
+
+      const patientsByClinicianId = new Map<string, string[]>();
+      for (const row of rosterRows ?? []) {
+        const list = patientsByClinicianId.get(row.clinician_user_id) ?? [];
+        const email = emailById.get(row.patient_user_id);
+        if (email) list.push(email);
+        patientsByClinicianId.set(row.clinician_user_id, list);
+      }
+
+      return jsonResponse({
+        clinicians: clinicianIds.map((id) => ({
+          email: emailById.get(id) ?? null,
+          patients: (patientsByClinicianId.get(id) ?? []).sort(),
+        })),
+      });
+    }
+
+    if (payload.action === "assign-patient" || payload.action === "unassign-patient") {
+      const clinicianEmail = payload.clinicianEmail?.trim().toLowerCase();
+      const patientEmail = payload.patientEmail?.trim().toLowerCase();
+      if (!clinicianEmail || !patientEmail) {
+        throw new HttpError(400, "Both a clinician and a patient email are required");
+      }
+
+      const { data: userPage, error: usersErr } = await serviceClient().auth.admin.listUsers({
+        page: 1,
+        perPage: 500,
+      });
+      if (usersErr) throw new HttpError(500, usersErr.message);
+      const clinician = userPage.users.find(
+        (u) => (u.email ?? "").toLowerCase() === clinicianEmail,
+      );
+      const patient = userPage.users.find((u) => (u.email ?? "").toLowerCase() === patientEmail);
+      if (!clinician) throw new HttpError(404, `No account for ${clinicianEmail}`);
+      if (!patient) throw new HttpError(404, `No account for ${patientEmail}`);
+
+      const { data: isClinicianRow } = await serviceClient()
+        .from("clinician_users")
+        .select("user_id")
+        .eq("user_id", clinician.id)
+        .maybeSingle();
+      if (!isClinicianRow) throw new HttpError(400, `${clinicianEmail} is not a clinician account`);
+
+      if (payload.action === "assign-patient") {
+        const { error } = await serviceClient()
+          .from("clinician_patients")
+          .upsert({ clinician_user_id: clinician.id, patient_user_id: patient.id });
+        if (error) throw new HttpError(500, error.message);
+      } else {
+        const { error } = await serviceClient()
+          .from("clinician_patients")
+          .delete()
+          .eq("clinician_user_id", clinician.id)
+          .eq("patient_user_id", patient.id);
+        if (error) throw new HttpError(500, error.message);
+      }
+      return jsonResponse({ ok: true });
     }
 
     throw new HttpError(400, "Unknown action");
