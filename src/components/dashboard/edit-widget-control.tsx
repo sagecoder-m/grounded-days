@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Check, PenSquare } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,33 +36,16 @@ export function EditWidgetControl({
   /** Called when something is chosen from "Add widget". */
   onAdd: (key: string) => void;
 }) {
-  /*
-    Whether anything was actually added, across the whole time the door has
-    been open — not just while "Add widget" happens to be the visible tab.
-
-    Someone can add a widget, switch to "Edit size" to make room for it, and
-    press Done from there. The notice has to remember the add happened
-    regardless of which tab they finish on, which is why this is a session
-    counter rather than something read off whichever branch is on screen when
-    Done is pressed.
-  */
-  const [addedCount, setAddedCount] = useState(0);
   const editing = mode !== "view";
-
-  const done = () => {
-    onModeChange("view");
-    if (addedCount > 0) {
-      // The same toast.success the rest of the app already uses for "a thing
-      // was added" — see assistant.tsx's "Task added" — rather than a
-      // bespoke notice with its own look and its own timing to get right.
-      toast.success(addedCount === 1 ? "Widget added below" : `${addedCount} widgets added below`);
-    }
-    setAddedCount(0);
-  };
 
   const handleAdd = (key: string) => {
     onAdd(key);
-    setAddedCount((n) => n + 1);
+    // Right away, not saved up for Done — the moment worth confirming is the
+    // one where something just happened on the board behind this panel, not
+    // whenever someone eventually finishes editing. The same toast.success
+    // the rest of the app already uses for "a thing was added" — see
+    // assistant.tsx's "Task added" — rather than a bespoke notice.
+    toast.success("Widget added below");
   };
 
   return (
@@ -97,7 +79,7 @@ export function EditWidgetControl({
 
       <button
         type="button"
-        onClick={editing ? done : () => onModeChange("size")}
+        onClick={() => onModeChange(editing ? "view" : "size")}
         className={cn(
           "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
           editing
