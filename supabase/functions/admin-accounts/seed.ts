@@ -616,9 +616,12 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       title: "Invoice for August",
       done: false,
       date: day(1),
+      due_time: "17:00",
     },
 
-    // Education, filed under courses
+    // Education, filed under courses. A couple carry a due_time — the
+    // "11:59pm" a syllabus actually means — so the feature has something real
+    // to show rather than sitting untouched in a fresh demo.
     {
       id: id(),
       user_id: userId,
@@ -627,6 +630,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       done: false,
       date: day(1),
       course_id: courseStats,
+      due_time: "23:59",
     },
     {
       id: id(),
@@ -645,6 +649,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       done: false,
       date: day(5),
       course_id: courseWriting,
+      due_time: "17:00",
     },
     {
       id: id(),
@@ -654,6 +659,7 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
       done: false,
       date: day(3),
       course_id: courseEthics,
+      due_time: "14:00",
     },
     {
       id: id(),
@@ -703,7 +709,9 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
     {
       id: id(),
       user_id: userId,
-      title: "Stats lecture",
+      // Carries the course code the way a real synced timetable would, so the
+      // demo actually shows the calendar picking it up — see courseForEvent.
+      title: "Statistics lecture (STA 210)",
       date: day(1),
       starts_at: at(1, 14),
       ends_at: at(1, 15, 30),
@@ -725,7 +733,9 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
     {
       id: id(),
       user_id: userId,
-      title: "Submission deadline",
+      // Same day and course as the literature review task below, so the two
+      // views agree rather than describing two different deadlines.
+      title: "ENG 105 literature review due",
       date: day(5),
       all_day: true,
       source: "local",
@@ -772,10 +782,26 @@ export async function seedDemoData(userId: string): Promise<Record<string, numbe
     {
       id: id(),
       user_id: userId,
+      date: day(-6),
+      mood: mood("wired"),
+      body: "Too much coffee before the kickoff call. Talked fast, typed faster, still awake at eleven.",
+      gratitude: null,
+    },
+    {
+      id: id(),
+      user_id: userId,
       date: day(-8),
       mood: mood("steady"),
       body: "Back after a few quiet days. Nothing fell over while I was gone.",
       gratitude: "A week that waited for me.",
+    },
+    {
+      id: id(),
+      user_id: userId,
+      date: day(-10),
+      mood: mood("tender"),
+      body: "Let myself have a slow morning. It felt like it needed permission and I gave it anyway.",
+      gratitude: "A text back from someone I'd almost given up on.",
     },
     {
       id: id(),
