@@ -11,6 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 import { corsHeaders, jsonResponse, requireEnv, serviceClient } from "../_shared/supabase.ts";
 import { affirmationForDate } from "../_shared/affirmations.ts";
+import { morningCopy, taskDueCopy } from "../_shared/notification-copy.ts";
 
 /**
  * How far ahead of a due time to warn, and how late a morning line may still
@@ -47,16 +48,6 @@ interface SubscriptionRow {
   endpoint: string;
   p256dh: string;
   auth: string;
-}
-
-/** "23:59" -> "11:59 PM". Mirrors formatTime in
- *  src/components/ui/time-field.tsx — see affirmations.ts for why this is a
- *  small copy rather than a cross-directory import. */
-function formatTime(value: string): string {
-  const [h, m] = value.split(":").map(Number);
-  const suffix = h < 12 ? "AM" : "PM";
-  const display = h % 12 === 0 ? 12 : h % 12;
-  return `${display}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
 /** This user's own wall-clock date and time-of-day, in minutes since
@@ -254,20 +245,18 @@ Deno.serve(async (req) => {
           // missed this."
           if (untilDue <= 0 || untilDue > TASK_DUE_LEAD_MINUTES) continue;
 
-          let prefix = "";
+          let courseTag: string | null = null;
           if (task.course_id) {
             const { data: course } = await db
               .from("courses")
               .select("code, name")
               .eq("id", task.course_id)
               .maybeSingle();
-            if (course) prefix = `${course.code || course.name} · `;
+            if (course) courseTag = course.code || course.name;
           }
 
-          const timeOfDay = minutesOf(task.due_time!) >= 18 * 60 ? "tonight" : "today";
           candidates.push({
-            title: `${prefix}${task.title}`,
-            body: `Due at ${formatTime(task.due_time!)} ${timeOfDay}.`,
+            ...taskDueCopy({ title: task.title, dueTime: task.due_time!, courseTag }),
             kind: "task_due",
             refId: task.id,
           });
@@ -286,8 +275,7 @@ Deno.serve(async (req) => {
 
           const picked = pickOneThing((openTasks ?? []) as TaskRow[], today);
           candidates.push({
-            title: "One thing today",
-            body: picked ? picked.title : affirmationForDate(today).text,
+            ...morningCopy(picked?.title ?? null, affirmationForDate(today).text),
             kind: "morning",
             refId: "daily",
           });
