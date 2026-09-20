@@ -939,6 +939,41 @@ export const actions = {
   reorderWidgets(widgets: Settings["widgets"]) {
     actions.updateSettings({ widgets });
   },
+
+  /**
+   * Registers or refreshes one browser's push subscription.
+   *
+   * Not routed through the cache-patching side of write() — there is no
+   * local slice of state that reads push_subscriptions back, since nothing
+   * in the UI displays them; this exists purely so a later scheduled sender
+   * has somewhere to deliver to. Upserted on `endpoint`, which is unique and
+   * browser-issued, so re-subscribing the same device lands on the same row
+   * rather than piling up duplicates — and failure_count is reset to 0 here,
+   * since a subscription willing to register again has proven it still
+   * works, whatever it was flagged for before.
+   */
+  savePushSubscription(payload: {
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    userAgent?: string;
+  }) {
+    const { userId } = requireStoreContext();
+    void write([], () =>
+      supabase.from("push_subscriptions").upsert(
+        {
+          user_id: userId,
+          endpoint: payload.endpoint,
+          p256dh: payload.p256dh,
+          auth: payload.auth,
+          user_agent: payload.userAgent ?? null,
+          last_seen_at: new Date().toISOString(),
+          failure_count: 0,
+        },
+        { onConflict: "endpoint" },
+      ),
+    );
+  },
 };
 
 /** Wipes every row for the signed-in user. Used by Profile's reset action. */

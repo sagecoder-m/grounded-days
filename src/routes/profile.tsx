@@ -32,6 +32,7 @@ import { useIsAdmin } from "@/lib/use-is-admin";
 import { CalendarConnectionsSection } from "@/components/calendar-connections";
 import { ShareLinksSection } from "@/components/share-links";
 import {
+  Bell,
   Bot,
   CalendarDays,
   Monitor,
@@ -43,6 +44,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { TimeField } from "@/components/ui/time-field";
+import { useFocusNotify } from "@/lib/use-focus-notify";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
@@ -117,13 +120,14 @@ function AdminSection() {
   );
 }
 
-type ProfileTab = "profile" | "appearance" | "calendar" | "assistant";
+type ProfileTab = "profile" | "appearance" | "calendar" | "assistant" | "notifications";
 
 const PROFILE_TABS: { key: ProfileTab; label: string; icon: LucideIcon }[] = [
   { key: "profile", label: "Profile", icon: UserRound },
   { key: "appearance", label: "Appearance", icon: Palette },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "assistant", label: "Grace", icon: Bot },
+  { key: "notifications", label: "Notifications", icon: Bell },
 ];
 
 function ProfilePage() {
@@ -182,6 +186,8 @@ function ProfilePage() {
           )}
 
           {tab === "assistant" && <AssistantSection settings={settings} />}
+
+          {tab === "notifications" && <NotificationsSection settings={settings} />}
         </div>
       </div>
     </div>
@@ -515,6 +521,147 @@ function AssistantSection({ settings }: { settings: Settings }) {
             {dirty ? "Save" : "Saved"}
           </Button>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Every notification type ships off, and stays off until switched on here —
+ * see docs/PUSH_NOTIFICATIONS_PLAN.md and the policy it quotes: "notify
+ * about the calendar, never about the person." Nothing on this page ever
+ * fires because of something the person did not do.
+ *
+ * Permission is asked for here rather than assumed. The focus timer has its
+ * own inline "Tell me when it's done" for the same reason — a dialog fired
+ * on page load is the fastest way to get permanently denied — but someone
+ * who only ever wants task-due or morning notifications should not have to
+ * find the timer first to grant it.
+ */
+function NotificationsSection({ settings }: { settings: Settings }) {
+  const { permission, request } = useFocusNotify();
+
+  return (
+    <>
+      <section className="card-soft space-y-4 p-6">
+        <div>
+          <h2 className="font-serif text-lg">Notifications</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Each of these is its own choice below. None of them ever mention what you haven&rsquo;t
+            done — see the field guide&rsquo;s one rule.
+          </p>
+        </div>
+
+        {permission === "denied" && (
+          <p className="rounded-2xl border border-dashed border-border px-4 py-3 text-sm text-ink-soft">
+            Notifications are blocked for grounded in your browser. Allow them from your
+            browser&rsquo;s site settings to use any of these.
+          </p>
+        )}
+        {permission === "default" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-border px-4 py-3">
+            <p className="text-sm text-ink-soft">
+              Your browser will ask once, the first time you turn one of these on.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 rounded-full border-tan"
+              onClick={() => void request()}
+            >
+              Allow
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <NotifyToggle
+        title="Focus timer"
+        description="When a focus block or a break ends, if you've switched to another tab."
+        value={settings.notifyTimer}
+        onChange={(value) => actions.updateSettings({ notifyTimer: value })}
+      />
+
+      <NotifyToggle
+        title="Assignments and tasks due"
+        description="A few hours before something with a due time is due — never at the deadline itself, when it can't change anything."
+        value={settings.notifyTaskDue}
+        onChange={(value) => actions.updateSettings({ notifyTaskDue: value })}
+      />
+
+      <section className="card-soft space-y-4 p-6">
+        <div>
+          <h2 className="font-serif text-lg">Morning line</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            One sentence, naming one thing — the same idea as the board&rsquo;s own &ldquo;start
+            with one thing.&rdquo; Never a list, never a count.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          {[true, false].map((value) => (
+            <button
+              key={String(value)}
+              onClick={() => actions.updateSettings({ notifyMorning: value })}
+              className={`max-w-xs flex-1 rounded-2xl border px-5 py-3 text-left transition-all ${
+                settings.notifyMorning === value ? "border-primary bg-accent" : "border-border"
+              }`}
+            >
+              <div className="font-medium">{value ? "On" : "Off"}</div>
+            </button>
+          ))}
+        </div>
+        {settings.notifyMorning && (
+          <label className="block max-w-40 space-y-1.5">
+            <span className="text-xs uppercase tracking-widest text-ink-soft">Sent at</span>
+            <TimeField
+              value={settings.notifyMorningAt}
+              onChange={(next) => {
+                if (next) actions.updateSettings({ notifyMorningAt: next });
+              }}
+              clearable={false}
+              aria-label="Send the morning line at"
+              className="w-full text-sm"
+            />
+          </label>
+        )}
+      </section>
+    </>
+  );
+}
+
+/** One notification type, as an on/off pair — the same shape DensitySection
+ *  and ThemeSection already use for a setting with a small fixed number of
+ *  states, just with the two states spelled out rather than mapped from a
+ *  list, since there is no third option to make a `.map` worth it. */
+function NotifyToggle({
+  title,
+  description,
+  value,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <section className="card-soft space-y-4 p-6">
+      <div>
+        <h2 className="font-serif text-lg">{title}</h2>
+        <p className="mt-1 text-sm text-ink-soft">{description}</p>
+      </div>
+      <div className="flex gap-3">
+        {[true, false].map((v) => (
+          <button
+            key={String(v)}
+            onClick={() => onChange(v)}
+            className={`max-w-xs flex-1 rounded-2xl border px-5 py-3 text-left transition-all ${
+              value === v ? "border-primary bg-accent" : "border-border"
+            }`}
+          >
+            <div className="font-medium">{v ? "On" : "Off"}</div>
+          </button>
+        ))}
       </div>
     </section>
   );

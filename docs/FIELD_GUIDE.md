@@ -250,6 +250,7 @@ Every setting lives here. Nothing is buried elsewhere.
 | Calendar connections | Connect Google or Outlook, choose each one's area, re-sync | Read-only import |
 | Share links | A view-only summary of chosen areas, with an expiry | Revocable at any time |
 | Passcode | A six-digit lock over the app on this device | Show/hide while typing |
+| Notifications | Off by default. Notify about the calendar, never about the person — see docs/PUSH_NOTIFICATIONS_PLAN.md | Focus timer done · Assignments and tasks due · Morning line (with its own time) |
 | Data | Export or clear what grounded holds | — |
 
 ---

@@ -26,6 +26,8 @@ import { useSignOut } from "@/lib/use-sign-out";
 import { lockNow } from "@/lib/use-passcode";
 import { useResolvedTheme, useTheme } from "@/lib/use-theme";
 import { installErrorReporting, track } from "@/lib/telemetry";
+import { useCaptureTimezone } from "@/lib/use-capture-timezone";
+import { usePushSubscription } from "@/lib/use-push-subscription";
 import { useCanUseClinicianPOV } from "@/lib/use-clinician-pov";
 
 /**
@@ -153,6 +155,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const settings = useApp((s) => s.settings);
   const settingsLoaded = useSettingsLoaded();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const { user } = useSession();
 
   /**
    * The Overview is a dashboard and gets the width of the screen; every other
@@ -207,6 +210,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.density = settings.density;
   }, [settings.density]);
+
+  // Keeps this account's stored timezone matching the device's own — see the
+  // hook for why gating on settingsLoaded is not optional here.
+  useCaptureTimezone(settings.timezone, settingsLoaded);
+
+  // Keeps a push subscription registered for this browser whenever any
+  // notification preference (set in Profile) is on.
+  usePushSubscription(settings, settingsLoaded, user?.id);
 
   return (
     <div

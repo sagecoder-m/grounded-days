@@ -281,6 +281,11 @@ export const DEFAULT_SETTINGS: Settings = {
   assistantLength: "brief",
   assistantNotes: "",
   widgets: DEFAULT_WIDGETS,
+  timezone: "UTC",
+  notifyTimer: false,
+  notifyTaskDue: false,
+  notifyMorning: false,
+  notifyMorningAt: "08:00",
 };
 
 /**
@@ -380,6 +385,15 @@ export function rowToSettings(row: Tables<"user_settings"> | null): Settings {
     ),
     assistantNotes: (row.assistant_notes ?? "").slice(0, 600),
     widgets: toWidgets(row.widgets),
+    // A row written before this column existed reads as null despite the
+    // NOT NULL default, same case as every other column added after launch —
+    // falling back to UTC rather than guessing is the honest answer for a
+    // device that has not reported its zone yet.
+    timezone: row.timezone || "UTC",
+    notifyTimer: row.notify_timer ?? false,
+    notifyTaskDue: row.notify_task_due ?? false,
+    notifyMorning: row.notify_morning ?? false,
+    notifyMorningAt: row.notify_morning_at || "08:00",
   };
 }
 
@@ -409,6 +423,11 @@ export function settingsPatchToRow(patch: Partial<Settings>): TablesUpdate<"user
   if (patch.assistantLength !== undefined) row.assistant_length = patch.assistantLength;
   if (patch.assistantNotes !== undefined) row.assistant_notes = patch.assistantNotes.slice(0, 600);
   if (patch.widgets !== undefined) row.widgets = widgetsToJson(patch.widgets);
+  if (patch.timezone !== undefined) row.timezone = patch.timezone;
+  if (patch.notifyTimer !== undefined) row.notify_timer = patch.notifyTimer;
+  if (patch.notifyTaskDue !== undefined) row.notify_task_due = patch.notifyTaskDue;
+  if (patch.notifyMorning !== undefined) row.notify_morning = patch.notifyMorning;
+  if (patch.notifyMorningAt !== undefined) row.notify_morning_at = patch.notifyMorningAt;
   return row;
 }
 

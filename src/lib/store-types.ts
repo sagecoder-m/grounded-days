@@ -267,6 +267,20 @@ export interface Settings {
   assistantNotes: string;
   /** Size is optional on read for rows written before it existed. */
   widgets: WidgetPlacement[];
+  /**
+   * IANA zone name, captured automatically from the browser — see
+   * use-capture-timezone.ts. Never hand-set from the UI; there is no control
+   * for it in Profile, because a device always knows its own zone better
+   * than a person would by picking one from a list.
+   */
+  timezone: string;
+  /** Each notification type ships off by default and is turned on one at a
+   *  time in Profile — see docs/PUSH_NOTIFICATIONS_PLAN.md. */
+  notifyTimer: boolean;
+  notifyTaskDue: boolean;
+  notifyMorning: boolean;
+  /** 24-hour "HH:mm", in this account's own `timezone` above. */
+  notifyMorningAt: string;
 }
 
 export interface AppState {
