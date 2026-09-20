@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppGate } from "@/components/app-gate";
 import { Toaster } from "sonner";
 import { THEME_BOOT_SCRIPT } from "@/lib/use-theme";
+import { useRegisterServiceWorker } from "@/lib/use-register-sw";
 
 function NotFoundComponent() {
   return (
@@ -80,6 +81,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      /*
+       * PWA install metadata. iOS/iPadOS ignores the manifest's own
+       * display/theme fields for the home-screen case and needs these
+       * apple-* tags instead — that split is why both sets exist here
+       * rather than only the manifest below.
+       */
+      { name: "theme-color", content: "#8CA382" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-title", content: "grounded" },
     ],
     links: [
       // Fraunces and Karla are declared in styles.css and served from this
@@ -88,6 +99,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // which showed as a blank page rather than fallback type.
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -125,6 +138,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useRegisterServiceWorker();
   return (
     <QueryClientProvider client={queryClient}>
       {/* Everything the app renders sits behind the passcode gate. */}

@@ -1,0 +1,14 @@
+{
+  "name": "grounded",
+  "short_name": "grounded",
+  "description": "A calm space for people with different brains to readjust, organize and grow.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F4EB",
+  "theme_color": "#8CA382",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
