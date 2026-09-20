@@ -3,6 +3,7 @@ import { Play, Pause, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { actions } from "@/lib/store";
+import { useFocusNotify } from "@/lib/use-focus-notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -43,6 +44,7 @@ export function FocusTimer({
   const [running, setRunning] = useState(false);
   const intRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loggedRef = useRef<string | null>(null);
+  const { permission: notifyPermission, request: requestNotify, notify } = useFocusNotify();
 
   /**
    * Writes one focus session, guarded against a repeat for the same completion.
@@ -94,10 +96,18 @@ export function FocusTimer({
             toast("Nicely done. Take a soft pause.", {
               description: `${focusMin} minutes of focus, logged.`,
             });
+            // The toast above covers the foreground case; this is for the
+            // background one the chime already can't reach.
+            if (document.hidden) {
+              void notify("Focus block done", `${focusMin} minutes — take a soft pause.`);
+            }
             setPhase("break");
             setSecondsLeft(breakMin * 60);
           } else {
             toast("Break's up whenever you're ready.");
+            if (document.hidden) {
+              void notify("Break's up", "Whenever you're ready.");
+            }
             setPhase("focus");
             setSecondsLeft(focusMin * 60);
           }
@@ -107,7 +117,7 @@ export function FocusTimer({
       });
     }, 1000);
     return () => clearInterval(intRef.current!);
-  }, [running, phase, focusMin, breakMin, label]);
+  }, [running, phase, focusMin, breakMin, label, notify]);
 
   /**
    * Live-updates the dial while someone edits the Focus/Break minutes, but only
@@ -380,6 +390,32 @@ export function FocusTimer({
               <RotateCcw className="h-4 w-4" /> Reset
             </Button>
           </div>
+          {/*
+            Offered here, in the large/medium layouts, and nowhere in the
+            widget variant above — that one is already fighting for space
+            (see the comment on its own return: the label and Start button
+            were once cut off at the bottom edge), and permission is a single
+            per-origin browser setting regardless of which variant asked for
+            it. Once granted anywhere, every variant's notify() call above
+            fires — this line only controls whether the *invitation* to grant
+            it is shown, and there's room for that invitation here.
+
+            Asked for inline, at the moment it's relevant, rather than on
+            page load — a permission dialog fired on arrival is the fastest
+            way to get permanently denied.
+          */}
+          {notifyPermission === "default" && (
+            <button
+              type="button"
+              onClick={() => void requestNotify()}
+              className="text-xs text-ink-soft underline decoration-dotted underline-offset-4 hover:text-ink"
+            >
+              Tell me when it&rsquo;s done
+            </button>
+          )}
+          {notifyPermission === "granted" && (
+            <p className="text-xs text-ink-soft">You&rsquo;ll be notified when it&rsquo;s done.</p>
+          )}
         </div>
       </div>
     </section>
