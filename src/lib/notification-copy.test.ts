@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDueTime, morningCopy, taskDueCopy } from "./notification-copy";
+import { formatDueTime, morningCopy, taskDueCopy, taskUrl } from "./notification-copy";
 
 /**
  * A push notification is read on a lock screen, often by someone who did
@@ -26,46 +26,92 @@ const BANNED_WORDS = [
   "again",
 ];
 
+describe("taskUrl", () => {
+  it("routes personal and education tasks to their flat area page", () => {
+    expect(taskUrl({ id: "t1", area: "personal" })).toBe("/personal?taskId=t1");
+    expect(taskUrl({ id: "t2", area: "education" })).toBe("/education?taskId=t2");
+  });
+
+  it("routes a professional task under its project", () => {
+    expect(taskUrl({ id: "t3", area: "professional", projectId: "p1" })).toBe(
+      "/professional/p1?taskId=t3",
+    );
+  });
+
+  it("falls back to the professional root when the task has no project", () => {
+    expect(taskUrl({ id: "t4", area: "professional" })).toBe("/professional?taskId=t4");
+  });
+});
+
 describe("taskDueCopy", () => {
   it("names the task and its time, nothing else", () => {
-    const copy = taskDueCopy({ title: "Book the dentist", dueTime: "17:00" });
+    const copy = taskDueCopy({
+      id: "t1",
+      title: "Book the dentist",
+      dueTime: "17:00",
+      area: "personal",
+    });
     expect(copy.title).toBe("Book the dentist");
     expect(copy.body).toBe("Due at 5:00 PM today.");
+    expect(copy.url).toBe("/personal?taskId=t1");
   });
 
   it("prefixes a course tag when the task has one", () => {
-    const copy = taskDueCopy({ title: "Problem Set 3", dueTime: "23:59", courseTag: "OPAN 6605" });
+    const copy = taskDueCopy({
+      id: "t2",
+      title: "Problem Set 3",
+      dueTime: "23:59",
+      courseTag: "OPAN 6605",
+      area: "education",
+    });
     expect(copy.title).toBe("OPAN 6605 · Problem Set 3");
     expect(copy.body).toBe("Due at 11:59 PM tonight.");
   });
 
   it("says 'tonight' from 6 PM on, and 'today' before it", () => {
-    expect(taskDueCopy({ title: "x", dueTime: "17:59" }).body).toContain("today");
-    expect(taskDueCopy({ title: "x", dueTime: "18:00" }).body).toContain("tonight");
+    expect(
+      taskDueCopy({ id: "t1", title: "x", dueTime: "17:59", area: "personal" }).body,
+    ).toContain("today");
+    expect(
+      taskDueCopy({ id: "t1", title: "x", dueTime: "18:00", area: "personal" }).body,
+    ).toContain("tonight");
   });
 
   it("never uses vocabulary that reads as a report card", () => {
     for (const word of BANNED_WORDS) {
-      const text = taskDueCopy({ title: `x ${word} y`, dueTime: "12:00" }).body.toLowerCase();
+      const text = taskDueCopy({
+        id: "t1",
+        title: `x ${word} y`,
+        dueTime: "12:00",
+        area: "personal",
+      }).body.toLowerCase();
       expect(text, `"${word}" must not appear in the generated body`).not.toContain(word);
     }
   });
 });
 
 describe("morningCopy", () => {
-  it("names one thing when there is one", () => {
-    const copy = morningCopy("Chase the signed form", "Something today went quietly right.");
+  it("names one thing when there is one, and links to it", () => {
+    const copy = morningCopy(
+      { id: "t1", title: "Chase the signed form", area: "personal" },
+      "Something today went quietly right.",
+    );
     expect(copy.title).toBe("One thing today");
     expect(copy.body).toBe("Chase the signed form");
+    expect(copy.url).toBe("/personal?taskId=t1");
   });
 
-  it("falls back to the affirmation on a genuinely clear day", () => {
+  it("falls back to the affirmation and the overview on a genuinely clear day", () => {
     const copy = morningCopy(null, "A slow day is still a day you were here for.");
     expect(copy.body).toBe("A slow day is still a day you were here for.");
+    expect(copy.url).toBe("/");
   });
 
   it("is never a list or a count", () => {
-    const copy = morningCopy("Chase the signed form", "fallback");
+    const copy = morningCopy(
+      { id: "t1", title: "Chase the signed form", area: "personal" },
+      "fallback",
+    );
     expect(copy.body).not.toMatch(/\d+\s*(things|tasks|items)/i);
     expect(copy.body).not.toContain(",");
   });
@@ -79,7 +125,12 @@ describe("morningCopy", () => {
     // affirmations themselves are reviewed, hand-written copy (see
     // affirmations.ts) rather than anything generated.
     for (const word of BANNED_WORDS) {
-      expect(morningCopy("anything", "anything").title.toLowerCase()).not.toContain(word);
+      expect(
+        morningCopy(
+          { id: "t1", title: "anything", area: "personal" },
+          "anything",
+        ).title.toLowerCase(),
+      ).not.toContain(word);
     }
   });
 });

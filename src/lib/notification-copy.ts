@@ -1,5 +1,5 @@
 /**
- * Every string a push notification can show, in one place.
+ * Every string (and link) a push notification can show, in one place.
  *
  * Kept separate from the components and the sender that call it so the
  * words themselves are directly testable — see notification-copy.test.ts,
@@ -10,17 +10,24 @@
  * from src/ — see that file's own comment for why.
  */
 
+import type { Area } from "./store-types";
+
 export interface TaskDueInput {
+  id: string;
   title: string;
   /** "HH:MM", timezone-naive — see store-types.ts for why. */
   dueTime: string;
   /** A course's own tag, e.g. "OPAN 6605". Omitted for Personal tasks. */
   courseTag?: string | null;
+  area: Area;
+  /** Only meaningful for a professional-area task — see taskUrl. */
+  projectId?: string | null;
 }
 
 export interface NotificationCopy {
   title: string;
   body: string;
+  url: string;
 }
 
 function minutesOf(hhmm: string): number {
@@ -37,6 +44,24 @@ export function formatDueTime(value: string): string {
 }
 
 /**
+ * Where a tap on this task's notification should land — the page that task
+ * actually renders on, with `?taskId=` for that page's own use-highlight-task
+ * hook to scroll to and briefly mark it. Personal and education tasks live on
+ * a flat area page; a professional task lives under its project, so without a
+ * project id there is nowhere specific to send it and the area root is the
+ * honest fallback.
+ */
+export function taskUrl(task: { id: string; area: Area; projectId?: string | null }): string {
+  const base =
+    task.area === "professional"
+      ? task.projectId
+        ? `/professional/${task.projectId}`
+        : "/professional"
+      : `/${task.area}`;
+  return `${base}?taskId=${task.id}`;
+}
+
+/**
  * A task's own due time, stated once, plainly, with no sense of whether it
  * is early or late notice — this is only ever sent ahead of the time, never
  * after it (see send-notifications/index.ts for the window that enforces
@@ -48,18 +73,25 @@ export function taskDueCopy(task: TaskDueInput): NotificationCopy {
   return {
     title: `${prefix}${task.title}`,
     body: `Due at ${formatDueTime(task.dueTime)} ${timeOfDay}.`,
+    url: taskUrl(task),
   };
 }
 
 /**
  * One sentence, naming one thing — never a list, never a count of what else
- * is waiting. `oneThingTitle` is whatever pickOneThing already chose; when
- * there is nothing open at all, `fallbackLine` (an affirmation) fills the
- * body instead, so the notification is never empty on a genuinely clear day.
+ * is waiting. `oneThing` is whatever pickOneThing already chose; when there
+ * is nothing open at all, `fallbackLine` (an affirmation) fills the body
+ * instead, so the notification is never empty on a genuinely clear day, and
+ * the link falls back to the overview rather than a specific task that does
+ * not exist.
  */
-export function morningCopy(oneThingTitle: string | null, fallbackLine: string): NotificationCopy {
+export function morningCopy(
+  oneThing: { title: string; id: string; area: Area; projectId?: string | null } | null,
+  fallbackLine: string,
+): NotificationCopy {
   return {
     title: "One thing today",
-    body: oneThingTitle ?? fallbackLine,
+    body: oneThing ? oneThing.title : fallbackLine,
+    url: oneThing ? taskUrl(oneThing) : "/",
   };
 }

@@ -46,6 +46,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { TimeField } from "@/components/ui/time-field";
 import { useFocusNotify } from "@/lib/use-focus-notify";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
@@ -540,6 +541,33 @@ function AssistantSection({ settings }: { settings: Settings }) {
  */
 function NotificationsSection({ settings }: { settings: Settings }) {
   const { permission, request } = useFocusNotify();
+  const [testBusy, setTestBusy] = useState(false);
+
+  async function sendTest() {
+    setTestBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        sent?: number;
+        of?: number;
+        error?: string;
+      }>("send-test-notification");
+      if (error || data?.error) {
+        toast.error("Couldn't send that", {
+          description: data?.error ?? "Try again in a moment.",
+        });
+      } else if (!data?.sent) {
+        toast.error("No device found", {
+          description: "Turn on one of the notifications below first, so this browser registers.",
+        });
+      } else {
+        toast.success("Sent — check for it now.");
+      }
+    } catch {
+      toast.error("Couldn't send that", { description: "Try again in a moment." });
+    } finally {
+      setTestBusy(false);
+    }
+  }
 
   return (
     <>
@@ -570,6 +598,22 @@ function NotificationsSection({ settings }: { settings: Settings }) {
               onClick={() => void request()}
             >
               Allow
+            </Button>
+          </div>
+        )}
+        {permission === "granted" && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-border px-4 py-3">
+            <p className="text-sm text-ink-soft">
+              Turn one of these on below, then send yourself a real push to confirm it arrives.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 rounded-full border-tan"
+              disabled={testBusy}
+              onClick={() => void sendTest()}
+            >
+              {testBusy ? "Sending…" : "Send test notification"}
             </Button>
           </div>
         )}

@@ -41,6 +41,8 @@ interface TaskRow {
   date: string | null;
   due_time: string | null;
   course_id: string | null;
+  area: "personal" | "professional" | "education";
+  project_id: string | null;
 }
 
 interface SubscriptionRow {
@@ -89,7 +91,7 @@ function minutesOf(hhmm: string): number {
  * "There is no priority field in this app, and inventing one here would be
  * inventing a judgement" — the same restraint applies to this copy.
  */
-function pickOneThing(tasks: { id: string; title: string; date: string | null }[], today: string) {
+function pickOneThing(tasks: TaskRow[], today: string) {
   if (tasks.length === 0) return null;
   const rank = (t: { date: string | null }) => (t.date ? (t.date <= today ? 0 : 1) : 2);
   return [...tasks].sort((a, b) => {
@@ -113,7 +115,7 @@ function pickOneThing(tasks: { id: string; title: string; date: string | null }[
 async function send(
   db: ReturnType<typeof serviceClient>,
   subscription: SubscriptionRow,
-  payload: { title: string; body: string },
+  payload: { title: string; body: string; url: string },
 ): Promise<boolean> {
   try {
     await webpush.sendNotification(
@@ -223,6 +225,7 @@ Deno.serve(async (req) => {
       const candidates: {
         title: string;
         body: string;
+        url: string;
         kind: "task_due" | "morning";
         refId: string;
       }[] = [];
@@ -230,7 +233,7 @@ Deno.serve(async (req) => {
       if (settings.notify_task_due) {
         const { data: dueTasks } = await db
           .from("tasks")
-          .select("id, title, date, due_time, course_id")
+          .select("id, title, date, due_time, course_id, area, project_id")
           .eq("user_id", settings.user_id)
           .eq("done", false)
           .eq("date", today)
@@ -256,7 +259,14 @@ Deno.serve(async (req) => {
           }
 
           candidates.push({
-            ...taskDueCopy({ title: task.title, dueTime: task.due_time!, courseTag }),
+            ...taskDueCopy({
+              id: task.id,
+              title: task.title,
+              dueTime: task.due_time!,
+              courseTag,
+              area: task.area,
+              projectId: task.project_id,
+            }),
             kind: "task_due",
             refId: task.id,
           });
@@ -269,13 +279,23 @@ Deno.serve(async (req) => {
         if (sinceMorning >= 0 && sinceMorning <= MORNING_GRACE_MINUTES) {
           const { data: openTasks } = await db
             .from("tasks")
-            .select("id, title, date")
+            .select("id, title, date, area, project_id")
             .eq("user_id", settings.user_id)
             .eq("done", false);
 
           const picked = pickOneThing((openTasks ?? []) as TaskRow[], today);
           candidates.push({
-            ...morningCopy(picked?.title ?? null, affirmationForDate(today).text),
+            ...morningCopy(
+              picked
+                ? {
+                    id: picked.id,
+                    title: picked.title,
+                    area: picked.area,
+                    projectId: picked.project_id,
+                  }
+                : null,
+              affirmationForDate(today).text,
+            ),
             kind: "morning",
             refId: "daily",
           });
@@ -288,7 +308,11 @@ Deno.serve(async (req) => {
 
         let sent = 0;
         for (const subscription of subscriptions as SubscriptionRow[]) {
-          const ok = await send(db, subscription, { title: candidate.title, body: candidate.body });
+          const ok = await send(db, subscription, {
+            title: candidate.title,
+            body: candidate.body,
+            url: candidate.url,
+          });
           if (ok) sent++;
         }
         results.push({ userId: settings.user_id, kind: candidate.kind, sent });

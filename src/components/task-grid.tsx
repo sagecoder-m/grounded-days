@@ -42,6 +42,7 @@ export function TaskGrid({
   showGroupLabels = true,
   floating = false,
   fit = false,
+  highlightedTaskId,
 }: {
   tasks: Task[];
   /** Omit for a tasks-only grid. */
@@ -93,6 +94,9 @@ export function TaskGrid({
    * that has no bottom would be hiding them for no reason.
    */
   fit?: boolean;
+  /** The task named by a notification's deep link, briefly marked when found
+   *  in this grid — see use-highlight-task.ts. */
+  highlightedTaskId?: string | null;
 }) {
   const overdue = useMemo(() => {
     if (!includeOverdue) return [];
@@ -169,6 +173,7 @@ export function TaskGrid({
               key={task.id}
               task={task}
               floating={floating}
+              highlighted={task.id === highlightedTaskId}
               onDelete={() => actions.deleteTask(task.id)}
             />
           ))}
@@ -242,6 +247,7 @@ export function TaskGrid({
                   key={task.id}
                   task={task}
                   floating={floating}
+                  highlighted={task.id === highlightedTaskId}
                   onDelete={() => actions.deleteTask(task.id)}
                 />
               ))}

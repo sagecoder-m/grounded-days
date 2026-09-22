@@ -4,15 +4,21 @@
  * codebase never import across into src/.
  */
 
+export type Area = "personal" | "professional" | "education";
+
 export interface TaskDueInput {
+  id: string;
   title: string;
   dueTime: string;
   courseTag?: string | null;
+  area: Area;
+  projectId?: string | null;
 }
 
 export interface NotificationCopy {
   title: string;
   body: string;
+  url: string;
 }
 
 function minutesOf(hhmm: string): number {
@@ -28,18 +34,33 @@ export function formatDueTime(value: string): string {
   return `${display}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
+export function taskUrl(task: { id: string; area: Area; projectId?: string | null }): string {
+  const base =
+    task.area === "professional"
+      ? task.projectId
+        ? `/professional/${task.projectId}`
+        : "/professional"
+      : `/${task.area}`;
+  return `${base}?taskId=${task.id}`;
+}
+
 export function taskDueCopy(task: TaskDueInput): NotificationCopy {
   const prefix = task.courseTag ? `${task.courseTag} · ` : "";
   const timeOfDay = minutesOf(task.dueTime) >= 18 * 60 ? "tonight" : "today";
   return {
     title: `${prefix}${task.title}`,
     body: `Due at ${formatDueTime(task.dueTime)} ${timeOfDay}.`,
+    url: taskUrl(task),
   };
 }
 
-export function morningCopy(oneThingTitle: string | null, fallbackLine: string): NotificationCopy {
+export function morningCopy(
+  oneThing: { title: string; id: string; area: Area; projectId?: string | null } | null,
+  fallbackLine: string,
+): NotificationCopy {
   return {
     title: "One thing today",
-    body: oneThingTitle ?? fallbackLine,
+    body: oneThing ? oneThing.title : fallbackLine,
+    url: oneThing ? taskUrl(oneThing) : "/",
   };
 }

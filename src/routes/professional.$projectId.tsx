@@ -7,6 +7,7 @@ import type { Goal, Project, Subproject } from "@/lib/store-types";
 import { projectProgress, rememberProject } from "@/lib/project-progress";
 import { InlineText } from "@/components/inline-text";
 import { TaskRow } from "@/components/task-row";
+import { useHighlightTask } from "@/lib/use-highlight-task";
 import { GoalFocus } from "@/components/goal-focus";
 import { SoftProgress } from "@/components/soft-progress";
 import { AddTaskDialog } from "@/components/add-task-dialog";
@@ -225,6 +226,7 @@ function SubprojectPanel({
   onClose: () => void;
 }) {
   const state = useAppState();
+  const highlightedTaskId = useHighlightTask();
   const goals = state.goals.filter((g) => g.subprojectId === subproject.id);
   const tasks = state.tasks.filter((t) => t.subprojectId === subproject.id);
   const full = goals.length >= MAX_GOALS_PER_SUBPROJECT;
@@ -319,6 +321,7 @@ function SubprojectPanel({
                 task={t}
                 showArea={false}
                 floating
+                highlighted={t.id === highlightedTaskId}
                 onDelete={() => actions.deleteTask(t.id)}
               />
             ))}

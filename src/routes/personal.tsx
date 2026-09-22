@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { InlineText } from "@/components/inline-text";
 import { AreaEvents } from "@/components/area-events";
 import { SectionNav } from "@/components/section-nav";
+import { useHighlightTask } from "@/lib/use-highlight-task";
 import {
   Line,
   LineChart,
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/personal")({
 
 function PersonalPage() {
   const state = useAppState();
+  const highlightedTaskId = useHighlightTask();
   const personalGoals = state.goals.filter((g) => g.area === "personal");
   const personalTasks = state.tasks
     .filter((t) => t.area === "personal")
@@ -371,6 +373,7 @@ function PersonalPage() {
                   task={t}
                   showArea={false}
                   floating
+                  highlighted={t.id === highlightedTaskId}
                   onDelete={() => actions.deleteTask(t.id)}
                 />
               ))}

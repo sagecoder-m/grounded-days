@@ -6,6 +6,7 @@ import { CalendarDays, Plus } from "lucide-react";
 import { actions, useAppState } from "@/lib/store";
 import type { CalEvent, Course, Goal, Task } from "@/lib/store-types";
 import { TaskRow } from "@/components/task-row";
+import { useHighlightTask } from "@/lib/use-highlight-task";
 import { dateKey } from "@/lib/dates";
 import { GoalFocus } from "@/components/goal-focus";
 import { FocusOverlay, ExpandButton } from "@/components/focus-overlay";
@@ -482,6 +483,7 @@ function CourseFocus({
   tasks: Task[];
   onClose: () => void;
 }) {
+  const highlightedTaskId = useHighlightTask();
   const mine = tasks.filter((t) => t.courseId === course.id);
   const outstanding = mine.filter((t) => !t.done);
   const done = mine.filter((t) => t.done);
@@ -515,6 +517,7 @@ function CourseFocus({
               task={t}
               showArea={false}
               floating
+              highlighted={t.id === highlightedTaskId}
               onDelete={() => actions.deleteTask(t.id)}
             />
           ))}
@@ -527,6 +530,7 @@ function CourseFocus({
               task={t}
               showArea={false}
               floating
+              highlighted={t.id === highlightedTaskId}
               onDelete={() => actions.deleteTask(t.id)}
             />
           ))}

@@ -28,6 +28,7 @@ import { useResolvedTheme, useTheme } from "@/lib/use-theme";
 import { installErrorReporting, track } from "@/lib/telemetry";
 import { useCaptureTimezone } from "@/lib/use-capture-timezone";
 import { usePushSubscription } from "@/lib/use-push-subscription";
+import { useRealtimeSync } from "@/lib/use-realtime-sync";
 import { useCanUseClinicianPOV } from "@/lib/use-clinician-pov";
 
 /**
@@ -218,6 +219,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Keeps a push subscription registered for this browser whenever any
   // notification preference (set in Profile) is on.
   usePushSubscription(settings, settingsLoaded, user?.id);
+
+  // Keeps every device on this account in sync — a task finished on one
+  // shows finished everywhere without a manual refresh.
+  useRealtimeSync();
 
   return (
     <div

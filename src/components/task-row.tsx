@@ -35,6 +35,9 @@ interface Props {
    *  Overview's treatment, where the lists are short and each row is meant to
    *  read as one liftable thing. An area page is a working list of forty. */
   floating?: boolean;
+  /** Briefly marked as the target of a notification's deep link — see
+   *  use-highlight-task.ts. Fades on its own; nothing needs to clear it. */
+  highlighted?: boolean;
 }
 
 export function TaskRow({
@@ -43,6 +46,7 @@ export function TaskRow({
   readOnly = false,
   onDelete,
   floating = false,
+  highlighted = false,
 }: Props) {
   const overdue =
     task.date &&
@@ -88,10 +92,12 @@ export function TaskRow({
 
   return (
     <div
+      id={`task-${task.id}`}
       className={cn(
         "group flex items-start gap-3 rounded-2xl border border-border bg-card px-4 py-3 transition-all",
         floating && "float-row",
         task.done && "opacity-60",
+        highlighted && "ring-2 ring-primary ring-offset-2 ring-offset-background",
       )}
     >
       <Checkbox
