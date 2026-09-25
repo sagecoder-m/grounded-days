@@ -115,7 +115,7 @@ export function SetupPanel() {
         <span className="text-xs text-ink-soft">Values for the Google and Microsoft consoles</span>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="card-soft space-y-3 p-4 md:p-6">
           <h3 className="text-sm text-ink-soft">Paste these into the console</h3>
 

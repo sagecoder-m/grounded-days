@@ -208,7 +208,7 @@ export function FocusTimer({
         by side it needs about 130px, and 15rem is where the controls stop being
         uncomfortably narrow.
       */
-      <div className="card-soft grid h-full items-center gap-3 p-3.5 @[15rem]:grid-cols-[auto_minmax(0,1fr)] @[15rem]:gap-4 @[15rem]:p-4">
+      <div className="card-soft grid grid-cols-1 h-full items-center gap-3 p-3.5 @[15rem]:grid-cols-[auto_minmax(0,1fr)] @[15rem]:gap-4 @[15rem]:p-4">
         <div className="relative mx-auto" style={{ width: size, height: size }}>
           <svg width={size} height={size} className="-rotate-90">
             <circle
@@ -293,7 +293,7 @@ export function FocusTimer({
         <span className="text-xs text-ink-soft italic">One block at a time.</span>
       </div>
       <div
-        className={`card-soft grid items-center md:grid-cols-[auto_1fr] ${
+        className={`card-soft grid grid-cols-1 items-center md:grid-cols-[auto_1fr] ${
           variant === "medium" ? "gap-6 p-5 md:p-6" : "gap-8 p-6 md:p-8"
         }`}
       >

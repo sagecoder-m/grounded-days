@@ -70,7 +70,7 @@ export function PasscodeSettings() {
         {shown ? "Hide passcodes" : "Show passcodes"}
       </button>
 
-      <form onSubmit={submit} className="grid gap-4 sm:grid-cols-3 max-w-2xl">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-2xl">
         <div className="space-y-1.5">
           <Label htmlFor="pc-current">Current</Label>
           <Input

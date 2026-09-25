@@ -69,7 +69,7 @@ function ProfessionalPage() {
         />
       </header>
 
-      <div className="grid gap-6 @3xl:grid-cols-[minmax(0,1fr)_17rem]">
+      <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="space-y-3" onPointerUp={drag.endDrag} onPointerLeave={drag.endDrag}>
           {projects.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm italic text-ink-soft">

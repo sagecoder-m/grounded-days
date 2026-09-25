@@ -320,7 +320,7 @@ function Overview() {
             to match its height. It is its own widget now, so these are back to
             being as tall as their contents.
           */}
-          <div className="grid gap-3 @xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 @xl:grid-cols-3">
             {areaProgress.map((a) => (
               <div key={a.area} className="card-soft density-p flex flex-col gap-3 p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -385,7 +385,7 @@ function Overview() {
             The last two weeks, day by day, split by area — taller means more finished.
           </p>
           <div className="card-soft p-4 md:p-6">
-            <div className="grid gap-6 @3xl:grid-cols-[2fr_1fr]">
+            <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-[2fr_1fr]">
               <div className="h-56">
                 <ResponsiveContainer>
                   <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

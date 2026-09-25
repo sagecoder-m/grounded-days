@@ -101,7 +101,7 @@ function EducationPage() {
           scrolls past Courses. */}
       <SectionNav sections={SECTIONS} />
 
-      <div className="grid gap-8 @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-8 @3xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <div className="space-y-8">
           {/* First on the page, because on a study page the first useful action
               is usually "start a block", not "read the list". */}
@@ -129,7 +129,7 @@ function EducationPage() {
                 No courses yet. Add one and its assignments live inside it.
               </p>
             ) : (
-              <div className="grid gap-3 @xl:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 @xl:grid-cols-2">
                 {courses.map((course) => (
                   <ReorderableCard
                     key={course.id}

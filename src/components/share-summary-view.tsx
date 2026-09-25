@@ -139,7 +139,7 @@ export function ShareSummaryView({ data, today }: { data: SharedView; today: str
       {hasHistory && !summary.empty && (
         <section>
           <h2 className="font-serif text-xl">Where things stand</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {summary.standings.map((standing) => (
               <AreaCard
                 key={standing.area}

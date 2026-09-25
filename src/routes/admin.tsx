@@ -393,7 +393,7 @@ function PulsePanel({
       {!stats ? (
         <div className="card-soft h-24 animate-pulse rounded-2xl bg-secondary/60" />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {tiles.map((t) => (
             <div key={t.label} className="card-soft p-4">
               <div className="text-xs uppercase tracking-[0.08em] text-ink-soft">{t.label}</div>
@@ -455,7 +455,7 @@ function UsagePanel({ events, loading }: { events?: UsageRow[]; loading: boolean
       {loading ? (
         <div className="card-soft h-56 animate-pulse rounded-2xl bg-secondary/60" />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="card-soft p-4 md:p-6">
             <h3 className="mb-3 text-sm text-ink-soft">Section visits</h3>
             <div className="h-64">
@@ -630,7 +630,7 @@ function AccountsPanel({
   return (
     <section>
       <h2 className="mb-3 font-serif text-lg">Accounts</h2>
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
         <div className="card-soft overflow-x-auto p-4 md:p-6">
           {loading ? (
             <div className="h-32 animate-pulse rounded-2xl bg-secondary/60" />
@@ -706,7 +706,7 @@ function ClinicianRosterPanel({
         Prototype scope only — see the Build Scope Decision brief for why the real access model
         (consent, self-service linking) is deferred until a provider has asked for it.
       </p>
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_20rem] lg:items-start">
         <div className="card-soft space-y-4 p-4 md:p-6">
           {loading ? (
             <div className="h-32 animate-pulse rounded-2xl bg-secondary/60" />

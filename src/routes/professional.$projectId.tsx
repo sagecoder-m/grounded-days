@@ -127,7 +127,7 @@ function ProjectPage() {
 
         {/* A grid of doors rather than a stack of open drawers. Choosing one is
             the only thing to do here. */}
-        <div className="grid gap-3 @xl:grid-cols-2 @4xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-3">
           {project.subprojects.map((s) => (
             <SubprojectCard
               key={s.id}
@@ -286,7 +286,7 @@ function SubprojectPanel({
             No goals here yet.
           </p>
         ) : (
-          <div className="grid gap-2 @lg:grid-cols-2 @3xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 @lg:grid-cols-2 @3xl:grid-cols-3">
             {goals.map((g) => (
               <GoalChip key={g.id} goal={g} onOpen={() => onFocusGoal(g.id)} />
             ))}

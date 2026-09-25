@@ -99,7 +99,7 @@ export function MovementCards({ state }: { state: AppState }) {
 
       {/* Three across when the widget is wide enough to read them, stacked when
           it is not — the same threshold the area progress row uses. */}
-      <div className="grid gap-3 @xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 @xl:grid-cols-3">
         {movements.map((m) => (
           <MovementCard key={m.area} m={m} />
         ))}
